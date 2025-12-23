@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use dagger::parser;
+use dagger::query;
 use dagger::scope;
 
 #[derive(Parser)]
@@ -149,10 +150,28 @@ fn list_nodes(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn query_network(path: &str, query: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Implement query parser and executor (Phase 3)
-    eprintln!("Query functionality not yet implemented. Query: {}", query);
-    eprintln!("Network loaded from: {}", path);
+fn query_network(path: &str, query_str: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let (network, validation) = parser::load_network_from_directory(path)?;
+
+    // Print validation issues if any
+    if validation.has_issues() {
+        eprintln!("{}", validation);
+    }
+
+    // Parse the query path
+    let query_path = query::parser::parse_query_path(query_str)
+        .map_err(|e| format!("Failed to parse query: {}", e))?;
+
+    // Execute the query
+    let executor = query::executor::QueryExecutor::new(&network);
+    let result = executor
+        .execute(&query_path)
+        .map_err(|e| format!("Query error: {}", e))?;
+
+    // Format and print the result
+    let formatted = query::formatter::format_query_result(&result);
+    println!("{}", formatted);
+
     Ok(())
 }
 

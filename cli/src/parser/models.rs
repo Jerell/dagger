@@ -18,10 +18,10 @@ pub struct Outgoing {
 pub struct Block {
     #[serde(default)]
     pub quantity: Option<u32>,
-    
+
     #[serde(rename = "type")]
     pub type_: String,
-    
+
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
 }
@@ -38,25 +38,25 @@ pub struct NodeBase {
     // File-derived ID (from filename: "branch-4.toml" -> "branch-4")
     #[serde(skip)]
     pub id: String,
-    
+
     // Known fields
     #[serde(rename = "type")]
     pub type_: String,
-    
+
     #[serde(default)]
     pub label: Option<String>,
     pub position: Position,
-    
+
     // Optional known fields
     #[serde(rename = "parentId", default)]
     pub parent_id: Option<String>,
-    
+
     #[serde(default)]
     pub width: Option<u32>,
-    
+
     #[serde(default)]
     pub height: Option<u32>,
-    
+
     // Dynamic properties catch-all
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
@@ -73,10 +73,10 @@ impl NodeBase {
 pub struct BranchNode {
     #[serde(flatten)]
     pub base: NodeBase,
-    
+
     #[serde(rename = "outgoing", default)]
     pub outgoing: Vec<Outgoing>,
-    
+
     // TOML uses [[block]] array syntax, but we serialize as "blocks" in JSON
     #[serde(rename = "block", default)]
     pub blocks: Vec<Block>,
@@ -93,11 +93,14 @@ impl Serialize for BranchNode {
         state.serialize_field("id", &self.base.id)?;
         state.serialize_field("position", &self.base.position)?;
         let blocks: Vec<BlockData> = self.blocks.iter().map(|b| b.into()).collect();
-        state.serialize_field("data", &BranchData {
-            id: &self.base.id,
-            label: self.base.label.as_deref().unwrap_or(&self.base.id),
-            blocks: &blocks,
-        })?;
+        state.serialize_field(
+            "data",
+            &BranchData {
+                id: &self.base.id,
+                label: self.base.label.as_deref().unwrap_or(&self.base.id),
+                blocks: &blocks,
+            },
+        )?;
         if let Some(parent_id) = &self.base.parent_id {
             state.serialize_field("parentId", parent_id)?;
             state.serialize_field("extent", "parent")?;
@@ -116,7 +119,7 @@ struct BranchData<'a> {
 
 #[derive(Serialize)]
 struct BlockData {
-    length: u32,
+    quantity: u32,
     kind: String,
     label: String,
 }
@@ -129,7 +132,7 @@ impl From<&Block> for BlockData {
             _ => "transform",
         };
         BlockData {
-            length: block.quantity(),
+            quantity: block.quantity(),
             kind: kind.to_string(),
             label: block.type_.clone(),
         }
@@ -163,13 +166,13 @@ pub struct GeographicWindowNode {
 pub enum NodeData {
     #[serde(rename = "branchNode")]
     Branch(BranchNode),
-    
+
     #[serde(rename = "labeledGroupNode")]
     Group(GroupNode),
-    
+
     #[serde(rename = "geographicAnchorNode")]
     GeographicAnchor(GeographicAnchorNode),
-    
+
     #[serde(rename = "geographicWindowNode")]
     GeographicWindow(GeographicWindowNode),
 }
@@ -183,7 +186,7 @@ impl NodeData {
             NodeData::GeographicWindow(n) => &n.base.id,
         }
     }
-    
+
     pub fn base(&self) -> &NodeBase {
         match self {
             NodeData::Branch(n) => &n.base,
@@ -216,4 +219,3 @@ pub struct Network {
     pub nodes: Vec<NodeData>,
     pub edges: Vec<Edge>,
 }
-
