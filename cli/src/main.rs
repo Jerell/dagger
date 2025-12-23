@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use dagger::parser;
 use dagger::query;
+use dagger::schema;
 use dagger::scope;
 
 #[derive(Parser)]
@@ -16,7 +17,7 @@ enum Commands {
     /// Export network as JSON
     Export {
         /// Network directory path
-        #[arg(default_value = "network/preset1")]
+        #[arg(default_value = "../network/preset1")]
         path: String,
 
         /// Output file (default: stdout)
@@ -27,7 +28,7 @@ enum Commands {
     /// List all nodes in the network
     List {
         /// Network directory path
-        #[arg(default_value = "network/preset1")]
+        #[arg(default_value = "../network/preset1")]
         path: String,
     },
 
@@ -37,7 +38,7 @@ enum Commands {
         query: String,
 
         /// Network directory path
-        #[arg(default_value = "network/preset1")]
+        #[arg(default_value = "../network/preset1")]
         path: String,
     },
 
@@ -53,8 +54,22 @@ enum Commands {
         property: String,
 
         /// Network directory path
-        #[arg(default_value = "network/preset1")]
+        #[arg(default_value = "../network/preset1")]
         path: String,
+    },
+
+    /// Validate blocks against schema libraries
+    Validate {
+        /// Schema version to use (e.g., "v1.0")
+        version: String,
+
+        /// Network directory path
+        #[arg(default_value = "../network/preset1")]
+        path: String,
+
+        /// Schemas directory path
+        #[arg(long, default_value = "schemas")]
+        schemas_dir: String,
     },
 }
 
@@ -89,6 +104,17 @@ fn main() {
             property,
             path,
         } => match resolve_property(&path, &node_id, block_index, &property) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Commands::Validate {
+            version,
+            path,
+            schemas_dir,
+        } => match validate_network(&path, &version, &schemas_dir) {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -263,6 +289,89 @@ fn resolve_property(
                 }
             }
         }
+    }
+
+    Ok(())
+}
+
+fn validate_network(
+    path: &str,
+    schema_version: &str,
+    schemas_dir: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (network, _validation) = parser::load_network_from_directory(path)?;
+
+    // Create schema registry and load the specified version
+    let schemas_path = std::path::PathBuf::from(schemas_dir);
+    let mut registry = schema::registry::SchemaRegistry::new(schemas_path);
+
+    match registry.load_library(schema_version) {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!(
+                "Warning: Failed to load schema library '{}': {}",
+                schema_version, e
+            );
+            eprintln!("Available versions: {:?}", registry.list_versions());
+            return Err(e);
+        }
+    }
+
+    let validator = schema::validator::SchemaValidator::new(registry);
+
+    let mut total_issues = 0;
+    let mut total_errors = 0;
+    let mut total_warnings = 0;
+
+    // Validate all blocks in all branch nodes
+    for node in &network.nodes {
+        if let parser::models::NodeData::Branch(branch) = node {
+            for (idx, block) in branch.blocks.iter().enumerate() {
+                let result = validator.validate_block(block, schema_version);
+
+                if result.has_issues() {
+                    println!(
+                        "\n{}[{}] (block type: {})",
+                        branch.base.id, idx, block.type_
+                    );
+
+                    for issue in &result.issues {
+                        let prefix = match issue.severity {
+                            schema::validator::IssueSeverity::Error => {
+                                total_errors += 1;
+                                "ERROR"
+                            }
+                            schema::validator::IssueSeverity::Warning => {
+                                total_warnings += 1;
+                                "WARN"
+                            }
+                        };
+
+                        if let Some(prop) = &issue.property {
+                            println!(
+                                "  [{}] {}: {} (property: {})",
+                                prefix, issue.message, prop, prop
+                            );
+                        } else {
+                            println!("  [{}] {}", prefix, issue.message);
+                        }
+                    }
+
+                    total_issues += result.issues.len();
+                }
+            }
+        }
+    }
+
+    println!("\n=== Validation Summary ===");
+    println!("Schema version: {}", schema_version);
+    println!(
+        "Total issues: {} ({} errors, {} warnings)",
+        total_issues, total_errors, total_warnings
+    );
+
+    if total_errors > 0 {
+        std::process::exit(1);
     }
 
     Ok(())
