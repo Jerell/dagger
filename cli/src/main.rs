@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use dagger::parser;
+use dagger::scope;
 use serde_json;
 
 #[derive(Parser)]
@@ -39,6 +40,22 @@ enum Commands {
         #[arg(default_value = "network/preset1")]
         path: String,
     },
+
+    /// Resolve a property value using scope inheritance
+    Resolve {
+        /// Node ID (e.g., "branch-4")
+        node_id: String,
+
+        /// Block index (0-based)
+        block_index: usize,
+
+        /// Property name to resolve
+        property: String,
+
+        /// Network directory path
+        #[arg(default_value = "network/preset1")]
+        path: String,
+    },
 }
 
 fn main() {
@@ -60,6 +77,18 @@ fn main() {
             }
         },
         Commands::Query { query, path } => match query_network(&path, &query) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Commands::Resolve {
+            node_id,
+            block_index,
+            property,
+            path,
+        } => match resolve_property(&path, &node_id, block_index, &property) {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -125,5 +154,98 @@ fn query_network(path: &str, query: &str) -> Result<(), Box<dyn std::error::Erro
     // TODO: Implement query parser and executor (Phase 3)
     eprintln!("Query functionality not yet implemented. Query: {}", query);
     eprintln!("Network loaded from: {}", path);
+    Ok(())
+}
+
+fn resolve_property(
+    path: &str,
+    node_id: &str,
+    block_index: usize,
+    property: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (network, _validation) = parser::load_network_from_directory(path)?;
+
+    // Load config
+    let config_path = std::path::Path::new(path).join("config.toml");
+    let config = if config_path.exists() {
+        scope::config::Config::load_from_file(&config_path)?
+    } else {
+        scope::config::Config::empty()
+    };
+
+    let resolver = scope::resolver::ScopeResolver::new(config);
+
+    // Find the node
+    let branch_node = network
+        .nodes
+        .iter()
+        .find_map(|n| match n {
+            parser::models::NodeData::Branch(b) if b.base.id == node_id => Some(b),
+            _ => None,
+        })
+        .ok_or_else(|| format!("Node '{}' not found or is not a branch node", node_id))?;
+
+    // Get the block
+    let block = branch_node.blocks.get(block_index).ok_or_else(|| {
+        format!(
+            "Block index {} out of range ({} blocks)",
+            block_index,
+            branch_node.blocks.len()
+        )
+    })?;
+
+    // Find the group if parent_id exists
+    let group = branch_node.base.parent_id.as_ref().and_then(|parent_id| {
+        network.nodes.iter().find_map(|n| match n {
+            parser::models::NodeData::Group(g) if g.base.id == *parent_id => Some(g),
+            _ => None,
+        })
+    });
+
+    // Resolve the property
+    let value = resolver.resolve_property(property, block, branch_node, group);
+
+    // Get scope chain for display
+    let scope_chain = resolver.get_scope_chain_for_property(property, Some(&block.type_));
+
+    println!("Property: {}", property);
+    println!("Node: {}", node_id);
+    println!("Block: {} (index {})", block.type_, block_index);
+    println!("Scope chain: {:?}", scope_chain);
+
+    match value {
+        Some(v) => {
+            println!("Resolved value: {}", v);
+            println!("\nJSON: {}", serde_json::to_string_pretty(&v)?);
+        }
+        None => {
+            println!("Property not found in any scope");
+            println!("\nChecked scopes:");
+            for scope in scope_chain {
+                match scope {
+                    scope::config::ScopeLevel::Block => {
+                        println!("  - Block: {}", block.extra.get(property).is_some());
+                    }
+                    scope::config::ScopeLevel::Branch => {
+                        println!(
+                            "  - Branch: {}",
+                            branch_node.base.extra.get(property).is_some()
+                        );
+                    }
+                    scope::config::ScopeLevel::Group => {
+                        if let Some(g) = group {
+                            println!("  - Group: {}", g.base.extra.get(property).is_some());
+                        } else {
+                            println!("  - Group: (no parent)");
+                        }
+                    }
+                    scope::config::ScopeLevel::Global => {
+                        println!("  - Global: {}", resolver.has_global_property(property));
+                    }
+                }
+            }
+        }
+    }
+
     Ok(())
 }
