@@ -1,0 +1,25 @@
+type = "branch"
+
+label = "Branch 1"
+
+[position]
+x = 20
+y = 30
+
+[[block]]
+quantity = 1
+type = "Source"
+
+[[block]]
+quantity = 4
+type = "Capture Unit"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+type = "Compressor"
+
+[[block]]
+type = "Pipe"

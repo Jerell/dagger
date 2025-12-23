@@ -1,0 +1,56 @@
+type = "branch"
+
+label = "Branch 2"
+
+[position]
+x = 400
+y = 100
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 2
+type = "Compressor"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
