@@ -28,4 +28,3 @@ type = "Compressor"
 
 [[block]]
 type = "Pipe"
-
