@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_execute_scope_resolution_with_global() {
-        let mut network = create_test_network();
+        let network = create_test_network();
         let mut config = Config::empty();
         config
             .properties

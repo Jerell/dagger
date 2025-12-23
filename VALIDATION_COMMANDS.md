@@ -103,6 +103,7 @@ echo $?
    ```
 
 4. **Verify no errors:**
+
    ```bash
    cargo run -- validate v1.0 && echo "✓ Validation passed"
    ```
