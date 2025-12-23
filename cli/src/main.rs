@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use dagger::parser;
 use dagger::scope;
-use serde_json;
 
 #[derive(Parser)]
 #[command(name = "dagger")]
@@ -224,17 +223,17 @@ fn resolve_property(
             for scope in scope_chain {
                 match scope {
                     scope::config::ScopeLevel::Block => {
-                        println!("  - Block: {}", block.extra.get(property).is_some());
+                        println!("  - Block: {}", block.extra.contains_key(property));
                     }
                     scope::config::ScopeLevel::Branch => {
                         println!(
                             "  - Branch: {}",
-                            branch_node.base.extra.get(property).is_some()
+                            branch_node.base.extra.contains_key(property)
                         );
                     }
                     scope::config::ScopeLevel::Group => {
                         if let Some(g) = group {
-                            println!("  - Group: {}", g.base.extra.get(property).is_some());
+                            println!("  - Group: {}", g.base.extra.contains_key(property));
                         } else {
                             println!("  - Group: (no parent)");
                         }
