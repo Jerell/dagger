@@ -32,12 +32,12 @@ enum Commands {
 
     /// Query a specific path in the network
     Query {
+        /// Query path (e.g., "branch-4/label")
+        query: String,
+
         /// Network directory path
         #[arg(default_value = "network/preset1")]
         path: String,
-
-        /// Query path (e.g., "branch-4/label")
-        query: String,
     },
 }
 
@@ -59,7 +59,7 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        Commands::Query { path, query } => match query_network(&path, &query) {
+        Commands::Query { query, path } => match query_network(&path, &query) {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("Error: {}", e);
