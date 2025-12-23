@@ -68,7 +68,7 @@ enum Commands {
         path: String,
 
         /// Schemas directory path
-        #[arg(long, default_value = "schemas")]
+        #[arg(long, default_value = "../schemas")]
         schemas_dir: String,
     },
 }
