@@ -672,32 +672,40 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 
 ### Phase 1: Foundation (Week 1-2)
 
-- [ ] Core data structures with serde
-- [ ] TOML parser for all node types
-- [ ] Network graph builder
-- [ ] Basic CLI structure
+- [x] Core data structures with serde
+- [x] TOML parser for all node types
+- [x] Network graph builder
+- [x] Basic CLI structure
+- [x] Non-blocking validation system
 
 ### Phase 2: Scope System (Week 2-3)
 
-- [ ] Property configuration system
-- [ ] Scope resolver implementation
-- [ ] Inheritance rule engine
+- [x] Property configuration system
+- [x] Scope resolver implementation
+- [x] Inheritance rule engine
+- [x] CLI resolve command
 - [ ] Tests for scope resolution
 
 ### Phase 3: Query System (Week 3-4)
 
-- [ ] Path notation parser
-- [ ] Query executor
-- [ ] JSON formatter
-- [ ] CLI commands (list, query, export)
+- [x] Path notation parser (basic)
+- [x] Query executor (basic)
+- [x] JSON formatter
+- [x] CLI commands (list, query, export)
+- [x] Filter support (`blocks[label=Pipe]`, `blocks[quantity>1]`)
+- [x] Filter operators (=, !=, >, <, >=, <=)
+- [x] Scope resolution query parser (`?scope=block,branch,group`)
+- [ ] Full scope resolution in queries (currently redirects to resolve command)
+- [ ] Network-level queries (`nodes[type=branchNode]`)
 
 ### Phase 4: Versioned Schema Libraries (Week 4-5)
 
-- [ ] Schema library structure and versioning
-- [ ] Schema loader (read TypeScript/Zod files)
-- [ ] Schema registry (version management)
-- [ ] Block validation against schemas
-- [ ] Schema API endpoints
+- [x] Schema library structure and versioning
+- [x] Schema loader (read JSON generated from TypeScript/Zod files)
+- [x] Schema registry (version management)
+- [x] Block validation against schemas
+- [x] CLI validate command
+- [ ] Schema API endpoints (Phase 5)
 
 ### Phase 5: API Server (Week 5-6)
 

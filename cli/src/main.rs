@@ -188,8 +188,17 @@ fn query_network(path: &str, query_str: &str) -> Result<(), Box<dyn std::error::
     let query_path = query::parser::parse_query_path(query_str)
         .map_err(|e| format!("Failed to parse query: {}", e))?;
 
-    // Execute the query
-    let executor = query::executor::QueryExecutor::new(&network);
+    // Load config for scope resolution (always load it, even if not needed)
+    let config_path = std::path::Path::new(path).join("config.toml");
+    let config = if config_path.exists() {
+        scope::config::Config::load_from_file(&config_path)?
+    } else {
+        scope::config::Config::empty()
+    };
+    let resolver = scope::resolver::ScopeResolver::new(config);
+
+    // Create executor with scope resolver (it will use it if needed)
+    let executor = query::executor::QueryExecutor::with_scope_resolver(&network, &resolver);
     let result = executor
         .execute(&query_path)
         .map_err(|e| format!("Query error: {}", e))?;

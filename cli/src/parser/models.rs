@@ -120,6 +120,8 @@ struct BranchData<'a> {
 #[derive(Serialize)]
 struct BlockData {
     quantity: u32,
+    #[serde(rename = "type")]
+    type_: String,
     kind: String,
     label: String,
 }
@@ -133,6 +135,7 @@ impl From<&Block> for BlockData {
         };
         BlockData {
             quantity: block.quantity(),
+            type_: block.type_.clone(),
             kind: kind.to_string(),
             label: block.type_.clone(),
         }
