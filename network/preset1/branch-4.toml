@@ -1,34 +1,18 @@
 type = "branch"
 
-label = "Branch 2"
+label = "Branch 4"
 
 [position]
-x = 400
-y = 100
+x = -100
+y = 350
+
+[[outgoing]]
+target = "branch-2"
+weight = 1
 
 [[block]]
 quantity = 1
-type = "Pipe"
-
-[[block]]
-quantity = 2
-type = "Compressor"
-
-[[block]]
-quantity = 1
-type = "Pipe"
-
-[[block]]
-quantity = 1
-type = "Pipe"
-
-[[block]]
-quantity = 1
-type = "Pipe"
-
-[[block]]
-quantity = 1
-type = "Pipe"
+type = "Source"
 
 [[block]]
 quantity = 1
