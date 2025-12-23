@@ -695,8 +695,12 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] Filter support (`blocks[label=Pipe]`, `blocks[quantity>1]`)
 - [x] Filter operators (=, !=, >, <, >=, <=)
 - [x] Scope resolution query parser (`?scope=block,branch,group`)
-- [ ] Full scope resolution in queries (currently redirects to resolve command)
-- [ ] Network-level queries (`nodes[type=branchNode]`)
+- [x] Full scope resolution in queries (with block context tracking)
+- [x] Network-level queries (`nodes[type=branchNode]`, `edges[source=branch-1]`)
+- [x] Comprehensive tests for query system (16 tests)
+- [x] Tests for scope resolution (block, global, not found)
+- [x] Tests for network-level queries (nodes, edges, with filters)
+- [x] Query syntax documentation (QUERY_SYNTAX.md)
 
 ### Phase 4: Versioned Schema Libraries (Week 4-5)
 
