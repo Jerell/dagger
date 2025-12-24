@@ -202,7 +202,7 @@ http GET localhost:3000/api/schema/v1.0 schemasDir==../schemas
 
 ### Get Network Schemas
 
-Get schemas for all block types used in a specific network:
+Get schema properties for all blocks in a network. Returns the same flattened format as `/api/schema/properties` but for every block across all branches:
 
 ```bash
 http GET localhost:3000/api/schema/network network==preset1 version==v1.0
@@ -212,33 +212,41 @@ http GET localhost:3000/api/schema/network network==preset1 version==v1.0
 
 ```json
 {
-  "Compressor": {
-    "block_type": "Compressor",
-    "version": "v1.0",
-    "required_properties": ["pressure"],
-    "optional_properties": ["temperature"]
-  },
-  "Pipe": {
+  "branch-1/blocks/0/length": {
     "block_type": "Pipe",
-    "version": "v1.0",
-    "required_properties": ["length"],
-    "optional_properties": ["diameter"]
+    "property": "length",
+    "required": false
   },
-  "Source": {
-    "block_type": "Source",
-    "version": "v1.0",
-    "required_properties": [],
-    "optional_properties": []
+  "branch-1/blocks/0/diameter": {
+    "block_type": "Pipe",
+    "property": "diameter",
+    "required": false
+  },
+  "branch-1/blocks/1/pressure": {
+    "block_type": "Compressor",
+    "property": "pressure",
+    "required": true
+  },
+  "branch-1/blocks/1/efficiency": {
+    "block_type": "Compressor",
+    "property": "efficiency",
+    "required": false
+  },
+  "branch-2/blocks/0/length": {
+    "block_type": "Pipe",
+    "property": "length",
+    "required": false
   }
 }
 ```
 
 This endpoint:
 
-- Scans the network to find all unique block types
-- Returns schemas only for block types that are actually used in the network
-- Shows required and optional properties for each block type
-- Useful for generating forms or validation UI for the specific network
+- Returns schema properties for every block instance in the network
+- Uses the same flattened path format as `/api/schema/properties`
+- Keys are paths like `branch-1/blocks/0/length`
+- Shows which properties are required vs optional for each block
+- Perfect for generating form fields for all blocks in a network at once
 
 ### Get Block Schema Properties
 

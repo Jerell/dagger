@@ -60,16 +60,19 @@ export async function getNetworkSchemas(
   version: string
 ): Promise<any> {
   const wasm = getWasm();
-  const absolutePath = resolvePath(schemasDir);
 
   // Read network files
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
 
+  // Read schema files
+  const schemaFiles = await readSchemaFiles(schemasDir, version);
+  const schemaFilesJson = JSON.stringify(schemaFiles);
+
   const result = wasm.get_network_schemas(
     filesJson,
     configContent || undefined,
-    absolutePath,
+    schemaFilesJson,
     version
   );
   return JSON.parse(result);

@@ -236,15 +236,16 @@ impl DaggerWasm {
         Ok(json)
     }
 
-    /// Get schemas for all block types used in a network
+    /// Get schema properties for all blocks in a network
     /// files_json: JSON string mapping filename -> content
-    /// Returns JSON object mapping block types to schema definitions
+    /// schema_files_json: JSON string mapping schema filename -> content
+    /// Returns JSON object with flattened paths like "branch-1/blocks/0/length" -> property info
     #[wasm_bindgen]
     pub fn get_network_schemas(
         &self,
         files_json: &str,
         config_content: Option<String>,
-        schemas_dir: &str,
+        schema_files_json: &str,
         version: &str,
     ) -> Result<String, JsValue> {
         // Parse the JSON string into a HashMap
@@ -255,42 +256,92 @@ impl DaggerWasm {
         let (network, _validation) = parser::load_network_from_files(files, config_content)
             .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
 
-        // Extract all unique block types from the network
-        let mut block_types = std::collections::HashSet::new();
-        for node in &network.nodes {
-            if let parser::models::NodeData::Branch(branch) = node {
-                for block in &branch.blocks {
-                    block_types.insert(block.type_.clone());
+        // Load schema library from file contents
+        let schema_files: std::collections::HashMap<String, String> =
+            serde_json::from_str(schema_files_json).map_err(|e| {
+                JsValue::from_str(&format!("Failed to parse schema files JSON: {}", e))
+            })?;
+
+        let mut registry = schema::registry::SchemaRegistry::new(std::path::PathBuf::from("")); // Path not used when loading from files
+
+        registry
+            .load_library_from_files(version, schema_files)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
+
+        // Build flattened schema properties for all blocks in all branches
+        let mut properties = std::collections::HashMap::new();
+
+        // Helper function to process a block and add its schema properties
+        fn process_block(
+            block_value: &serde_json::Value,
+            branch_id: &str,
+            block_index: usize,
+            registry: &schema::registry::SchemaRegistry,
+            version: &str,
+            properties: &mut std::collections::HashMap<String, serde_json::Value>,
+        ) {
+            if let Some(block_type) = block_value.get("type").and_then(|v| v.as_str()) {
+                if let Some(schema) = registry.get_schema(version, block_type) {
+                    // Add required properties
+                    for prop in &schema.required_properties {
+                        let path = format!("{}/blocks/{}/{}", branch_id, block_index, prop);
+                        properties.insert(
+                            path,
+                            serde_json::json!({
+                                "block_type": block_type,
+                                "property": prop,
+                                "required": true,
+                            }),
+                        );
+                    }
+
+                    // Add optional properties
+                    for prop in &schema.optional_properties {
+                        let path = format!("{}/blocks/{}/{}", branch_id, block_index, prop);
+                        properties.insert(
+                            path,
+                            serde_json::json!({
+                                "block_type": block_type,
+                                "property": prop,
+                                "required": false,
+                            }),
+                        );
+                    }
                 }
             }
         }
 
-        // Load schema library
-        let mut registry =
-            schema::registry::SchemaRegistry::new(std::path::PathBuf::from(schemas_dir));
+        // Iterate through all branch nodes and their blocks
+        let executor = query::executor::QueryExecutor::new(&network);
+        for node in &network.nodes {
+            if let parser::models::NodeData::Branch(branch) = node {
+                let branch_id = &branch.base.id;
 
-        registry
-            .load_library(version)
-            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
-
-        // Get schemas for block types found in the network
-        let mut schemas = std::collections::HashMap::new();
-        for block_type in block_types {
-            if let Some(schema) = registry.get_schema(version, &block_type) {
-                schemas.insert(
-                    block_type.clone(),
-                    serde_json::json!({
-                        "block_type": schema.block_type,
-                        "version": schema.version,
-                        "required_properties": schema.required_properties,
-                        "optional_properties": schema.optional_properties,
-                    }),
+                // Query blocks for this branch
+                let query_path = query::parser::QueryPath::Property(
+                    "blocks".to_string(),
+                    Box::new(query::parser::QueryPath::Node(branch_id.clone())),
                 );
+
+                if let Ok(blocks_value) = executor.execute(&query_path) {
+                    if let Some(blocks_array) = blocks_value.as_array() {
+                        for (block_index, block_value) in blocks_array.iter().enumerate() {
+                            process_block(
+                                block_value,
+                                branch_id,
+                                block_index,
+                                &registry,
+                                version,
+                                &mut properties,
+                            );
+                        }
+                    }
+                }
             }
         }
 
-        let json = serde_json::to_string(&schemas)
-            .map_err(|e| JsValue::from_str(&format!("Failed to serialize schemas: {}", e)))?;
+        let json = serde_json::to_string(&properties)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize properties: {}", e)))?;
 
         Ok(json)
     }

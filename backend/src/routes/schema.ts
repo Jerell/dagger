@@ -35,7 +35,8 @@ schemaRoutes.get("/", async (c) => {
 
 /**
  * GET /api/schema/network
- * Get schemas for all block types used in a network
+ * Get schema properties for all blocks in a network
+ * Returns the same flattened format as /api/schema/properties but for all blocks
  *
  * Query params:
  * - network: Network name (default: "preset1") - looks in backend/networks/
