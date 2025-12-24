@@ -9,11 +9,12 @@ export const queryRoutes = new Hono();
  *
  * Query params:
  * - q: The query path (e.g., "branch-4/data/blocks[type=Pipe]")
- * - network: Path to the network directory (default: "../network/preset1")
+ * - network: Network name (default: "preset1") - looks in backend/networks/
  */
 queryRoutes.get("/", async (c) => {
   const query = c.req.query("q");
-  const networkPath = c.req.query("network") || "../network/preset1";
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
 
   if (!query) {
     return c.json({ error: "Missing required query parameter: q" }, 400);

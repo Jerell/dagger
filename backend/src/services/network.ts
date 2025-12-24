@@ -1,20 +1,55 @@
-import init, { DaggerWasm } from "../pkg/dagger.js";
+import { DaggerWasm } from "../../pkg/dagger.js";
+import * as path from "path";
+import * as fs from "fs/promises";
 
-let wasmInitialized = false;
+// With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
 
-async function ensureWasmInitialized() {
-  if (!wasmInitialized) {
-    await init();
+function getWasm() {
+  if (!daggerWasm) {
     daggerWasm = new DaggerWasm();
-    wasmInitialized = true;
   }
-  return daggerWasm!;
+  return daggerWasm;
+}
+
+function resolvePath(relativePath: string): string {
+  // Resolve relative to process.cwd() which should be the backend directory
+  // when the server is running
+  return path.resolve(process.cwd(), relativePath);
+}
+
+async function readNetworkFiles(networkPath: string): Promise<{
+  files: Record<string, string>;
+  configContent: string | null;
+}> {
+  const absolutePath = resolvePath(networkPath);
+  const files: Record<string, string> = {};
+  let configContent: string | null = null;
+
+  // Read all TOML files in the directory
+  const entries = await fs.readdir(absolutePath, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith('.toml')) {
+      const filePath = path.join(absolutePath, entry.name);
+      const content = await fs.readFile(filePath, 'utf-8');
+      
+      if (entry.name === 'config.toml') {
+        configContent = content;
+      } else {
+        files[entry.name] = content;
+      }
+    }
+  }
+
+  return { files, configContent };
 }
 
 export async function loadNetwork(networkPath: string): Promise<any> {
-  const wasm = await ensureWasmInitialized();
-  const result = wasm.load_network(networkPath);
+  const wasm = getWasm();
+  const { files, configContent } = await readNetworkFiles(networkPath);
+  const filesJson = JSON.stringify(files);
+  const result = wasm.load_network_from_files(filesJson, configContent || undefined);
   return JSON.parse(result);
 }
 
@@ -22,9 +57,25 @@ export async function getNetworkNodes(
   networkPath: string,
   nodeType?: string
 ): Promise<any[]> {
-  const wasm = await ensureWasmInitialized();
-  const result = wasm.get_nodes(networkPath, nodeType || null);
-  return JSON.parse(result);
+  // For now, load the full network and filter in Node.js
+  // TODO: Add get_nodes_from_files to WASM bindings
+  const network = await loadNetwork(networkPath);
+  const nodes = network.nodes || [];
+  
+  if (nodeType) {
+    return nodes.filter((n: any) => {
+      // Map node types
+      const typeMap: Record<string, string> = {
+        branchNode: 'branchNode',
+        labeledGroupNode: 'labeledGroupNode',
+        geographicAnchorNode: 'geographicAnchorNode',
+        geographicWindowNode: 'geographicWindowNode',
+      };
+      return Object.keys(n)[0] === nodeType || typeMap[Object.keys(n)[0]] === nodeType;
+    });
+  }
+  
+  return nodes;
 }
 
 export async function getNetworkEdges(
@@ -32,7 +83,14 @@ export async function getNetworkEdges(
   source?: string,
   target?: string
 ): Promise<any[]> {
-  const wasm = await ensureWasmInitialized();
-  const result = wasm.get_edges(networkPath, source || null, target || null);
-  return JSON.parse(result);
+  // For now, load the full network and filter in Node.js
+  // TODO: Add get_edges_from_files to WASM bindings
+  const network = await loadNetwork(networkPath);
+  const edges = network.edges || [];
+  
+  return edges.filter((e: any) => {
+    if (source && e.source !== source) return false;
+    if (target && e.target !== target) return false;
+    return true;
+  });
 }

@@ -65,6 +65,11 @@ fn default_general_inheritance() -> Vec<ScopeLevel> {
 }
 
 impl Config {
+    pub fn load_from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let config: Config = toml::from_str(content)?;
+        Ok(config)
+    }
+
     pub fn load_from_file<P: AsRef<std::path::Path>>(
         path: P,
     ) -> Result<Self, Box<dyn std::error::Error>> {

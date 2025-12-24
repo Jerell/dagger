@@ -48,6 +48,16 @@ npm run build:wasm
 
 This compiles the Rust code in `../cli` to WebAssembly and outputs it to `./pkg`.
 
+## Networks Directory
+
+Networks are stored in `backend/networks/`. You can:
+
+- Copy networks from the project root: `cp -r ../network/preset1 ./networks/`
+- Create symlinks: `ln -s ../network/preset1 ./networks/preset1`
+- Create new networks directly in `networks/`
+
+The API uses network names (e.g., `preset1`) which map to `networks/preset1/`.
+
 ## Environment Variables
 
 - `PORT` - Server port (default: 3000)

@@ -714,12 +714,15 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 ### Phase 5: API Server (Week 5-6)
 
 - [x] Hono server setup
-- [x] Query endpoints (structure ready, needs WASM)
-- [x] Network endpoints (structure ready, needs WASM)
-- [x] Schema endpoints (structure ready, needs WASM)
-- [ ] Rust WASM compilation setup
-- [ ] wasm-bindgen integration
-- [ ] WASM package build and import
+- [x] Query endpoints (WASM integrated)
+- [x] Network endpoints (WASM integrated)
+- [x] Schema endpoints (WASM integrated)
+- [x] Rust WASM compilation setup
+- [x] wasm-bindgen integration
+- [x] WASM package build and import
+- [x] Justfile with development commands
+- [ ] Test API endpoints end-to-end
+- [ ] Handle file system access in WASM (may need path adjustments)
 
 ### Phase 6: Frontend (Future)
 

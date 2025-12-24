@@ -8,8 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "build:wasm": "cd ../cli && wasm-pack build --target web --out-dir ../backend/pkg",
-    "build:wasm:release": "cd ../cli && wasm-pack build --release --target web --out-dir ../backend/pkg"
+    "build:wasm": "cd ../cli && wasm-pack build --target nodejs --out-dir ../backend/pkg",
+    "build:wasm:release": "cd ../cli && wasm-pack build --release --target nodejs --out-dir ../backend/pkg"
   },
   "keywords": [],
   "author": "",
@@ -24,4 +24,3 @@
     "typescript": "^5.3.3"
   }
 }
-

@@ -12,10 +12,11 @@ export const networkRoutes = new Hono();
  * Get the full network structure
  *
  * Query params:
- * - network: Path to the network directory (default: "../network/preset1")
+ * - network: Network name (default: "preset1") - looks in backend/networks/
  */
 networkRoutes.get("/", async (c) => {
-  const networkPath = c.req.query("network") || "../network/preset1";
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
 
   try {
     const network = await loadNetwork(networkPath);
@@ -36,11 +37,12 @@ networkRoutes.get("/", async (c) => {
  * Get all nodes in the network
  *
  * Query params:
- * - network: Path to the network directory (default: "../network/preset1")
+ * - network: Network name (default: "preset1") - looks in backend/networks/
  * - type: Filter by node type (optional)
  */
 networkRoutes.get("/nodes", async (c) => {
-  const networkPath = c.req.query("network") || "../network/preset1";
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
   const nodeType = c.req.query("type");
 
   try {
@@ -62,12 +64,13 @@ networkRoutes.get("/nodes", async (c) => {
  * Get all edges in the network
  *
  * Query params:
- * - network: Path to the network directory (default: "../network/preset1")
+ * - network: Network name (default: "preset1") - looks in backend/networks/
  * - source: Filter by source node ID (optional)
  * - target: Filter by target node ID (optional)
  */
 networkRoutes.get("/edges", async (c) => {
-  const networkPath = c.req.query("network") || "../network/preset1";
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
   const source = c.req.query("source");
   const target = c.req.query("target");
 

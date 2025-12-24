@@ -1,26 +1,37 @@
-import init, { DaggerWasm } from '../pkg/dagger.js';
+import { DaggerWasm } from "../../pkg/dagger.js";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-let wasmInitialized = false;
+// With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
 
-async function ensureWasmInitialized() {
-  if (!wasmInitialized) {
-    await init();
+function getWasm() {
+  if (!daggerWasm) {
     daggerWasm = new DaggerWasm();
-    wasmInitialized = true;
   }
-  return daggerWasm!;
+  return daggerWasm;
+}
+
+function resolvePath(relativePath: string): string {
+  // Resolve relative to process.cwd() which should be the backend directory
+  // when the server is running
+  return path.resolve(process.cwd(), relativePath);
 }
 
 export async function getSchemas(schemasDir: string): Promise<any> {
-  const wasm = await ensureWasmInitialized();
-  const result = wasm.get_schema_versions(schemasDir);
+  const wasm = getWasm();
+  const absolutePath = resolvePath(schemasDir);
+  const result = wasm.get_schema_versions(absolutePath);
   return JSON.parse(result);
 }
 
-export async function getSchema(schemasDir: string, version: string): Promise<any> {
-  const wasm = await ensureWasmInitialized();
-  const result = wasm.get_schemas(schemasDir, version);
+export async function getSchema(
+  schemasDir: string,
+  version: string
+): Promise<any> {
+  const wasm = getWasm();
+  const absolutePath = resolvePath(schemasDir);
+  const result = wasm.get_schemas(absolutePath, version);
   return JSON.parse(result);
 }
 
@@ -30,9 +41,14 @@ export async function validateBlock(
   blockType: string,
   block: any
 ): Promise<any> {
-  const wasm = await ensureWasmInitialized();
+  const wasm = getWasm();
+  const absolutePath = resolvePath(schemasDir);
   const blockJson = JSON.stringify(block);
-  const result = wasm.validate_block(schemasDir, version, blockType, blockJson);
+  const result = wasm.validate_block(
+    absolutePath,
+    version,
+    blockType,
+    blockJson
+  );
   return JSON.parse(result);
 }
-

@@ -14,12 +14,12 @@ dev-backend:
 
 # Build commands
 build-wasm:
-  # Build Rust code to WebAssembly
-  cd {{justfile_directory()}}/cli && wasm-pack build --target web --out-dir ../backend/pkg
+  # Build Rust code to WebAssembly (Node.js target for file system access)
+  cd {{justfile_directory()}}/cli && wasm-pack build --target nodejs --out-dir ../backend/pkg
 
 build-wasm-release:
-  # Build Rust code to WebAssembly (release mode)
-  cd {{justfile_directory()}}/cli && wasm-pack build --release --target web --out-dir ../backend/pkg
+  # Build Rust code to WebAssembly (release mode, Node.js target)
+  cd {{justfile_directory()}}/cli && wasm-pack build --release --target nodejs --out-dir ../backend/pkg
 
 build-backend:
   # Build TypeScript backend
@@ -110,6 +110,7 @@ setup:
   cd {{justfile_directory()}}/cli && cargo build
   cd {{justfile_directory()}}/backend && npm install
   cd {{justfile_directory()}}/schemas && npm install
+  just setup-networks
 
 setup-backend:
   # Setup backend dependencies
@@ -118,6 +119,11 @@ setup-backend:
 setup-schemas:
   # Setup schema generation dependencies
   cd {{justfile_directory()}}/schemas && npm install
+
+setup-networks:
+  # Copy networks from project root to backend/networks
+  mkdir -p {{justfile_directory()}}/backend/networks
+  cp -r {{justfile_directory()}}/network/preset1 {{justfile_directory()}}/backend/networks/ || echo "Network preset1 already exists or not found"
 
 # Full development workflow
 dev-full:

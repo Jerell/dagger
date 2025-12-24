@@ -1,5 +1,6 @@
 use crate::parser::models::*;
 use crate::parser::validation::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use toml::Value;
@@ -51,10 +52,72 @@ pub fn load_network_from_directory<P: AsRef<Path>>(
     Ok((network, validation))
 }
 
+/// Load a network from file contents (filename -> content map)
+/// This is used when files are read in Node.js and passed to WASM
+pub fn load_network_from_files(
+    files: HashMap<String, String>,
+    _config_content: Option<String>,
+) -> Result<(Network, ValidationResult), Box<dyn std::error::Error>> {
+    let mut nodes = Vec::new();
+    let mut validation = ValidationResult::new();
+
+    // Process each TOML file
+    for (filename, content) in files {
+        // Skip config.toml (handled separately)
+        if filename == "config.toml" {
+            continue;
+        }
+
+        // Derive ID from filename (e.g., "branch-4.toml" -> "branch-4")
+        let id = Path::new(&filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| format!("Invalid filename: {}", filename))?
+            .to_string();
+
+        match load_node_from_content(&content, &id, &filename) {
+            Ok(node) => nodes.push(node),
+            Err(e) => {
+                validation.add_error(
+                    format!("Failed to parse {}: {}", filename, e),
+                    Some(filename.clone()),
+                );
+            }
+        }
+    }
+
+    // Build network graph
+    let network = build_network(nodes, &mut validation)?;
+
+    Ok((network, validation))
+}
+
 fn load_node_from_file<P: AsRef<Path>>(path: P) -> Result<NodeData, Box<dyn std::error::Error>> {
     let path = path.as_ref();
     let content = fs::read_to_string(path)?;
-    let value: Value = toml::from_str(&content)?;
+    
+    // Derive ID from filename (e.g., "branch-4.toml" -> "branch-4")
+    let id = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or("Invalid filename")?
+        .to_string();
+    
+    let filename = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+    
+    load_node_from_content(&content, &id, &filename)
+}
+
+fn load_node_from_content(
+    content: &str,
+    id: &str,
+    _filename: &str,
+) -> Result<NodeData, Box<dyn std::error::Error>> {
+    let value: Value = toml::from_str(content)?;
 
     // Extract type to determine which struct to deserialize into
     let type_str = value
@@ -62,33 +125,26 @@ fn load_node_from_file<P: AsRef<Path>>(path: P) -> Result<NodeData, Box<dyn std:
         .and_then(|v| v.as_str())
         .ok_or("Missing 'type' field")?;
 
-    // Derive ID from filename (e.g., "branch-4.toml" -> "branch-4")
-    let id = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or("Invalid filename")?
-        .to_string();
-
     // Deserialize based on type
     let node = match type_str {
         "branch" => {
-            let mut branch: BranchNode = toml::from_str(&content)?;
-            branch.base.id = id;
+            let mut branch: BranchNode = toml::from_str(content)?;
+            branch.base.id = id.to_string();
             NodeData::Branch(branch)
         }
         "labeledGroup" => {
-            let mut group: GroupNode = toml::from_str(&content)?;
-            group.base.id = id;
+            let mut group: GroupNode = toml::from_str(content)?;
+            group.base.id = id.to_string();
             NodeData::Group(group)
         }
         "geographicAnchor" => {
-            let mut anchor: GeographicAnchorNode = toml::from_str(&content)?;
-            anchor.base.id = id;
+            let mut anchor: GeographicAnchorNode = toml::from_str(content)?;
+            anchor.base.id = id.to_string();
             NodeData::GeographicAnchor(anchor)
         }
         "geographicWindow" => {
-            let mut window: GeographicWindowNode = toml::from_str(&content)?;
-            window.base.id = id;
+            let mut window: GeographicWindowNode = toml::from_str(content)?;
+            window.base.id = id.to_string();
             NodeData::GeographicWindow(window)
         }
         _ => {
