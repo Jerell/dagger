@@ -16,3 +16,8 @@ length = "km"
 
 [unitPreferences.Source]
 pressure = "bar"
+
+[unitPreferences.dimensions]
+length = "m"
+pressure = "Pa"
+temperature = "C"

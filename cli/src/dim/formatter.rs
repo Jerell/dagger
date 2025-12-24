@@ -98,11 +98,9 @@ impl UnitFormatter {
         if let Some(ref mut parser) = self.parser {
             match parser.convert_to_unit(normalized_value, &base_unit, preferred_unit) {
                 Ok(converted_value) => {
-                    // Return converted value with unit metadata
-                    Ok(JsonValue::Number(
-                        serde_json::Number::from_f64(converted_value)
-                            .unwrap_or_else(|| serde_json::Number::from(0)),
-                    ))
+                    // Format as "value unit" string (matching backend behavior)
+                    let formatted = format!("{} {}", converted_value, preferred_unit);
+                    Ok(JsonValue::String(formatted))
                 }
                 Err(e) => {
                     eprintln!(
