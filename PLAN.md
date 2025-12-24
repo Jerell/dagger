@@ -713,10 +713,10 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 
 ### Phase 5: API Server (Week 5-6)
 
-- [ ] Hono server setup
-- [ ] Query endpoints
-- [ ] Network endpoints
-- [ ] Schema endpoints (versioned libraries)
+- [x] Hono server setup
+- [x] Query endpoints (structure ready, needs WASM)
+- [x] Network endpoints (structure ready, needs WASM)
+- [x] Schema endpoints (structure ready, needs WASM)
 - [ ] Rust WASM compilation setup
 - [ ] wasm-bindgen integration
 - [ ] WASM package build and import
