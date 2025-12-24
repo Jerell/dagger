@@ -43,6 +43,32 @@ dagger query "branch-4/blocks/0" ../network/preset1
 dagger query "branch-4/blocks/1" ../network/preset1
 ```
 
+### Array Ranges
+
+Access a range of array elements using colon syntax (inclusive end):
+
+```bash
+# Get blocks from index 1 to 2 (inclusive)
+dagger query "branch-4/blocks/1:2" ../network/preset1
+
+# Get blocks from start to index 2 (inclusive)
+dagger query "branch-4/blocks/:2" ../network/preset1
+
+# Get blocks from index 1 to end
+dagger query "branch-4/blocks/1:" ../network/preset1
+
+# Combine with filters - filter first, then range
+dagger query "branch-4/blocks[quantity=1]/1:2" ../network/preset1
+
+# Or range first, then filter
+dagger query "branch-4/blocks/1:2[type=Pipe]" ../network/preset1
+```
+
+**Note:** The order matters!
+
+- `blocks[type=Pipe]/1:2` filters first (gets all Pipe blocks), then takes indices 1:2 from the filtered result
+- `blocks/1:2[type=Pipe]` ranges first (takes indices 1:2), then filters those results for Pipe type
+
 ### Nested Property Access
 
 Navigate through nested structures:

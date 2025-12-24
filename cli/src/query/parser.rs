@@ -6,6 +6,12 @@ pub enum QueryPath {
     Property(String, Box<QueryPath>),
     // Array index: "branch-4/blocks/0"
     Index(usize, Box<QueryPath>),
+    // Array range: "branch-4/blocks/1:2" or "branch-4/blocks/:2" or "branch-4/blocks/1:"
+    Range {
+        start: Option<usize>,
+        end: Option<usize>,
+        inner: Box<QueryPath>,
+    },
     // Filter: "branch-4/blocks[type=Compressor]"
     Filter {
         field: String,
@@ -109,14 +115,64 @@ pub fn parse_query_path(path: &str) -> Result<QueryPath, ParseError> {
             continue;
         }
 
+        // Check if part contains both range and filter (e.g., "1:2[type=Pipe]")
+        // In this case, apply range first, then filter
+        if part.contains(':') && part.contains('[') {
+            // Find where the filter starts
+            if let Some(bracket_start) = part.find('[') {
+                let range_part = &part[..bracket_start];
+                let filter_part = &part[bracket_start..];
+
+                // Parse range first
+                if let Some(range) = parse_range(range_part)? {
+                    current = QueryPath::Range {
+                        start: range.0,
+                        end: range.1,
+                        inner: Box::new(current),
+                    };
+
+                    // Then parse and apply filter
+                    if let Some((_, field, operator, value)) = parse_filter(filter_part)? {
+                        current = QueryPath::Filter {
+                            field,
+                            operator,
+                            value,
+                            inner: Box::new(current),
+                        };
+                    }
+                    continue;
+                }
+            }
+        }
+
         // Check for filter syntax: property[field=value] or property[field>value]
         if let Some((property, field, operator, value)) = parse_filter(part)? {
-            // Apply filter to the current path
-            current = QueryPath::Filter {
-                field,
-                operator,
-                value,
-                inner: Box::new(QueryPath::Property(property, Box::new(current))),
+            // If property is empty, filter applies directly to current path
+            // Otherwise, apply filter to the property
+            if property.is_empty() {
+                current = QueryPath::Filter {
+                    field,
+                    operator,
+                    value,
+                    inner: Box::new(current),
+                };
+            } else {
+                current = QueryPath::Filter {
+                    field,
+                    operator,
+                    value,
+                    inner: Box::new(QueryPath::Property(property, Box::new(current))),
+                };
+            }
+            continue;
+        }
+
+        // Check if it's a range syntax: "1:2", ":2", "1:", etc.
+        if let Some(range) = parse_range(part)? {
+            current = QueryPath::Range {
+                start: range.0,
+                end: range.1,
+                inner: Box::new(current),
             };
             continue;
         }
@@ -131,6 +187,31 @@ pub fn parse_query_path(path: &str) -> Result<QueryPath, ParseError> {
     }
 
     Ok(current)
+}
+
+fn parse_range(part: &str) -> Result<Option<(Option<usize>, Option<usize>)>, ParseError> {
+    // Check for range syntax: "1:2", ":2", "1:", ":"
+    if part.contains(':') {
+        let parts: Vec<&str> = part.split(':').collect();
+        if parts.len() == 2 {
+            let start = if parts[0].is_empty() {
+                None
+            } else {
+                Some(parts[0].parse::<usize>().map_err(|_| {
+                    ParseError::InvalidIndex(format!("Invalid range start: {}", parts[0]))
+                })?)
+            };
+            let end = if parts[1].is_empty() {
+                None
+            } else {
+                Some(parts[1].parse::<usize>().map_err(|_| {
+                    ParseError::InvalidIndex(format!("Invalid range end: {}", parts[1]))
+                })?)
+            };
+            return Ok(Some((start, end)));
+        }
+    }
+    Ok(None)
 }
 
 fn parse_filter(

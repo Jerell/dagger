@@ -81,6 +81,54 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_range_query() {
+        // Test range with both start and end
+        let result = parse_query_path("branch-1/blocks/1:2").unwrap();
+        match result {
+            QueryPath::Range { start, end, inner } => {
+                assert_eq!(start, Some(1));
+                assert_eq!(end, Some(2));
+                match *inner {
+                    QueryPath::Property(name, inner2) => {
+                        assert_eq!(name, "blocks");
+                        assert!(matches!(*inner2, QueryPath::Node(id) if id == "branch-1"));
+                    }
+                    _ => panic!("Expected Property"),
+                }
+            }
+            _ => panic!("Expected Range"),
+        }
+
+        // Test range with only start
+        let result = parse_query_path("branch-1/blocks/1:").unwrap();
+        match result {
+            QueryPath::Range {
+                start,
+                end,
+                inner: _,
+            } => {
+                assert_eq!(start, Some(1));
+                assert_eq!(end, None);
+            }
+            _ => panic!("Expected Range"),
+        }
+
+        // Test range with only end
+        let result = parse_query_path("branch-1/blocks/:2").unwrap();
+        match result {
+            QueryPath::Range {
+                start,
+                end,
+                inner: _,
+            } => {
+                assert_eq!(start, None);
+                assert_eq!(end, Some(2));
+            }
+            _ => panic!("Expected Range"),
+        }
+    }
+
+    #[test]
     fn test_parse_filter_query() {
         let result = parse_query_path("branch-1/blocks[type=Compressor]").unwrap();
         match result {
@@ -169,10 +217,63 @@ mod tests {
     fn test_execute_property_query() {
         let network = create_test_network();
         let executor = QueryExecutor::new(&network);
-        let query = parse_query_path("branch-1/data/label").unwrap();
+        let query = parse_query_path("branch-1/label").unwrap();
         let result = executor.execute(&query).unwrap();
 
         assert_eq!(result.as_str(), Some("Test Branch"));
+    }
+
+    #[test]
+    fn test_execute_range_query() {
+        let network = create_test_network();
+        let executor = QueryExecutor::new(&network);
+
+        // Test range 0:1 (should return first two blocks)
+        let query = parse_query_path("branch-1/blocks/0:1").unwrap();
+        let result = executor.execute(&query).unwrap();
+        assert!(result.is_array());
+        let arr = result.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+
+        // Test range :1 (should return first two blocks, indices 0 and 1)
+        let query = parse_query_path("branch-1/blocks/:1").unwrap();
+        let result = executor.execute(&query).unwrap();
+        assert!(result.is_array());
+        let arr = result.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+
+        // Test range 1: (should return from index 1 to end)
+        let query = parse_query_path("branch-1/blocks/1:").unwrap();
+        let result = executor.execute(&query).unwrap();
+        assert!(result.is_array());
+        let arr = result.as_array().unwrap();
+        assert_eq!(arr.len(), 1); // Only one block after index 0
+    }
+
+    #[test]
+    fn test_filter_then_range() {
+        let network = create_test_network();
+        let executor = QueryExecutor::new(&network);
+
+        // Filter first, then range: should filter to Compressor blocks, then take range
+        let query = parse_query_path("branch-1/blocks[type=Compressor]/0:0").unwrap();
+        let result = executor.execute(&query).unwrap();
+        assert!(result.is_array());
+        let arr = result.as_array().unwrap();
+        assert_eq!(arr.len(), 1); // Only one Compressor block
+    }
+
+    #[test]
+    fn test_range_then_filter() {
+        let network = create_test_network();
+        let executor = QueryExecutor::new(&network);
+
+        // Range first, then filter: should take range, then filter those results
+        let query = parse_query_path("branch-1/blocks/0:1[type=Compressor]").unwrap();
+        let result = executor.execute(&query).unwrap();
+        assert!(result.is_array());
+        let arr = result.as_array().unwrap();
+        assert_eq!(arr.len(), 1); // Only one Compressor in the first two blocks
     }
 
     #[test]

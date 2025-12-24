@@ -50,6 +50,29 @@ Query with array index:
 http GET localhost:3000/api/query q=="branch-4/blocks/0" network==preset1
 ```
 
+Query with array range:
+
+```bash
+# Get blocks from index 1 to 2 (inclusive)
+http GET localhost:3000/api/query q=="branch-4/blocks/1:2" network==preset1
+
+# Get blocks from start to index 2 (inclusive)
+http GET localhost:3000/api/query q=="branch-4/blocks/:2" network==preset1
+
+# Get blocks from index 1 to end
+http GET localhost:3000/api/query q=="branch-4/blocks/1:" network==preset1
+```
+
+**Order matters when combining ranges with filters:**
+
+```bash
+# Filter first, then range: filters all blocks, then takes range from filtered result
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/1:2" network==preset1
+
+# Range first, then filter: takes range first, then filters those results
+http GET localhost:3000/api/query q=="branch-4/blocks/1:2[type=Pipe]" network==preset1
+```
+
 ### Filtered Queries
 
 Filter blocks by type:
@@ -503,6 +526,7 @@ http GET localhost:3000/api/network
    ```
 
 6. **Test scope resolution:**
+
    ```bash
    http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
    ```

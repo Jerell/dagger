@@ -138,6 +138,10 @@ impl<'a> QueryExecutor<'a> {
                 let value = self.execute_with_context(inner, context)?;
                 self.get_index(&value, *idx)
             }
+            QueryPath::Range { start, end, inner } => {
+                let value = self.execute_with_context(inner, context)?;
+                self.get_range(&value, *start, *end)
+            }
             QueryPath::Filter {
                 field,
                 operator,
@@ -327,6 +331,41 @@ impl<'a> QueryExecutor<'a> {
                 "Cannot index into non-array (index: {})",
                 idx
             ))),
+        }
+    }
+
+    fn get_range(
+        &self,
+        value: &JsonValue,
+        start: Option<usize>,
+        end: Option<usize>,
+    ) -> Result<JsonValue, QueryError> {
+        match value {
+            JsonValue::Array(arr) => {
+                let start_idx = start.unwrap_or(0);
+                let end_idx = end.unwrap_or(arr.len().saturating_sub(1));
+
+                // Validate bounds
+                if start_idx >= arr.len() {
+                    return Err(QueryError::IndexOutOfRange(start_idx, arr.len()));
+                }
+                if end_idx >= arr.len() {
+                    return Err(QueryError::IndexOutOfRange(end_idx, arr.len()));
+                }
+                if start_idx > end_idx {
+                    return Err(QueryError::InvalidType(format!(
+                        "Range start ({}) must be <= end ({})",
+                        start_idx, end_idx
+                    )));
+                }
+
+                // Extract slice (inclusive end, like Python's [start:end+1])
+                let slice: Vec<JsonValue> = arr[start_idx..=end_idx].to_vec();
+                Ok(JsonValue::Array(slice))
+            }
+            _ => Err(QueryError::InvalidType(
+                "Cannot apply range to non-array".to_string(),
+            )),
         }
     }
 
