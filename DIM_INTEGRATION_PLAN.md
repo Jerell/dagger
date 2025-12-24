@@ -263,10 +263,15 @@ export const CompressorSchema = z.object({
 });
 ```
 
-#### 5.2 Schema-Aware Parsing
+#### 5.2 Schema-Aware Parsing ✅
 
-- Use schema metadata to identify which properties should be parsed as units
-- Validate that parsed units match expected dimensions (e.g., pressure must be pressure, not length)
+- ✅ Use schema metadata to identify which properties should be parsed as units
+- ✅ Validate that parsed units match expected dimensions (e.g., pressure must be pressure, not length)
+- ✅ Extended `SchemaDefinition` to include `PropertyMetadata` with `dimension` and `default_unit`
+- ✅ Updated `SchemaJson` deserialization to parse `properties` field from generated JSON schemas
+- ✅ Created `process_hashmap_with_schema()` method in `UnitProcessor` for schema-aware processing
+- ✅ Added dimension validation in `dim/validator.rs` to ensure parsed units match expected dimensions
+- ✅ Updated loader to support optional schema-aware processing (can be integrated with schema registry)
 
 ### Phase 6: Display and Formatting
 

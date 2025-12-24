@@ -13,6 +13,16 @@ pub struct SchemaDefinition {
     pub version: String,
     pub required_properties: Vec<String>,
     pub optional_properties: Vec<String>,
+    /// Property metadata: property name -> PropertyMetadata
+    pub properties: HashMap<String, PropertyMetadata>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PropertyMetadata {
+    /// Dimension type (e.g., "pressure", "length", "temperature")
+    pub dimension: Option<String>,
+    /// Default unit for display (e.g., "bar", "m", "C")
+    pub default_unit: Option<String>,
 }
 
 pub struct SchemaRegistry {
@@ -124,15 +134,40 @@ struct SchemaJson {
     required: Vec<String>,
     #[serde(default)]
     optional: Vec<String>,
+    #[serde(default)]
+    properties: HashMap<String, PropertyMetadataJson>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct PropertyMetadataJson {
+    #[serde(default)]
+    dimension: Option<String>,
+    #[serde(rename = "defaultUnit", default)]
+    default_unit: Option<String>,
 }
 
 impl From<SchemaJson> for SchemaDefinition {
     fn from(json: SchemaJson) -> Self {
+        let properties = json
+            .properties
+            .into_iter()
+            .map(|(name, meta)| {
+                (
+                    name,
+                    PropertyMetadata {
+                        dimension: meta.dimension,
+                        default_unit: meta.default_unit,
+                    },
+                )
+            })
+            .collect();
+
         Self {
             block_type: json.block_type,
             version: json.version,
             required_properties: json.required,
             optional_properties: json.optional,
+            properties,
         }
     }
 }

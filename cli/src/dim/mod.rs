@@ -4,9 +4,11 @@ pub mod error;
 pub mod parser;
 pub mod processor;
 pub mod types;
+pub mod validator;
 
 pub use detector::looks_like_unit_string;
 pub use error::DimError;
 pub use parser::DimParser;
 pub use processor::UnitProcessor;
 pub use types::{UnitParseResult, UnitValue};
+pub use validator::{get_dimension, validate_dimension};

@@ -1,6 +1,8 @@
 use crate::dim::detector::looks_like_unit_string;
 use crate::dim::error::DimError;
 use crate::dim::parser::DimParser;
+use crate::dim::validator::validate_dimension;
+use crate::schema::registry::PropertyMetadata;
 use std::collections::HashMap;
 use toml::{map::Map, Value};
 
@@ -81,6 +83,100 @@ impl UnitProcessor {
         let mut processed = HashMap::new();
 
         for (key, value) in extra {
+            let processed_value = self.process_value(value)?;
+            processed.insert(key.clone(), processed_value);
+
+            // If we processed a unit string, store the original
+            if let Value::String(s) = value {
+                if looks_like_unit_string(s) {
+                    if let Value::Float(_) = &processed[key] {
+                        let original_key = format!("_{}_original", key);
+                        processed.insert(original_key, Value::String(s.clone()));
+                    }
+                }
+            }
+        }
+
+        Ok(processed)
+    }
+
+    /// Process a HashMap with schema metadata for dimension-aware parsing and validation
+    /// This is the schema-aware version that:
+    /// 1. Uses schema metadata to identify which properties should be parsed as units
+    /// 2. Validates that parsed units match expected dimensions
+    pub fn process_hashmap_with_schema(
+        &mut self,
+        extra: &HashMap<String, Value>,
+        property_metadata: &HashMap<String, PropertyMetadata>,
+    ) -> Result<HashMap<String, Value>, DimError> {
+        let mut processed = HashMap::new();
+
+        for (key, value) in extra {
+            // Check if this property has dimension metadata in the schema
+            let metadata = property_metadata.get(key);
+
+            // If schema says this should be a unit, try to parse it
+            if let Some(meta) = metadata {
+                if let Some(expected_dimension) = &meta.dimension {
+                    // This property is expected to be a unit with a specific dimension
+                    if let Value::String(s) = value {
+                        // Try to parse as unit string
+                        if let Some(ref mut parser) = self.parser {
+                            match parser.parse_unit_string(s) {
+                                Ok(parse_result) => {
+                                    // Validate dimension matches expected using dim library
+                                    if let Err(e) = validate_dimension(
+                                        parser,
+                                        &parse_result,
+                                        expected_dimension,
+                                    ) {
+                                        eprintln!(
+                                            "Warning: Dimension validation failed for property '{}': {}",
+                                            key, e
+                                        );
+                                        // Keep original string on validation failure
+                                        processed.insert(key.clone(), value.clone());
+                                        continue;
+                                    }
+
+                                    // Store normalized value
+                                    processed.insert(key.clone(), Value::Float(parse_result.value));
+
+                                    // Store original string
+                                    let original_key = format!("_{}_original", key);
+                                    processed.insert(original_key, Value::String(s.clone()));
+                                    continue;
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "Warning: Failed to parse unit string '{}' for property '{}': {}",
+                                        s, key, e
+                                    );
+                                    // Keep original on parse failure
+                                    processed.insert(key.clone(), value.clone());
+                                    continue;
+                                }
+                            }
+                        } else {
+                            // Parser not available, but schema says this should be a unit
+                            // Keep as-is but warn
+                            eprintln!(
+                                "Warning: Property '{}' should be a unit (dimension: {}), but parser not available",
+                                key, expected_dimension
+                            );
+                            processed.insert(key.clone(), value.clone());
+                            continue;
+                        }
+                    } else {
+                        // Schema says this should be a unit, but value is not a string
+                        // This might be already normalized, or an error
+                        processed.insert(key.clone(), value.clone());
+                        continue;
+                    }
+                }
+            }
+
+            // No schema metadata or not a unit property - use regular processing
             let processed_value = self.process_value(value)?;
             processed.insert(key.clone(), processed_value);
 

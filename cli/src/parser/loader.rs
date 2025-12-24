@@ -1,6 +1,7 @@
 use crate::dim::processor::UnitProcessor;
 use crate::parser::models::*;
 use crate::parser::validation::*;
+use crate::schema::registry::SchemaRegistry;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -153,24 +154,42 @@ fn load_node_from_content(
         }
     };
 
-    // Process unit strings in the node
-    process_units_in_node(&mut node)?;
+    // Process unit strings in the node (no schema registry at this level for now)
+    process_units_in_node(&mut node, None, None)?;
 
     Ok(node)
 }
 
 /// Process unit strings in a node, converting them to normalized values
-fn process_units_in_node(node: &mut NodeData) -> Result<(), Box<dyn std::error::Error>> {
+/// Optionally uses schema registry for dimension-aware parsing and validation
+fn process_units_in_node(
+    node: &mut NodeData,
+    schema_registry: Option<&SchemaRegistry>,
+    schema_version: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut processor = UnitProcessor::new();
 
     match node {
         NodeData::Branch(branch) => {
-            // Process base node extra properties
+            // Process base node extra properties (no schema for nodes, use regular processing)
             branch.base.extra = processor.process_hashmap(&branch.base.extra)?;
 
-            // Process blocks
+            // Process blocks with schema-aware processing if available
             for block in &mut branch.blocks {
-                block.extra = processor.process_hashmap(&block.extra)?;
+                if let (Some(registry), Some(version)) = (schema_registry, schema_version) {
+                    // Try to get schema for this block type
+                    if let Some(schema) = registry.get_schema(version, &block.type_) {
+                        // Use schema-aware processing
+                        block.extra = processor
+                            .process_hashmap_with_schema(&block.extra, &schema.properties)?;
+                    } else {
+                        // No schema found, use regular processing
+                        block.extra = processor.process_hashmap(&block.extra)?;
+                    }
+                } else {
+                    // No schema registry, use regular processing
+                    block.extra = processor.process_hashmap(&block.extra)?;
+                }
             }
         }
         NodeData::Group(group) => {
