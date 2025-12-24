@@ -1,3 +1,4 @@
+use crate::dim::processor::UnitProcessor;
 use crate::parser::models::*;
 use crate::parser::validation::*;
 use std::collections::HashMap;
@@ -126,7 +127,7 @@ fn load_node_from_content(
         .ok_or("Missing 'type' field")?;
 
     // Deserialize based on type
-    let node = match type_str {
+    let mut node = match type_str {
         "branch" => {
             let mut branch: BranchNode = toml::from_str(content)?;
             branch.base.id = id.to_string();
@@ -152,7 +153,38 @@ fn load_node_from_content(
         }
     };
 
+    // Process unit strings in the node
+    process_units_in_node(&mut node)?;
+
     Ok(node)
+}
+
+/// Process unit strings in a node, converting them to normalized values
+fn process_units_in_node(node: &mut NodeData) -> Result<(), Box<dyn std::error::Error>> {
+    let mut processor = UnitProcessor::new();
+
+    match node {
+        NodeData::Branch(branch) => {
+            // Process base node extra properties
+            branch.base.extra = processor.process_hashmap(&branch.base.extra)?;
+
+            // Process blocks
+            for block in &mut branch.blocks {
+                block.extra = processor.process_hashmap(&block.extra)?;
+            }
+        }
+        NodeData::Group(group) => {
+            group.base.extra = processor.process_hashmap(&group.base.extra)?;
+        }
+        NodeData::GeographicAnchor(anchor) => {
+            anchor.base.extra = processor.process_hashmap(&anchor.base.extra)?;
+        }
+        NodeData::GeographicWindow(window) => {
+            window.base.extra = processor.process_hashmap(&window.base.extra)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn build_network(

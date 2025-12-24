@@ -1,3 +1,4 @@
+pub mod dim;
 pub mod parser;
 pub mod query;
 pub mod schema;

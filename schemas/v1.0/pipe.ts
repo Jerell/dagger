@@ -5,8 +5,16 @@ export const PipeSchema = z.object({
   quantity: z.number().optional().default(1),
 
   // Optional properties
-  diameter: z.number().min(0).optional(),
-  length: z.number().min(0).optional(),
+  diameter: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ dimension: "length", defaultUnit: "m" }),
+  length: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ dimension: "length", defaultUnit: "m" }),
 });
 
 export type Pipe = z.infer<typeof PipeSchema>;

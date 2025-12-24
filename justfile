@@ -141,4 +141,3 @@ check:
   just format-check
   just lint
   just test-all
-
