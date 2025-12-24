@@ -1,6 +1,6 @@
 use crate::dim::detector::looks_like_unit_string;
 use crate::dim::error::DimError;
-use crate::dim::parser::DimParser;
+use crate::dim::ffi::DimParser;
 use crate::dim::validator::validate_dimension;
 use crate::schema::registry::PropertyMetadata;
 use std::collections::HashMap;

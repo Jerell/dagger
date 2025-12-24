@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+#[cfg(not(target_arch = "wasm32"))]
+use dagger::dim;
 use dagger::parser;
 use dagger::query;
 use dagger::schema;
@@ -184,21 +186,35 @@ fn query_network(path: &str, query_str: &str) -> Result<(), Box<dyn std::error::
         eprintln!("{}", validation);
     }
 
-    // Parse the query path
-    let query_path = query::parser::parse_query_path(query_str)
+    // Parse the query path and extract unit overrides
+    let (query_path, unit_overrides) = query::parser::parse_query_path_with_params(query_str)
         .map_err(|e| format!("Failed to parse query: {}", e))?;
 
-    // Load config for scope resolution (always load it, even if not needed)
+    // Load config for scope resolution and unit preferences
     let config_path = std::path::Path::new(path).join("config.toml");
     let config = if config_path.exists() {
         scope::config::Config::load_from_file(&config_path)?
     } else {
         scope::config::Config::empty()
     };
-    let resolver = scope::resolver::ScopeResolver::new(config);
+    let resolver = scope::resolver::ScopeResolver::new(config.clone());
 
-    // Create executor with scope resolver (it will use it if needed)
-    let executor = query::executor::QueryExecutor::with_scope_resolver(&network, &resolver);
+    // Build unit preferences from config and query overrides
+    let unit_preferences = dim::formatter::UnitPreferences {
+        query_overrides: unit_overrides.properties,
+        block_types: config.unit_preferences.block_types.clone(),
+        dimensions: config.unit_preferences.dimensions.clone(),
+        original_strings: std::collections::HashMap::new(), // Will be populated during query execution
+    };
+
+    // Create executor with scope resolver and unit preferences
+    let executor = query::executor::QueryExecutor::with_unit_preferences(
+        &network,
+        Some(&resolver),
+        unit_preferences,
+        None, // Schema registry not available in CLI for now
+        None, // Schema version not available in CLI for now
+    );
     let result = executor
         .execute(&query_path)
         .map_err(|e| format!("Query error: {}", e))?;

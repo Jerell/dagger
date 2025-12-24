@@ -23,9 +23,11 @@ type = "Capture Unit"
 [[block]]
 quantity = 1
 type = "Pipe"
+length = "1000 m"
 
 [[block]]
 type = "Compressor"
 
 [[block]]
 type = "Pipe"
+length = "3 mi"

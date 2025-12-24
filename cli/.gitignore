@@ -1,2 +1,6 @@
 /target/
+__.SYMDEF
+*.o
+# Compiled dim library (build from source)
+src/dim/libdim_c.a
 

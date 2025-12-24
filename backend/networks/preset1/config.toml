@@ -11,3 +11,8 @@ general = ["block", "branch", "group", "global"]
 ambientTemperature = ["group", "global"]
 pressure = ["block"]
 
+[unitPreferences.Pipe]
+length = "km"
+
+[unitPreferences.Source]
+pressure = "bar"

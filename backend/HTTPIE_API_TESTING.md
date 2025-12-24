@@ -101,6 +101,35 @@ Query with all scope levels:
 http GET localhost:3000/api/query q=="branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" network==preset1
 ```
 
+### Unit Preferences Queries
+
+Query with unit preferences (using config defaults):
+
+```bash
+# Get pipe length in preferred units from config.toml
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
+```
+
+Query with unit override via query parameter:
+
+```bash
+# Override to display length in meters
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length?units=length:m" network==preset1
+
+# Override multiple properties
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:cm" network==preset1
+
+# Override pressure for compressor blocks
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
+```
+
+**Note:** Unit preferences can be combined with scope resolution:
+
+```bash
+# Combine scope resolution with unit preferences
+http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global&units=pressure:bar" network==preset1
+```
+
 ### Network-Level Queries
 
 Query all nodes:
@@ -446,6 +475,19 @@ http GET localhost:3000/api/query q=="edges[source=branch-1]" network==preset1
 http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
 ```
 
+### Get Block Properties with Unit Preferences
+
+```bash
+# Get pipe length in preferred units (from config.toml)
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
+
+# Override to display in specific units
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:m" network==preset1
+
+# Get compressor pressure in bar
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
+```
+
 ## Error Handling
 
 ### Invalid Query Path
@@ -539,3 +581,5 @@ http GET localhost:3000/api/network
 - **Network names**: Use network names (e.g., `preset1`) not full paths
 - **Default network**: If `network` parameter is omitted, it may default to `preset1` (check route implementation)
 - **Schemas directory**: The `schemasDir` parameter defaults to `../schemas` (relative to backend directory)
+- **Unit preferences**: Configure defaults in `config.toml` under `[unitPreferences]`, or override per-query using `?units=property:unit` parameter
+- **Combining parameters**: Multiple query parameters can be combined with `&`, e.g., `?scope=block,branch,global&units=pressure:bar`

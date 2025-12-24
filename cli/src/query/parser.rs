@@ -60,6 +60,55 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Parse query path and extract query parameters
+/// Returns (QueryPath, UnitOverrides)
+pub fn parse_query_path_with_params(path: &str) -> Result<(QueryPath, UnitOverrides), ParseError> {
+    // Extract query parameters if present
+    let (base_path, unit_overrides) = if let Some((path_part, params_part)) = path.split_once('?') {
+        let overrides = parse_unit_overrides(params_part)?;
+        (path_part, overrides)
+    } else {
+        (path, UnitOverrides::default())
+    };
+
+    let query_path = parse_query_path(base_path)?;
+    Ok((query_path, unit_overrides))
+}
+
+/// Parse unit overrides from query parameters
+/// Format: "units=length:km,diameter:m" or "scope=block,branch&units=length:km"
+fn parse_unit_overrides(params: &str) -> Result<UnitOverrides, ParseError> {
+    let mut overrides = UnitOverrides::default();
+
+    // Split by & to handle multiple parameters
+    for param in params.split('&') {
+        if let Some((key, value)) = param.split_once('=') {
+            match key.trim() {
+                "units" => {
+                    // Parse "length:km,diameter:m"
+                    for pair in value.split(',') {
+                        if let Some((prop, unit)) = pair.split_once(':') {
+                            overrides
+                                .properties
+                                .insert(prop.trim().to_string(), unit.trim().to_string());
+                        }
+                    }
+                }
+                _ => {
+                    // Ignore other parameters (like scope=...)
+                }
+            }
+        }
+    }
+
+    Ok(overrides)
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UnitOverrides {
+    pub properties: std::collections::HashMap<String, String>, // property -> unit
+}
+
 pub fn parse_query_path(path: &str) -> Result<QueryPath, ParseError> {
     if path.is_empty() {
         return Err(ParseError::EmptyPath);
@@ -71,6 +120,8 @@ pub fn parse_query_path(path: &str) -> Result<QueryPath, ParseError> {
     }
 
     // Check for scope resolution query (has ?scope=...)
+    // Note: This is now handled in parse_query_path_with_params, but we keep this
+    // for backward compatibility when parsing just the path part
     if let Some((base_path, scope_part)) = path.split_once('?') {
         if let Some(scope_str) = scope_part.strip_prefix("scope=") {
             // Parse the base path first

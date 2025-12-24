@@ -1,6 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 use crate::dim::processor::UnitProcessor;
 use crate::parser::models::*;
 use crate::parser::validation::*;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::schema::registry::SchemaRegistry;
 use std::collections::HashMap;
 use std::fs;
@@ -155,6 +157,8 @@ fn load_node_from_content(
     };
 
     // Process unit strings in the node (no schema registry at this level for now)
+    // Unit processing is disabled for WASM builds (wasmtime can't be compiled to WASM)
+    #[cfg(not(target_arch = "wasm32"))]
     process_units_in_node(&mut node, None, None)?;
 
     Ok(node)
@@ -162,6 +166,7 @@ fn load_node_from_content(
 
 /// Process unit strings in a node, converting them to normalized values
 /// Optionally uses schema registry for dimension-aware parsing and validation
+#[cfg(not(target_arch = "wasm32"))]
 fn process_units_in_node(
     node: &mut NodeData,
     schema_registry: Option<&SchemaRegistry>,

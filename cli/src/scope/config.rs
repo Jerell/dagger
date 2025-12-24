@@ -11,6 +11,10 @@ pub struct Config {
     // Inheritance configuration
     #[serde(default)]
     pub inheritance: InheritanceConfig,
+
+    // Unit preferences for display
+    #[serde(default, rename = "unitPreferences")]
+    pub unit_preferences: UnitPreferences,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -85,6 +89,18 @@ impl Config {
                 general: default_general_inheritance(),
                 rules: HashMap::new(),
             },
+            unit_preferences: UnitPreferences::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct UnitPreferences {
+    // Block-type specific preferences: "Pipe" -> { "length" -> "km", "diameter" -> "m" }
+    #[serde(default, flatten)]
+    pub block_types: HashMap<String, HashMap<String, String>>,
+
+    // Dimension-level defaults: "length" -> "m"
+    #[serde(default)]
+    pub dimensions: HashMap<String, String>,
 }

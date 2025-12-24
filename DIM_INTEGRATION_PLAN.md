@@ -275,18 +275,21 @@ export const CompressorSchema = z.object({
 
 ### Phase 6: Display and Formatting
 
-#### 6.1 Pretty Printing
+#### 6.1 Pretty Printing ✅
 
 When displaying values:
 
-- Use original unit string if available
-- Or format with appropriate SI prefix (e.g., "1.0 kPa" instead of "1000 Pa")
-- Support formatting modes: `:scientific`, `:engineering`, `:auto`
+- ✅ Use original unit string if available
+- Or format with appropriate SI prefix (e.g., "1.0 kPa" instead of "1000 Pa") - TODO
+- Support formatting modes: `:scientific`, `:engineering`, `:auto` - TODO
 
-#### 6.2 Query Output
+#### 6.2 Query Output ✅
 
-- In query results, show values in original units or requested units
-- Support unit conversion in queries: `pressure as bar`, `pressure as Pa`
+- ✅ In query results, show values in original units or requested units
+- ✅ Support unit conversion in queries via `?units=property:unit` parameter
+- ✅ Config.toml support for unit preferences per block type and dimension
+- ✅ Query parameter overrides for per-query unit preferences
+- ✅ Integration with schema metadata for default units
 
 ## File Structure
 
@@ -355,6 +358,7 @@ regex = "1.10"
    - Test querying with units
 
 3. **Example TOML:**
+
    ```toml
    [[block]]
    type = "Compressor"

@@ -199,6 +199,118 @@ And a branch node with a block that doesn't have `ambientTemperature` set:
 dagger query "branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" ../network/preset1
 ```
 
+## Unit Preferences
+
+Control how unit values are displayed in query results. Values are stored internally in base SI units (e.g., Pascals for pressure, meters for length) but can be displayed in your preferred units.
+
+### Configuring Unit Preferences
+
+Set default unit preferences in `config.toml`:
+
+```toml
+[unitPreferences]
+# Block-type specific preferences
+[unitPreferences.Pipe]
+length = "km"
+diameter = "m"
+
+[unitPreferences.Compressor]
+pressure = "bar"
+
+# Dimension-level defaults (fallback if block-type not specified)
+[unitPreferences.dimensions]
+length = "m"
+pressure = "Pa"
+temperature = "K"
+```
+
+### Query Parameter Overrides
+
+Override unit preferences per query using the `?units=...` parameter:
+
+```bash
+# Override units for this query
+dagger query "branch-4/blocks[type=Pipe]?units=length:km,diameter:m" ../network/preset1
+
+# Override single property
+dagger query "branch-4/blocks[type=Compressor]?units=pressure:bar" ../network/preset1
+
+# Use config defaults (no override needed)
+dagger query "branch-4/blocks[type=Pipe]" ../network/preset1
+```
+
+**Format:** `?units=property1:unit1,property2:unit2`
+
+### Unit Preference Precedence
+
+The system uses the following precedence order (highest to lowest):
+
+1. **Query parameter overrides** - `?units=property:unit`
+2. **Block-type preferences** - `[unitPreferences.BlockType]` in config.toml
+3. **Dimension-level defaults** - `[unitPreferences.dimensions]` in config.toml
+4. **Schema defaultUnit** - From schema metadata if available
+5. **Base SI units** - Fallback to internal representation
+
+### Examples
+
+**Example 1: Using config defaults**
+
+`config.toml`:
+
+```toml
+[unitPreferences.Pipe]
+length = "km"
+```
+
+Query:
+
+```bash
+dagger query "branch-4/blocks[type=Pipe]/length" ../network/preset1
+```
+
+Result: Returns length in kilometers (e.g., `0.5` for 500 meters)
+
+**Example 2: Query parameter override**
+
+Query:
+
+```bash
+dagger query "branch-4/blocks[type=Pipe]?units=length:m" ../network/preset1
+```
+
+Result: Returns length in meters, overriding config default
+
+**Example 3: Multiple properties**
+
+Query:
+
+```bash
+dagger query "branch-4/blocks[type=Pipe]?units=length:km,diameter:cm" ../network/preset1
+```
+
+Result: Returns length in kilometers and diameter in centimeters
+
+### Supported Units
+
+Any unit supported by the dim library can be used. Common examples:
+
+- **Length**: `m`, `km`, `cm`, `mm`, `ft`, `in`, `mi`
+- **Pressure**: `Pa`, `bar`, `psi`, `atm`, `kPa`, `MPa`
+- **Temperature**: `K`, `C`, `F`
+- **Mass**: `kg`, `g`, `lb`, `oz`
+- **Time**: `s`, `min`, `h`, `day`
+- **Flow rate**: `m³/s`, `L/s`, `gal/min`
+- **And more...**
+
+### How It Works
+
+1. Values are stored internally in base SI units (normalized during TOML parsing)
+2. When querying, the system looks up your preferred unit
+3. Values are converted from base SI to preferred unit using dimensional analysis
+4. Converted values are returned in the query results
+
+**Note:** If a unit conversion fails (e.g., incompatible dimensions), the original normalized value is returned and a warning is logged.
+
 ## Output Format
 
 All queries return JSON output, formatted for readability:
@@ -250,6 +362,16 @@ dagger query "branch-4/blocks" ../network/preset1
 
 ```bash
 dagger query "branch-4/data/blocks/0/pressure?scope=block,branch,global" ../network/preset1
+```
+
+### Get pipe length in preferred units
+
+```bash
+# Using config defaults
+dagger query "branch-4/blocks[type=Pipe]/length" ../network/preset1
+
+# Override to display in meters
+dagger query "branch-4/blocks[type=Pipe]/length?units=length:m" ../network/preset1
 ```
 
 ### Get all edges with weight > 1

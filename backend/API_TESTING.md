@@ -49,6 +49,25 @@ Query with scope resolution:
 curl "http://localhost:3000/api/query?q=branch-4/data/blocks/0/pressure?scope=block,branch,global&network=preset1"
 ```
 
+Query with unit preferences:
+
+```bash
+# Using config defaults (from config.toml)
+curl "http://localhost:3000/api/query?q=branch-4/blocks[type=Pipe]/length&network=preset1"
+
+# Override to display length in meters
+curl "http://localhost:3000/api/query?q=branch-4/blocks[type=Pipe]/length?units=length:m&network=preset1"
+
+# Override multiple properties
+curl "http://localhost:3000/api/query?q=branch-4/blocks[type=Pipe]?units=length:km,diameter:cm&network=preset1"
+
+# Override pressure for compressor blocks
+curl "http://localhost:3000/api/query?q=branch-4/blocks[type=Compressor]?units=pressure:bar&network=preset1"
+
+# Combine scope resolution with unit preferences
+curl "http://localhost:3000/api/query?q=branch-4/blocks/0/pressure?scope=block,branch,global&units=pressure:bar&network=preset1"
+```
+
 ### Network API
 
 Get full network:
@@ -119,3 +138,5 @@ curl -X POST http://localhost:3000/api/schema/validate \
 - **WASM module**: Must be built before the API will work (`just build-wasm`)
 - **File system access**: WASM runs in a browser-like environment, so file paths are resolved relative to where the Node.js process is running (the backend directory)
 - **Setting up networks**: Use `just setup-networks` to copy networks from project root to `backend/networks/`
+- **Unit preferences**: Configure defaults in `config.toml` under `[unitPreferences]`, or override per-query using `?units=property:unit` parameter in the query string
+- **Combining parameters**: Multiple query parameters can be combined with `&`, e.g., `?scope=block,branch,global&units=pressure:bar`

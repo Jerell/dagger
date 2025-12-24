@@ -69,8 +69,10 @@ impl DaggerWasm {
         let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
             .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
 
-        // Parse query
-        let query_path = query::parser::parse_query_path(query_str)
+        // Parse query path and extract unit overrides
+        // Note: Unit preferences are not available in WASM builds (wasmtime can't be compiled to WASM)
+        // Unit processing happens during TOML loading, but unit formatting in queries is disabled
+        let (query_path, _unit_overrides) = query::parser::parse_query_path_with_params(query_str)
             .map_err(|e| JsValue::from_str(&format!("Failed to parse query: {}", e)))?;
 
         // Load config for scope resolution
@@ -82,7 +84,7 @@ impl DaggerWasm {
         };
         let resolver = scope::resolver::ScopeResolver::new(config);
 
-        // Execute query
+        // Execute query (unit preferences disabled in WASM builds)
         let executor = query::executor::QueryExecutor::with_scope_resolver(&network, &resolver);
         let result = executor
             .execute(&query_path)

@@ -1,5 +1,5 @@
 use crate::dim::error::DimError;
-use crate::dim::parser::DimParser;
+use crate::dim::ffi::DimParser;
 use crate::dim::types::UnitParseResult;
 
 /// Map dimension names to reference units for compatibility checking
@@ -103,7 +103,7 @@ pub fn get_dimension(parser: &mut DimParser, parse_result: &UnitParseResult) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dim::parser::DimParser;
+    use crate::dim::ffi::DimParser;
 
     fn wasm_file_exists() -> bool {
         use std::path::PathBuf;

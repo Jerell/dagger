@@ -1,5 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
+use crate::dim::formatter::{UnitFormatter, UnitPreferences};
 use crate::parser::models::*;
 use crate::query::parser::{FilterOperator, ParseError, QueryPath};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::schema::registry::SchemaRegistry;
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 
@@ -37,6 +41,12 @@ impl From<ParseError> for QueryError {
 pub struct QueryExecutor<'a> {
     network: &'a Network,
     scope_resolver: Option<&'a crate::scope::resolver::ScopeResolver>,
+    #[cfg(not(target_arch = "wasm32"))]
+    unit_preferences: UnitPreferences,
+    #[cfg(not(target_arch = "wasm32"))]
+    schema_registry: Option<&'a SchemaRegistry>,
+    #[cfg(not(target_arch = "wasm32"))]
+    schema_version: Option<&'a str>,
 }
 
 // Context tracked during query execution for scope resolution
@@ -50,6 +60,12 @@ impl<'a> QueryExecutor<'a> {
         Self {
             network,
             scope_resolver: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            unit_preferences: UnitPreferences::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            schema_registry: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            schema_version: None,
         }
     }
 
@@ -60,6 +76,29 @@ impl<'a> QueryExecutor<'a> {
         Self {
             network,
             scope_resolver: Some(resolver),
+            #[cfg(not(target_arch = "wasm32"))]
+            unit_preferences: UnitPreferences::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            schema_registry: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            schema_version: None,
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_unit_preferences(
+        network: &'a Network,
+        resolver: Option<&'a crate::scope::resolver::ScopeResolver>,
+        unit_preferences: UnitPreferences,
+        schema_registry: Option<&'a SchemaRegistry>,
+        schema_version: Option<&'a str>,
+    ) -> Self {
+        Self {
+            network,
+            scope_resolver: resolver,
+            unit_preferences,
+            schema_registry,
+            schema_version,
         }
     }
 
@@ -208,9 +247,64 @@ impl<'a> QueryExecutor<'a> {
                             block_obj
                                 .insert("quantity".to_string(), JsonValue::Number(quantity.into()));
                         }
-                        // Add extra properties
-                        for (key, value) in &b.extra {
-                            block_obj.insert(key.clone(), toml_to_json(value));
+                        // Add extra properties with unit formatting (only in non-WASM builds)
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            // Collect original strings first
+                            let mut original_strings = std::collections::HashMap::new();
+                            for (key, _value) in &b.extra {
+                                let original_key = format!("_{}_original", key);
+                                if let Some(original_value) = b.extra.get(&original_key) {
+                                    if let Some(original_str) = original_value.as_str() {
+                                        original_strings
+                                            .insert(original_key, original_str.to_string());
+                                    }
+                                }
+                            }
+
+                            // Build unit preferences with original strings
+                            let mut block_unit_prefs = self.unit_preferences.clone();
+                            block_unit_prefs.original_strings = original_strings;
+
+                            // Add extra properties with unit formatting
+                            let mut formatter = UnitFormatter::new();
+                            for (key, value) in &b.extra {
+                                // Skip _property_original keys
+                                if key.starts_with("_") && key.ends_with("_original") {
+                                    continue;
+                                }
+
+                                let json_value = toml_to_json(value);
+
+                                // Get schema metadata if available
+                                let property_metadata = self
+                                    .schema_registry
+                                    .and_then(|reg| {
+                                        self.schema_version
+                                            .and_then(|v| reg.get_schema(v, &b.type_))
+                                    })
+                                    .and_then(|schema| schema.properties.get(key));
+
+                                // Format with unit preferences
+                                let formatted_value = formatter
+                                    .format_property(
+                                        key,
+                                        &json_value,
+                                        Some(&b.type_),
+                                        &block_unit_prefs,
+                                        property_metadata,
+                                    )
+                                    .unwrap_or(json_value);
+
+                                block_obj.insert(key.clone(), formatted_value);
+                            }
+                        }
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            // In WASM builds, just add properties as-is (no unit formatting)
+                            for (key, value) in &b.extra {
+                                block_obj.insert(key.clone(), toml_to_json(value));
+                            }
                         }
                         JsonValue::Object(block_obj)
                     })
