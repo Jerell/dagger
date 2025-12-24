@@ -95,20 +95,20 @@ pub fn load_network_from_files(
 fn load_node_from_file<P: AsRef<Path>>(path: P) -> Result<NodeData, Box<dyn std::error::Error>> {
     let path = path.as_ref();
     let content = fs::read_to_string(path)?;
-    
+
     // Derive ID from filename (e.g., "branch-4.toml" -> "branch-4")
     let id = path
         .file_stem()
         .and_then(|s| s.to_str())
         .ok_or("Invalid filename")?
         .to_string();
-    
+
     let filename = path
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string();
-    
+
     load_node_from_content(&content, &id, &filename)
 }
 

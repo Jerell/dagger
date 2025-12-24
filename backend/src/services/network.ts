@@ -28,13 +28,13 @@ async function readNetworkFiles(networkPath: string): Promise<{
 
   // Read all TOML files in the directory
   const entries = await fs.readdir(absolutePath, { withFileTypes: true });
-  
+
   for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith('.toml')) {
+    if (entry.isFile() && entry.name.endsWith(".toml")) {
       const filePath = path.join(absolutePath, entry.name);
-      const content = await fs.readFile(filePath, 'utf-8');
-      
-      if (entry.name === 'config.toml') {
+      const content = await fs.readFile(filePath, "utf-8");
+
+      if (entry.name === "config.toml") {
         configContent = content;
       } else {
         files[entry.name] = content;
@@ -49,7 +49,10 @@ export async function loadNetwork(networkPath: string): Promise<any> {
   const wasm = getWasm();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
-  const result = wasm.load_network_from_files(filesJson, configContent || undefined);
+  const result = wasm.load_network_from_files(
+    filesJson,
+    configContent || undefined
+  );
   return JSON.parse(result);
 }
 
@@ -61,20 +64,23 @@ export async function getNetworkNodes(
   // TODO: Add get_nodes_from_files to WASM bindings
   const network = await loadNetwork(networkPath);
   const nodes = network.nodes || [];
-  
+
   if (nodeType) {
     return nodes.filter((n: any) => {
       // Map node types
       const typeMap: Record<string, string> = {
-        branchNode: 'branchNode',
-        labeledGroupNode: 'labeledGroupNode',
-        geographicAnchorNode: 'geographicAnchorNode',
-        geographicWindowNode: 'geographicWindowNode',
+        branchNode: "branchNode",
+        labeledGroupNode: "labeledGroupNode",
+        geographicAnchorNode: "geographicAnchorNode",
+        geographicWindowNode: "geographicWindowNode",
       };
-      return Object.keys(n)[0] === nodeType || typeMap[Object.keys(n)[0]] === nodeType;
+      return (
+        Object.keys(n)[0] === nodeType ||
+        typeMap[Object.keys(n)[0]] === nodeType
+      );
     });
   }
-  
+
   return nodes;
 }
 
@@ -87,7 +93,7 @@ export async function getNetworkEdges(
   // TODO: Add get_edges_from_files to WASM bindings
   const network = await loadNetwork(networkPath);
   const edges = network.edges || [];
-  
+
   return edges.filter((e: any) => {
     if (source && e.source !== source) return false;
     if (target && e.target !== target) return false;
