@@ -54,52 +54,14 @@ export async function formatValue(
   }
 
   try {
-    // Check if originalString is already a unit string (e.g., "100 bar", "3 mi")
-    const unitStringMatch = originalString.match(/^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/);
-    
-    if (unitStringMatch) {
-      // Original string is a unit string - convert directly from original unit to preferred unit
-      // Example: "3 mi" -> "km" = "3 mi as km"
-      const originalUnit = unitStringMatch[2].trim();
-      const conversionExpr = `${originalString} as ${preferredUnit}`;
-      const converted = dim.eval(conversionExpr);
-      const convertedParts = converted.split(" ");
-      const convertedValue = parseFloat(convertedParts[0]);
-
-      if (isNaN(convertedValue)) {
-        return value.toString();
-      }
-
-      // Format as "value unit"
-      return `${convertedValue} ${preferredUnit}`;
-    } else {
-      // Original string is not a unit string (might be just a number)
-      // Parse it to get base unit, then convert
-      const originalParsed = dim.eval(originalString);
-      const originalParts = originalParsed.split(" ");
-      const baseUnit = originalParts.length > 1 ? originalParts.slice(1).join(" ") : "";
-
-      if (!baseUnit) {
-        return value.toString();
-      }
-
-      // Convert from base unit to preferred unit
-      // Expression: value * baseUnit / preferredUnit
-      const conversionExpr = `${value} ${baseUnit} / ${preferredUnit}`;
-      const converted = dim.eval(conversionExpr);
-      const convertedParts = converted.split(" ");
-      const convertedValue = parseFloat(convertedParts[0]);
-
-      if (isNaN(convertedValue)) {
-        return value.toString();
-      }
-
-      // Format as "value unit"
-      return `${convertedValue} ${preferredUnit}`;
-    }
+    const converted = dim.eval(`${originalString} as ${preferredUnit}`);
+    return converted.trim();
   } catch (error) {
     // Conversion failed, return original value
-    console.warn(`Failed to convert ${propertyName} to ${preferredUnit}:`, error);
+    console.warn(
+      `Failed to convert ${propertyName} to ${preferredUnit}:`,
+      error
+    );
     return value.toString();
   }
 }
@@ -166,10 +128,12 @@ export async function formatQueryResult(
       } else if (typeof value === "string") {
         // Check if this string looks like a unit value (e.g., "100 bar", "10 m")
         // WASM builds return original strings instead of normalized numbers
-        const unitStringMatch = value.match(/^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/);
+        const unitStringMatch = value.match(
+          /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
+        );
         if (unitStringMatch) {
           const numericValue = parseFloat(unitStringMatch[1]);
-          
+
           if (!isNaN(numericValue)) {
             // This looks like a unit string - try to format it
             try {
@@ -182,7 +146,7 @@ export async function formatQueryResult(
                   [originalKey]: value,
                 },
               };
-              
+
               formatted[key] = await formatValue(
                 numericValue,
                 key,
@@ -216,4 +180,3 @@ export async function formatQueryResult(
 
   return result;
 }
-
