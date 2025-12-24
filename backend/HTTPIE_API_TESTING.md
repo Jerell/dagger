@@ -41,13 +41,13 @@ http GET localhost:3000/api/query q==branch-4 network==preset1
 Query with nested path:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks" network==preset1
 ```
 
 Query with array index:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks/0" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks/0" network==preset1
 ```
 
 ### Filtered Queries
@@ -55,13 +55,13 @@ http GET localhost:3000/api/query q=="branch-4/data/blocks/0" network==preset1
 Filter blocks by type:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks[type=Pipe]" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]" network==preset1
 ```
 
 Filter blocks by multiple conditions:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks[type=Pipe][quantity=1]" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe][quantity=1]" network==preset1
 ```
 
 ### Scope Resolution Queries
@@ -69,13 +69,13 @@ http GET localhost:3000/api/query q=="branch-4/data/blocks[type=Pipe][quantity=1
 Query with scope resolution:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks/0/pressure?scope=block,branch,global" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
 ```
 
 Query with all scope levels:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks/0/ambientTemperature?scope=block,branch,group,global" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" network==preset1
 ```
 
 ### Network-Level Queries
@@ -200,7 +200,87 @@ http GET localhost:3000/api/schema schemasDir==../schemas
 http GET localhost:3000/api/schema/v1.0 schemasDir==../schemas
 ```
 
+### Get Network Schemas
+
+Get schemas for all block types used in a specific network:
+
+```bash
+http GET localhost:3000/api/schema/network network==preset1 version==v1.0
+```
+
 **Expected Response:**
+
+```json
+{
+  "Compressor": {
+    "block_type": "Compressor",
+    "version": "v1.0",
+    "required_properties": ["pressure"],
+    "optional_properties": ["temperature"]
+  },
+  "Pipe": {
+    "block_type": "Pipe",
+    "version": "v1.0",
+    "required_properties": ["length"],
+    "optional_properties": ["diameter"]
+  },
+  "Source": {
+    "block_type": "Source",
+    "version": "v1.0",
+    "required_properties": [],
+    "optional_properties": []
+  }
+}
+```
+
+This endpoint:
+
+- Scans the network to find all unique block types
+- Returns schemas only for block types that are actually used in the network
+- Shows required and optional properties for each block type
+- Useful for generating forms or validation UI for the specific network
+
+### Get Block Schema Properties
+
+Get schema properties for blocks matching a query path. Returns flattened paths with property information:
+
+```bash
+# Get schema properties for a specific block
+http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks/2" version==v1.0
+
+# Get schema properties for all blocks in a branch
+http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks" version==v1.0
+
+# Get schema properties for filtered blocks
+http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
+```
+
+**Expected Response:**
+
+```json
+{
+  "branch-4/blocks/2/length": {
+    "required": true,
+    "block_type": "Pipe",
+    "property": "length"
+  },
+  "branch-4/blocks/2/diameter": {
+    "required": false,
+    "block_type": "Pipe",
+    "property": "diameter"
+  }
+}
+```
+
+This endpoint:
+
+- Uses the same query syntax as the query API
+- Returns schema properties for each block instance found
+- Keys are flattened paths like `branch-4/blocks/2/length`
+- Shows which properties are required vs optional
+- Perfect for generating form fields for specific blocks
+
+**Expected Response (for version endpoint):**
 
 ```json
 {
@@ -308,7 +388,7 @@ http --timeout=30 GET localhost:3000/api/network network==preset1
 ### Get All Blocks in a Branch
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks" network==preset1
 ```
 
 ### Get Specific Block Property
@@ -332,7 +412,7 @@ http GET localhost:3000/api/query q=="edges[source=branch-1]" network==preset1
 ### Get Node with Scope Resolution
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks/0/pressure?scope=block,branch,global" network==preset1
+http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
 ```
 
 ## Error Handling
@@ -416,13 +496,13 @@ http GET localhost:3000/api/network
 
 6. **Test scope resolution:**
    ```bash
-   http GET localhost:3000/api/query q=="branch-4/data/blocks/0/pressure?scope=block,branch,global" network==preset1
+   http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
    ```
 
 ## Notes
 
 - **Query parameter syntax**: Use `==` for query parameters in HTTPie
-- **String values with special characters**: Wrap in quotes, e.g., `q=="branch-4/data/blocks[type=Pipe]"`
+- **String values with special characters**: Wrap in quotes, e.g., `q=="branch-4/blocks[type=Pipe]"`
 - **JSON in POST requests**: Use `:=` for JSON values, e.g., `block:='{"type":"Compressor","pressure":15.5}'`
 - **Network names**: Use network names (e.g., `preset1`) not full paths
 - **Default network**: If `network` parameter is omitted, it may default to `preset1` (check route implementation)

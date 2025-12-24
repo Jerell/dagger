@@ -236,6 +236,197 @@ impl DaggerWasm {
         Ok(json)
     }
 
+    /// Get schemas for all block types used in a network
+    /// files_json: JSON string mapping filename -> content
+    /// Returns JSON object mapping block types to schema definitions
+    #[wasm_bindgen]
+    pub fn get_network_schemas(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        schemas_dir: &str,
+        version: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network
+        let (network, _validation) = parser::load_network_from_files(files, config_content)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Extract all unique block types from the network
+        let mut block_types = std::collections::HashSet::new();
+        for node in &network.nodes {
+            if let parser::models::NodeData::Branch(branch) = node {
+                for block in &branch.blocks {
+                    block_types.insert(block.type_.clone());
+                }
+            }
+        }
+
+        // Load schema library
+        let mut registry =
+            schema::registry::SchemaRegistry::new(std::path::PathBuf::from(schemas_dir));
+
+        registry
+            .load_library(version)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
+
+        // Get schemas for block types found in the network
+        let mut schemas = std::collections::HashMap::new();
+        for block_type in block_types {
+            if let Some(schema) = registry.get_schema(version, &block_type) {
+                schemas.insert(
+                    block_type.clone(),
+                    serde_json::json!({
+                        "block_type": schema.block_type,
+                        "version": schema.version,
+                        "required_properties": schema.required_properties,
+                        "optional_properties": schema.optional_properties,
+                    }),
+                );
+            }
+        }
+
+        let json = serde_json::to_string(&schemas)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize schemas: {}", e)))?;
+
+        Ok(json)
+    }
+
+    /// Get schema properties for blocks matching a query path
+    /// files_json: JSON string mapping filename -> content (network files)
+    /// schema_files_json: JSON string mapping filename -> content (schema files)
+    /// query_str: Query path (e.g., "branch-4/data/blocks/2" or "branch-4/data/blocks")
+    /// Returns JSON object with flattened paths like "branch-4/data/blocks/2/length": {"required": true, "type": "number"}
+    #[wasm_bindgen]
+    pub fn get_block_schema_properties(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        query_str: &str,
+        schema_files_json: &str,
+        version: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network
+        let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Parse query
+        let query_path = query::parser::parse_query_path(query_str)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse query: {}", e)))?;
+
+        // Load schema library from file contents
+        let schema_files: std::collections::HashMap<String, String> =
+            serde_json::from_str(schema_files_json).map_err(|e| {
+                JsValue::from_str(&format!("Failed to parse schema files JSON: {}", e))
+            })?;
+
+        let mut registry = schema::registry::SchemaRegistry::new(std::path::PathBuf::from("")); // Path not used when loading from files
+
+        registry
+            .load_library_from_files(version, schema_files)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
+
+        // Execute query to get blocks
+        let executor = query::executor::QueryExecutor::new(&network);
+        let query_result = executor
+            .execute(&query_path)
+            .map_err(|e| JsValue::from_str(&format!("Query error: {}", e)))?;
+
+        // Build flattened schema properties
+        let mut properties = std::collections::HashMap::new();
+
+        // Helper function to process a block and add its schema properties
+        fn process_block(
+            block_value: &serde_json::Value,
+            base_path: &str,
+            properties: &mut std::collections::HashMap<String, serde_json::Value>,
+            registry: &schema::registry::SchemaRegistry,
+            version: &str,
+        ) {
+            if let Some(block_type) = block_value.get("type").and_then(|v| v.as_str()) {
+                if let Some(schema) = registry.get_schema(version, block_type) {
+                    // Add required properties
+                    for prop in &schema.required_properties {
+                        let full_path = format!("{}/{}", base_path, prop);
+                        properties.insert(
+                            full_path,
+                            serde_json::json!({
+                                "required": true,
+                                "block_type": block_type,
+                                "property": prop
+                            }),
+                        );
+                    }
+                    // Add optional properties
+                    for prop in &schema.optional_properties {
+                        let full_path = format!("{}/{}", base_path, prop);
+                        properties.insert(
+                            full_path,
+                            serde_json::json!({
+                                "required": false,
+                                "block_type": block_type,
+                                "property": prop
+                            }),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Process query result
+        match query_result {
+            serde_json::Value::Array(blocks) => {
+                // Multiple blocks - need to determine path for each
+                // Try to extract path components from query
+                let base_query = query_str.split('?').next().unwrap_or(query_str);
+
+                for (idx, block_value) in blocks.iter().enumerate() {
+                    // Build path: if query ends with /blocks, use /blocks/{idx}
+                    // Otherwise, try to preserve the query path structure
+                    let block_path = if base_query.ends_with("/blocks") {
+                        format!("{}/{}", base_query, idx)
+                    } else if base_query.contains("/blocks/") {
+                        // Already has an index, use as-is
+                        base_query.to_string()
+                    } else {
+                        // Fallback: append index
+                        format!("{}/{}", base_query, idx)
+                    };
+                    process_block(
+                        block_value,
+                        &block_path,
+                        &mut properties,
+                        &registry,
+                        version,
+                    );
+                }
+            }
+            block_value => {
+                // Single block - use query path as base
+                let base_query = query_str.split('?').next().unwrap_or(query_str);
+                process_block(
+                    &block_value,
+                    base_query,
+                    &mut properties,
+                    &registry,
+                    version,
+                );
+            }
+        }
+
+        let json = serde_json::to_string(&properties)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize properties: {}", e)))?;
+
+        Ok(json)
+    }
+
     /// Validate a block against a schema
     /// Returns JSON object with validation results
     #[wasm_bindgen]

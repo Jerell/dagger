@@ -30,22 +30,27 @@ impl SchemaRegistry {
 
     pub fn load_library(&mut self, version: &str) -> Result<(), Box<dyn std::error::Error>> {
         let version_dir = self.schemas_dir.join(version);
-        
+
         if !version_dir.exists() {
-            return Err(format!("Schema library version '{}' not found at {}", version, version_dir.display()).into());
+            return Err(format!(
+                "Schema library version '{}' not found at {}",
+                version,
+                version_dir.display()
+            )
+            .into());
         }
 
         let mut schemas = HashMap::new();
-        
+
         // Scan for schema files
         // We support JSON files (generated from Zod schemas via generate-schemas.ts)
         // The TypeScript/Zod files are the source of truth
         let entries = std::fs::read_dir(&version_dir)?;
-        
+
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 // Load schema definition from JSON (generated from Zod)
                 let content = std::fs::read_to_string(&path)?;
@@ -55,10 +60,40 @@ impl SchemaRegistry {
             }
         }
 
-        self.libraries.insert(version.to_string(), SchemaLibrary {
-            version: version.to_string(),
-            schemas,
-        });
+        self.libraries.insert(
+            version.to_string(),
+            SchemaLibrary {
+                version: version.to_string(),
+                schemas,
+            },
+        );
+
+        Ok(())
+    }
+
+    /// Load schema library from file contents (filename -> content map)
+    /// This is used when files are read in Node.js and passed to WASM
+    pub fn load_library_from_files(
+        &mut self,
+        version: &str,
+        files: HashMap<String, String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut schemas = HashMap::new();
+
+        // Process each schema file
+        for (_filename, content) in files {
+            let schema_json: SchemaJson = serde_json::from_str(&content)?;
+            let schema: SchemaDefinition = schema_json.into();
+            schemas.insert(schema.block_type.clone(), schema);
+        }
+
+        self.libraries.insert(
+            version.to_string(),
+            SchemaLibrary {
+                version: version.to_string(),
+                schemas,
+            },
+        );
 
         Ok(())
     }
@@ -101,4 +136,3 @@ impl From<SchemaJson> for SchemaDefinition {
         }
     }
 }
-

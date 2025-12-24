@@ -37,10 +37,10 @@ Access array elements by numeric index:
 
 ```bash
 # Get first block
-dagger query "branch-4/data/blocks/0" ../network/preset1
+dagger query "branch-4/blocks/0" ../network/preset1
 
 # Get second block
-dagger query "branch-4/data/blocks/1" ../network/preset1
+dagger query "branch-4/blocks/1" ../network/preset1
 ```
 
 ### Nested Property Access
@@ -49,10 +49,10 @@ Navigate through nested structures:
 
 ```bash
 # Get block type
-dagger query "branch-4/data/blocks/0/type" ../network/preset1
+dagger query "branch-4/blocks/0/type" ../network/preset1
 
 # Get block properties
-dagger query "branch-4/data/blocks/0/pressure" ../network/preset1
+dagger query "branch-4/blocks/0/pressure" ../network/preset1
 ```
 
 ## Filtering
@@ -63,10 +63,10 @@ Filter arrays based on field values using bracket notation:
 
 ```bash
 # Get all Compressor blocks
-dagger query "branch-4/data/blocks[type=Compressor]" ../network/preset1
+dagger query "branch-4/blocks[type=Compressor]" ../network/preset1
 
 # Get all source blocks
-dagger query "branch-4/data/blocks[kind=source]" ../network/preset1
+dagger query "branch-4/blocks[kind=source]" ../network/preset1
 ```
 
 ### Comparison Operators
@@ -82,10 +82,10 @@ Supported operators:
 
 ```bash
 # Get blocks with pressure > 10
-dagger query "branch-4/data/blocks[pressure>10]" ../network/preset1
+dagger query "branch-4/blocks[pressure>10]" ../network/preset1
 
 # Get blocks with quantity >= 2
-dagger query "branch-4/data/blocks[quantity>=2]" ../network/preset1
+dagger query "branch-4/blocks[quantity>=2]" ../network/preset1
 ```
 
 ### Nested Property Filters
@@ -135,14 +135,14 @@ Resolve properties using the scope inheritance system. This allows you to get th
 
 ```bash
 # Resolve ambientTemperature for a block
-dagger query "branch-4/data/blocks/0/ambientTemperature?scope=block,branch,group,global" ../network/preset1
+dagger query "branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" ../network/preset1
 ```
 
 The `?scope=...` parameter specifies the scope chain to check (though the actual inheritance rules come from `config.toml`).
 
 ### How Scope Resolution Works
 
-1. The query path must point to a specific block (e.g., `branch-4/data/blocks/0`)
+1. The query path must point to a specific block (e.g., `branch-4/blocks/0`)
 2. The property name is extracted from the end of the path
 3. The scope resolver checks the property in the following order (by default):
 
@@ -170,7 +170,7 @@ And a branch node with a block that doesn't have `ambientTemperature` set:
 
 ```bash
 # This will resolve to 20.0 from global scope
-dagger query "branch-4/data/blocks/0/ambientTemperature?scope=block,branch,group,global" ../network/preset1
+dagger query "branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" ../network/preset1
 ```
 
 ## Output Format
@@ -217,7 +217,7 @@ dagger query "nodes[data.blocks[type=Compressor]]" ../network/preset1
 ### Get all blocks from a specific branch
 
 ```bash
-dagger query "branch-4/data/blocks" ../network/preset1
+dagger query "branch-4/blocks" ../network/preset1
 ```
 
 ### Get resolved pressure for a block

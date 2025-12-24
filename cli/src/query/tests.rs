@@ -67,18 +67,12 @@ mod tests {
 
     #[test]
     fn test_parse_index_query() {
-        let result = parse_query_path("branch-1/data/blocks/0").unwrap();
+        let result = parse_query_path("branch-1/blocks/0").unwrap();
         match result {
             QueryPath::Index(0, inner) => match *inner {
                 QueryPath::Property(name, inner2) => {
                     assert_eq!(name, "blocks");
-                    match *inner2 {
-                        QueryPath::Property(data, inner3) => {
-                            assert_eq!(data, "data");
-                            assert!(matches!(*inner3, QueryPath::Node(id) if id == "branch-1"));
-                        }
-                        _ => panic!("Expected Property"),
-                    }
+                    assert!(matches!(*inner2, QueryPath::Node(id) if id == "branch-1"));
                 }
                 _ => panic!("Expected Property"),
             },
@@ -88,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_parse_filter_query() {
-        let result = parse_query_path("branch-1/data/blocks[type=Compressor]").unwrap();
+        let result = parse_query_path("branch-1/blocks[type=Compressor]").unwrap();
         match result {
             QueryPath::Filter {
                 field,
@@ -102,13 +96,7 @@ mod tests {
                 match *inner {
                     QueryPath::Property(blocks, inner2) => {
                         assert_eq!(blocks, "blocks");
-                        match *inner2 {
-                            QueryPath::Property(data, inner3) => {
-                                assert_eq!(data, "data");
-                                assert!(matches!(*inner3, QueryPath::Node(id) if id == "branch-1"));
-                            }
-                            _ => panic!("Expected Property"),
-                        }
+                        assert!(matches!(*inner2, QueryPath::Node(id) if id == "branch-1"));
                     }
                     _ => panic!("Expected Property"),
                 }
@@ -191,7 +179,7 @@ mod tests {
     fn test_execute_filter_query() {
         let network = create_test_network();
         let executor = QueryExecutor::new(&network);
-        let query = parse_query_path("branch-1/data/blocks[type=Compressor]").unwrap();
+        let query = parse_query_path("branch-1/blocks[type=Compressor]").unwrap();
         let result = executor.execute(&query);
 
         // Filter might work, but the structure might be different
@@ -220,7 +208,7 @@ mod tests {
 
         // Block has pressure in extra, so should resolve from block scope
         let query =
-            parse_query_path("branch-1/data/blocks/0/pressure?scope=block,branch,global").unwrap();
+            parse_query_path("branch-1/blocks/0/pressure?scope=block,branch,global").unwrap();
         let result = executor.execute(&query).unwrap();
 
         // Should return the pressure value from the block
@@ -236,8 +224,7 @@ mod tests {
 
         // Property doesn't exist in any scope
         let query =
-            parse_query_path("branch-1/data/blocks/1/temperature?scope=block,branch,global")
-                .unwrap();
+            parse_query_path("branch-1/blocks/1/temperature?scope=block,branch,global").unwrap();
         let result = executor.execute(&query);
 
         // Should return an error
@@ -256,7 +243,7 @@ mod tests {
 
         // Property should resolve from global scope
         let query =
-            parse_query_path("branch-1/data/blocks/1/ambientTemperature?scope=block,branch,global")
+            parse_query_path("branch-1/blocks/1/ambientTemperature?scope=block,branch,global")
                 .unwrap();
         let result = executor.execute(&query).unwrap();
 
