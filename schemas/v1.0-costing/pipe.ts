@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const PipeSchema = z.object({
   type: z.literal("Pipe"),
+  material: z.string().describe("Material of the pipe"),
   quantity: z.number().optional().default(1),
-  length: z.number().min(0).meta({ dimension: "length", defaultUnit: "m" }),
 
   // Optional properties
   diameter: z
@@ -11,11 +11,11 @@ export const PipeSchema = z.object({
     .min(0)
     .optional()
     .meta({ dimension: "length", defaultUnit: "m" }),
-  uValue: z
+  length: z
     .number()
     .min(0)
     .optional()
-    .meta({ dimension: "uValue", defaultUnit: "W/m²K" }),
+    .meta({ dimension: "length", defaultUnit: "m" }),
 });
 
 export type Pipe = z.infer<typeof PipeSchema>;

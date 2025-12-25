@@ -267,17 +267,26 @@ http GET localhost:3000/api/schema/network network==preset1 version==v1.0
   "branch-1/blocks/0/length": {
     "block_type": "Pipe",
     "property": "length",
-    "required": false
+    "required": false,
+    "title": "Length",
+    "dimension": "length",
+    "defaultUnit": "m"
   },
   "branch-1/blocks/0/diameter": {
     "block_type": "Pipe",
     "property": "diameter",
-    "required": false
+    "required": false,
+    "title": "Diameter",
+    "dimension": "length",
+    "defaultUnit": "m"
   },
   "branch-1/blocks/1/pressure": {
     "block_type": "Compressor",
     "property": "pressure",
-    "required": true
+    "required": true,
+    "title": "Outlet pressure",
+    "dimension": "pressure",
+    "defaultUnit": "bar"
   },
   "branch-1/blocks/1/efficiency": {
     "block_type": "Compressor",
@@ -287,7 +296,10 @@ http GET localhost:3000/api/schema/network network==preset1 version==v1.0
   "branch-2/blocks/0/length": {
     "block_type": "Pipe",
     "property": "length",
-    "required": false
+    "required": false,
+    "title": "Length",
+    "dimension": "length",
+    "defaultUnit": "m"
   }
 }
 ```
@@ -298,6 +310,7 @@ This endpoint:
 - Uses the same flattened path format as `/api/schema/properties`
 - Keys are paths like `branch-1/blocks/0/length`
 - Shows which properties are required vs optional for each block
+- Includes metadata: `title` (display name), `dimension`, and `defaultUnit` when available
 - Perfect for generating form fields for all blocks in a network at once
 
 ### Get Block Schema Properties
@@ -322,12 +335,18 @@ http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/bloc
   "branch-4/blocks/2/length": {
     "required": true,
     "block_type": "Pipe",
-    "property": "length"
+    "property": "length",
+    "title": "Length",
+    "dimension": "length",
+    "defaultUnit": "m"
   },
   "branch-4/blocks/2/diameter": {
     "required": false,
     "block_type": "Pipe",
-    "property": "diameter"
+    "property": "diameter",
+    "title": "Diameter",
+    "dimension": "length",
+    "defaultUnit": "m"
   }
 }
 ```
@@ -338,6 +357,7 @@ This endpoint:
 - Returns schema properties for each block instance found
 - Keys are flattened paths like `branch-4/blocks/2/length`
 - Shows which properties are required vs optional
+- Includes metadata: `title` (display name), `dimension`, and `defaultUnit` when available
 - Perfect for generating form fields for specific blocks
 
 **Expected Response (for version endpoint):**
@@ -363,9 +383,107 @@ This endpoint:
 }
 ```
 
-### Validate a Block
+### Validate Blocks by Query
 
-Validate a compressor block:
+Validate blocks matching a query path. Returns both schema properties (with metadata) and validation results:
+
+```bash
+# Validate a specific block
+http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks/2" version==v1.0
+
+# Validate all blocks in a branch
+http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks" version==v1.0
+
+# Validate filtered blocks
+http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
+```
+
+**Expected Response:**
+
+```json
+{
+  "branch-4/blocks/2/length": {
+    "required": true,
+    "block_type": "Pipe",
+    "property": "length",
+    "title": "Length",
+    "dimension": "length",
+    "defaultUnit": "m"
+  },
+  "branch-4/blocks/2/diameter": {
+    "required": false,
+    "block_type": "Pipe",
+    "property": "diameter",
+    "title": "Diameter",
+    "dimension": "length",
+    "defaultUnit": "m"
+  },
+  "branch-4/blocks/2/_validation": {
+    "is_valid": true,
+    "has_issues": false,
+    "issues": []
+  }
+}
+```
+
+### Validate Entire Network
+
+Validate all blocks in a network. Returns both schema properties (with metadata) and validation results for every block:
+
+```bash
+http GET localhost:3000/api/schema/network/validate network==preset1 version==v1.0
+```
+
+**Expected Response:**
+
+```json
+{
+  "branch-1/blocks/0/length": {
+    "block_type": "Pipe",
+    "property": "length",
+    "required": false,
+    "title": "Length",
+    "dimension": "length",
+    "defaultUnit": "m"
+  },
+  "branch-1/blocks/0/_validation": {
+    "is_valid": true,
+    "has_issues": false,
+    "issues": []
+  },
+  "branch-1/blocks/1/pressure": {
+    "block_type": "Compressor",
+    "property": "pressure",
+    "required": true,
+    "title": "Outlet pressure",
+    "dimension": "pressure",
+    "defaultUnit": "bar"
+  },
+  "branch-1/blocks/1/_validation": {
+    "is_valid": false,
+    "has_issues": true,
+    "issues": [
+      {
+        "severity": "error",
+        "message": "Required property 'pressure' is missing for block type 'Compressor'",
+        "property": "pressure"
+      }
+    ]
+  }
+}
+```
+
+This endpoint:
+
+- Returns schema properties and validation results for every block instance in the network
+- Uses the same flattened path format as `/api/schema/network`
+- Keys are paths like `branch-1/blocks/0/length` for properties and `branch-1/blocks/0/_validation` for validation
+- Includes metadata: `title` (display name), `dimension`, and `defaultUnit` when available
+- Perfect for validating entire networks and generating comprehensive form fields
+
+### Validate a Block (POST)
+
+Validate a single block against a schema:
 
 ```bash
 http POST localhost:3000/api/schema/validate \
@@ -389,11 +507,13 @@ http POST localhost:3000/api/schema/validate \
 
 ```json
 {
-  "valid": false,
-  "errors": [
+  "is_valid": false,
+  "has_issues": true,
+  "issues": [
     {
-      "field": "pressure",
-      "message": "Required field missing"
+      "severity": "error",
+      "message": "Required property 'pressure' is missing for block type 'Compressor'",
+      "property": "pressure"
     }
   ]
 }

@@ -114,7 +114,31 @@ Get schemas for a version:
 curl "http://localhost:3000/api/schema/v1.0?schemasDir=../schemas"
 ```
 
-Validate a block:
+Get network schemas (all blocks):
+
+```bash
+curl "http://localhost:3000/api/schema/network?network=preset1&version=v1.0"
+```
+
+Get block schema properties (by query):
+
+```bash
+curl "http://localhost:3000/api/schema/properties?network=preset1&q=branch-4/blocks/2&version=v1.0"
+```
+
+Validate blocks by query:
+
+```bash
+curl "http://localhost:3000/api/schema/validate?network=preset1&q=branch-4/blocks&version=v1.0"
+```
+
+Validate entire network:
+
+```bash
+curl "http://localhost:3000/api/schema/network/validate?network=preset1&version=v1.0"
+```
+
+Validate a block (POST):
 
 ```bash
 curl -X POST http://localhost:3000/api/schema/validate \
@@ -129,6 +153,8 @@ curl -X POST http://localhost:3000/api/schema/validate \
     "schemasDir": "../schemas"
   }'
 ```
+
+**Note:** All schema property endpoints now include metadata (`title`, `dimension`, `defaultUnit`) when available in the schema definitions.
 
 ## Notes
 

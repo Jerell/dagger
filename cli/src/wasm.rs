@@ -287,27 +287,47 @@ impl DaggerWasm {
                     // Add required properties
                     for prop in &schema.required_properties {
                         let path = format!("{}/blocks/{}/{}", branch_id, block_index, prop);
-                        properties.insert(
-                            path,
-                            serde_json::json!({
-                                "block_type": block_type,
-                                "property": prop,
-                                "required": true,
-                            }),
-                        );
+                        let prop_meta = schema.properties.get(prop);
+                        let mut prop_json = serde_json::json!({
+                            "block_type": block_type,
+                            "property": prop,
+                            "required": true,
+                        });
+                        if let Some(meta) = prop_meta {
+                            if let Some(title) = &meta.title {
+                                prop_json["title"] = serde_json::json!(title);
+                            }
+                            if let Some(dimension) = &meta.dimension {
+                                prop_json["dimension"] = serde_json::json!(dimension);
+                            }
+                            if let Some(default_unit) = &meta.default_unit {
+                                prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                            }
+                        }
+                        properties.insert(path, prop_json);
                     }
 
                     // Add optional properties
                     for prop in &schema.optional_properties {
                         let path = format!("{}/blocks/{}/{}", branch_id, block_index, prop);
-                        properties.insert(
-                            path,
-                            serde_json::json!({
-                                "block_type": block_type,
-                                "property": prop,
-                                "required": false,
-                            }),
-                        );
+                        let prop_meta = schema.properties.get(prop);
+                        let mut prop_json = serde_json::json!({
+                            "block_type": block_type,
+                            "property": prop,
+                            "required": false,
+                        });
+                        if let Some(meta) = prop_meta {
+                            if let Some(title) = &meta.title {
+                                prop_json["title"] = serde_json::json!(title);
+                            }
+                            if let Some(dimension) = &meta.dimension {
+                                prop_json["dimension"] = serde_json::json!(dimension);
+                            }
+                            if let Some(default_unit) = &meta.default_unit {
+                                prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                            }
+                        }
+                        properties.insert(path, prop_json);
                     }
                 }
             }
@@ -408,26 +428,46 @@ impl DaggerWasm {
                     // Add required properties
                     for prop in &schema.required_properties {
                         let full_path = format!("{}/{}", base_path, prop);
-                        properties.insert(
-                            full_path,
-                            serde_json::json!({
-                                "required": true,
-                                "block_type": block_type,
-                                "property": prop
-                            }),
-                        );
+                        let prop_meta = schema.properties.get(prop);
+                        let mut prop_json = serde_json::json!({
+                            "required": true,
+                            "block_type": block_type,
+                            "property": prop
+                        });
+                        if let Some(meta) = prop_meta {
+                            if let Some(title) = &meta.title {
+                                prop_json["title"] = serde_json::json!(title);
+                            }
+                            if let Some(dimension) = &meta.dimension {
+                                prop_json["dimension"] = serde_json::json!(dimension);
+                            }
+                            if let Some(default_unit) = &meta.default_unit {
+                                prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                            }
+                        }
+                        properties.insert(full_path, prop_json);
                     }
                     // Add optional properties
                     for prop in &schema.optional_properties {
                         let full_path = format!("{}/{}", base_path, prop);
-                        properties.insert(
-                            full_path,
-                            serde_json::json!({
-                                "required": false,
-                                "block_type": block_type,
-                                "property": prop
-                            }),
-                        );
+                        let prop_meta = schema.properties.get(prop);
+                        let mut prop_json = serde_json::json!({
+                            "required": false,
+                            "block_type": block_type,
+                            "property": prop
+                        });
+                        if let Some(meta) = prop_meta {
+                            if let Some(title) = &meta.title {
+                                prop_json["title"] = serde_json::json!(title);
+                            }
+                            if let Some(dimension) = &meta.dimension {
+                                prop_json["dimension"] = serde_json::json!(dimension);
+                            }
+                            if let Some(default_unit) = &meta.default_unit {
+                                prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                            }
+                        }
+                        properties.insert(full_path, prop_json);
                     }
                 }
             }
@@ -531,5 +571,433 @@ impl DaggerWasm {
         Ok(serde_json::to_string(&json).map_err(|e| {
             JsValue::from_str(&format!("Failed to serialize validation result: {}", e))
         })?)
+    }
+
+    /// Validate blocks matching a query path and return both properties and validation results
+    /// files_json: JSON string mapping filename -> content (network files)
+    /// schema_files_json: JSON string mapping filename -> content (schema files)
+    /// query_str: Query path (e.g., "branch-4/data/blocks/2" or "branch-4/data/blocks")
+    /// Returns JSON object with properties and validation results for each block
+    #[wasm_bindgen]
+    pub fn validate_query_blocks(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        query_str: &str,
+        schema_files_json: &str,
+        version: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network
+        let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Parse query
+        let query_path = query::parser::parse_query_path(query_str)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse query: {}", e)))?;
+
+        // Load schema library from file contents
+        let schema_files: std::collections::HashMap<String, String> =
+            serde_json::from_str(schema_files_json).map_err(|e| {
+                JsValue::from_str(&format!("Failed to parse schema files JSON: {}", e))
+            })?;
+
+        // Clone schema_files since we need it for both registries
+        let schema_files_clone = schema_files.clone();
+
+        let mut registry = schema::registry::SchemaRegistry::new(std::path::PathBuf::from("")); // Path not used when loading from files
+
+        registry
+            .load_library_from_files(version, schema_files)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
+
+        // Execute query to get blocks
+        let executor = query::executor::QueryExecutor::new(&network);
+        let query_result = executor
+            .execute(&query_path)
+            .map_err(|e| JsValue::from_str(&format!("Query error: {}", e)))?;
+
+        // Create a separate registry for the validator (since validator takes ownership)
+        let mut validator_registry =
+            schema::registry::SchemaRegistry::new(std::path::PathBuf::from(""));
+        validator_registry
+            .load_library_from_files(version, schema_files_clone)
+            .map_err(|e| {
+                JsValue::from_str(&format!(
+                    "Failed to load schema library for validator: {}",
+                    e
+                ))
+            })?;
+        let validator = schema::validator::SchemaValidator::new(validator_registry);
+
+        // Build result with properties and validation
+        let mut result = std::collections::HashMap::new();
+
+        // Process query result
+        match query_result {
+            serde_json::Value::Array(blocks) => {
+                // Multiple blocks - need to determine path for each
+                let base_query = query_str.split('?').next().unwrap_or(query_str);
+
+                for (idx, block_value) in blocks.iter().enumerate() {
+                    let block_path = if base_query.ends_with("/blocks") {
+                        format!("{}/{}", base_query, idx)
+                    } else if base_query.contains("/blocks/") {
+                        base_query.to_string()
+                    } else {
+                        format!("{}/{}", base_query, idx)
+                    };
+
+                    if let Some(block_type) = block_value.get("type").and_then(|v| v.as_str()) {
+                        if let Some(schema) = registry.get_schema(version, block_type) {
+                            // Add required properties
+                            for prop in &schema.required_properties {
+                                let full_path = format!("{}/{}", block_path, prop);
+                                let prop_meta = schema.properties.get(prop);
+                                let mut prop_json = serde_json::json!({
+                                    "required": true,
+                                    "block_type": block_type,
+                                    "property": prop
+                                });
+                                if let Some(meta) = prop_meta {
+                                    if let Some(title) = &meta.title {
+                                        prop_json["title"] = serde_json::json!(title);
+                                    }
+                                    if let Some(dimension) = &meta.dimension {
+                                        prop_json["dimension"] = serde_json::json!(dimension);
+                                    }
+                                    if let Some(default_unit) = &meta.default_unit {
+                                        prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                                    }
+                                }
+                                result.insert(full_path, prop_json);
+                            }
+                            // Add optional properties
+                            for prop in &schema.optional_properties {
+                                let full_path = format!("{}/{}", block_path, prop);
+                                let prop_meta = schema.properties.get(prop);
+                                let mut prop_json = serde_json::json!({
+                                    "required": false,
+                                    "block_type": block_type,
+                                    "property": prop
+                                });
+                                if let Some(meta) = prop_meta {
+                                    if let Some(title) = &meta.title {
+                                        prop_json["title"] = serde_json::json!(title);
+                                    }
+                                    if let Some(dimension) = &meta.dimension {
+                                        prop_json["dimension"] = serde_json::json!(dimension);
+                                    }
+                                    if let Some(default_unit) = &meta.default_unit {
+                                        prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                                    }
+                                }
+                                result.insert(full_path, prop_json);
+                            }
+
+                            // Validate the block
+                            if let Ok(block) =
+                                serde_json::from_value::<parser::models::Block>(block_value.clone())
+                            {
+                                let validation_result = validator.validate_block(&block, version);
+
+                                let issues: Vec<_> = validation_result
+                                    .issues
+                                    .iter()
+                                    .map(|issue| {
+                                        serde_json::json!({
+                                            "severity": match issue.severity {
+                                                schema::validator::IssueSeverity::Error => "error",
+                                                schema::validator::IssueSeverity::Warning => "warning",
+                                            },
+                                            "message": issue.message,
+                                            "property": issue.property,
+                                        })
+                                    })
+                                    .collect();
+
+                                let validation_key = format!("{}/_validation", block_path);
+                                result.insert(
+                                    validation_key,
+                                    serde_json::json!({
+                                        "is_valid": validation_result.is_valid(),
+                                        "has_issues": validation_result.has_issues(),
+                                        "issues": issues,
+                                    }),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            block_value => {
+                // Single block - use query path as base
+                let base_query = query_str.split('?').next().unwrap_or(query_str);
+
+                if let Some(block_type) = block_value.get("type").and_then(|v| v.as_str()) {
+                    if let Some(schema) = registry.get_schema(version, block_type) {
+                        // Add required properties
+                        for prop in &schema.required_properties {
+                            let full_path = format!("{}/{}", base_query, prop);
+                            let prop_meta = schema.properties.get(prop);
+                            let mut prop_json = serde_json::json!({
+                                "required": true,
+                                "block_type": block_type,
+                                "property": prop
+                            });
+                            if let Some(meta) = prop_meta {
+                                if let Some(title) = &meta.title {
+                                    prop_json["title"] = serde_json::json!(title);
+                                }
+                                if let Some(dimension) = &meta.dimension {
+                                    prop_json["dimension"] = serde_json::json!(dimension);
+                                }
+                                if let Some(default_unit) = &meta.default_unit {
+                                    prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                                }
+                            }
+                            result.insert(full_path, prop_json);
+                        }
+                        // Add optional properties
+                        for prop in &schema.optional_properties {
+                            let full_path = format!("{}/{}", base_query, prop);
+                            let prop_meta = schema.properties.get(prop);
+                            let mut prop_json = serde_json::json!({
+                                "required": false,
+                                "block_type": block_type,
+                                "property": prop
+                            });
+                            if let Some(meta) = prop_meta {
+                                if let Some(title) = &meta.title {
+                                    prop_json["title"] = serde_json::json!(title);
+                                }
+                                if let Some(dimension) = &meta.dimension {
+                                    prop_json["dimension"] = serde_json::json!(dimension);
+                                }
+                                if let Some(default_unit) = &meta.default_unit {
+                                    prop_json["defaultUnit"] = serde_json::json!(default_unit);
+                                }
+                            }
+                            result.insert(full_path, prop_json);
+                        }
+
+                        // Validate the block
+                        if let Ok(block) =
+                            serde_json::from_value::<parser::models::Block>(block_value.clone())
+                        {
+                            let validation_result = validator.validate_block(&block, version);
+
+                            let issues: Vec<_> = validation_result
+                                .issues
+                                .iter()
+                                .map(|issue| {
+                                    serde_json::json!({
+                                        "severity": match issue.severity {
+                                            schema::validator::IssueSeverity::Error => "error",
+                                            schema::validator::IssueSeverity::Warning => "warning",
+                                        },
+                                        "message": issue.message,
+                                        "property": issue.property,
+                                    })
+                                })
+                                .collect();
+
+                            let validation_key = format!("{}/_validation", base_query);
+                            result.insert(
+                                validation_key,
+                                serde_json::json!({
+                                    "is_valid": validation_result.is_valid(),
+                                    "has_issues": validation_result.has_issues(),
+                                    "issues": issues,
+                                }),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let json = serde_json::to_string(&result)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize result: {}", e)))?;
+
+        Ok(json)
+    }
+
+    /// Validate all blocks in a network and return both properties and validation results
+    /// files_json: JSON string mapping filename -> content (network files)
+    /// schema_files_json: JSON string mapping filename -> content (schema files)
+    /// Returns JSON object with flattened paths like "branch-1/blocks/0/length" -> property info and validation
+    #[wasm_bindgen]
+    pub fn validate_network_blocks(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        schema_files_json: &str,
+        version: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network
+        let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Load schema library from file contents
+        let schema_files: std::collections::HashMap<String, String> =
+            serde_json::from_str(schema_files_json).map_err(|e| {
+                JsValue::from_str(&format!("Failed to parse schema files JSON: {}", e))
+            })?;
+
+        // Clone schema_files since we need it for both registries
+        let schema_files_clone = schema_files.clone();
+
+        let mut registry = schema::registry::SchemaRegistry::new(std::path::PathBuf::from("")); // Path not used when loading from files
+
+        registry
+            .load_library_from_files(version, schema_files)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load schema library: {}", e)))?;
+
+        // Create a separate registry for the validator (since validator takes ownership)
+        let mut validator_registry =
+            schema::registry::SchemaRegistry::new(std::path::PathBuf::from(""));
+        validator_registry
+            .load_library_from_files(version, schema_files_clone)
+            .map_err(|e| {
+                JsValue::from_str(&format!(
+                    "Failed to load schema library for validator: {}",
+                    e
+                ))
+            })?;
+        let validator = schema::validator::SchemaValidator::new(validator_registry);
+
+        // Build result with properties and validation
+        let mut result = std::collections::HashMap::new();
+
+        // Iterate through all branch nodes and their blocks
+        let executor = query::executor::QueryExecutor::new(&network);
+        for node in &network.nodes {
+            if let parser::models::NodeData::Branch(branch) = node {
+                let branch_id = &branch.base.id;
+
+                // Query blocks for this branch
+                let query_path = query::parser::QueryPath::Property(
+                    "blocks".to_string(),
+                    Box::new(query::parser::QueryPath::Node(branch_id.clone())),
+                );
+
+                if let Ok(blocks_value) = executor.execute(&query_path) {
+                    if let Some(blocks_array) = blocks_value.as_array() {
+                        for (block_index, block_value) in blocks_array.iter().enumerate() {
+                            if let Some(block_type) =
+                                block_value.get("type").and_then(|v| v.as_str())
+                            {
+                                if let Some(schema) = registry.get_schema(version, block_type) {
+                                    // Add required properties
+                                    for prop in &schema.required_properties {
+                                        let path = format!(
+                                            "{}/blocks/{}/{}",
+                                            branch_id, block_index, prop
+                                        );
+                                        let prop_meta = schema.properties.get(prop);
+                                        let mut prop_json = serde_json::json!({
+                                            "block_type": block_type,
+                                            "property": prop,
+                                            "required": true,
+                                        });
+                                        if let Some(meta) = prop_meta {
+                                            if let Some(title) = &meta.title {
+                                                prop_json["title"] = serde_json::json!(title);
+                                            }
+                                            if let Some(dimension) = &meta.dimension {
+                                                prop_json["dimension"] =
+                                                    serde_json::json!(dimension);
+                                            }
+                                            if let Some(default_unit) = &meta.default_unit {
+                                                prop_json["defaultUnit"] =
+                                                    serde_json::json!(default_unit);
+                                            }
+                                        }
+                                        result.insert(path, prop_json);
+                                    }
+
+                                    // Add optional properties
+                                    for prop in &schema.optional_properties {
+                                        let path = format!(
+                                            "{}/blocks/{}/{}",
+                                            branch_id, block_index, prop
+                                        );
+                                        let prop_meta = schema.properties.get(prop);
+                                        let mut prop_json = serde_json::json!({
+                                            "block_type": block_type,
+                                            "property": prop,
+                                            "required": false,
+                                        });
+                                        if let Some(meta) = prop_meta {
+                                            if let Some(title) = &meta.title {
+                                                prop_json["title"] = serde_json::json!(title);
+                                            }
+                                            if let Some(dimension) = &meta.dimension {
+                                                prop_json["dimension"] =
+                                                    serde_json::json!(dimension);
+                                            }
+                                            if let Some(default_unit) = &meta.default_unit {
+                                                prop_json["defaultUnit"] =
+                                                    serde_json::json!(default_unit);
+                                            }
+                                        }
+                                        result.insert(path, prop_json);
+                                    }
+
+                                    // Validate the block
+                                    if let Ok(block) = serde_json::from_value::<parser::models::Block>(
+                                        block_value.clone(),
+                                    ) {
+                                        let validation_result =
+                                            validator.validate_block(&block, version);
+
+                                        let issues: Vec<_> = validation_result
+                                            .issues
+                                            .iter()
+                                            .map(|issue| {
+                                                serde_json::json!({
+                                                    "severity": match issue.severity {
+                                                        schema::validator::IssueSeverity::Error => "error",
+                                                        schema::validator::IssueSeverity::Warning => "warning",
+                                                    },
+                                                    "message": issue.message,
+                                                    "property": issue.property,
+                                                })
+                                            })
+                                            .collect();
+
+                                        let validation_key = format!(
+                                            "{}/blocks/{}/_validation",
+                                            branch_id, block_index
+                                        );
+                                        result.insert(
+                                            validation_key,
+                                            serde_json::json!({
+                                                "is_valid": validation_result.is_valid(),
+                                                "has_issues": validation_result.has_issues(),
+                                                "issues": issues,
+                                            }),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let json = serde_json::to_string(&result)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize result: {}", e)))?;
+
+        Ok(json)
     }
 }

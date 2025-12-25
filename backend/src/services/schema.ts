@@ -152,3 +152,53 @@ async function readSchemaFiles(
 
   return files;
 }
+
+export async function validateQueryBlocks(
+  networkPath: string,
+  query: string,
+  schemasDir: string,
+  version: string
+): Promise<any> {
+  const wasm = getWasm();
+
+  // Read network files
+  const { files, configContent } = await readNetworkFiles(networkPath);
+  const filesJson = JSON.stringify(files);
+
+  // Read schema files
+  const schemaFiles = await readSchemaFiles(schemasDir, version);
+  const schemaFilesJson = JSON.stringify(schemaFiles);
+
+  const result = wasm.validate_query_blocks(
+    filesJson,
+    configContent || undefined,
+    query,
+    schemaFilesJson,
+    version
+  );
+  return JSON.parse(result);
+}
+
+export async function validateNetworkBlocks(
+  networkPath: string,
+  schemasDir: string,
+  version: string
+): Promise<any> {
+  const wasm = getWasm();
+
+  // Read network files
+  const { files, configContent } = await readNetworkFiles(networkPath);
+  const filesJson = JSON.stringify(files);
+
+  // Read schema files
+  const schemaFiles = await readSchemaFiles(schemasDir, version);
+  const schemaFilesJson = JSON.stringify(schemaFiles);
+
+  const result = wasm.validate_network_blocks(
+    filesJson,
+    configContent || undefined,
+    schemaFilesJson,
+    version
+  );
+  return JSON.parse(result);
+}

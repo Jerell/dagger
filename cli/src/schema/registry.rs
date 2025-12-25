@@ -23,6 +23,8 @@ pub struct PropertyMetadata {
     pub dimension: Option<String>,
     /// Default unit for display (e.g., "bar", "m", "C")
     pub default_unit: Option<String>,
+    /// Display name/title for the property
+    pub title: Option<String>,
 }
 
 pub struct SchemaRegistry {
@@ -144,6 +146,8 @@ struct PropertyMetadataJson {
     dimension: Option<String>,
     #[serde(rename = "defaultUnit", default)]
     default_unit: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
 }
 
 impl From<SchemaJson> for SchemaDefinition {
@@ -157,6 +161,7 @@ impl From<SchemaJson> for SchemaDefinition {
                     PropertyMetadata {
                         dimension: meta.dimension,
                         default_unit: meta.default_unit,
+                        title: meta.title,
                     },
                 )
             })

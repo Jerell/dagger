@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 interface PropertyMetadata {
   dimension?: string; // Dimension type (e.g., "pressure", "length", "temperature")
   defaultUnit?: string; // Default unit for display (e.g., "bar", "m", "C")
+  title?: string; // Display name for the property
 }
 
 interface SchemaMetadata {
@@ -228,20 +229,41 @@ async function extractSchemaMetadata(
             metaBraceStart,
             metaBraceEnd
           );
-          // Extract dimension and defaultUnit
+          // Extract dimension, defaultUnit, and title
           const dimensionMatch = metaContent.match(
             /dimension:\s*["']([^"']+)["']/
           );
           const defaultUnitMatch = metaContent.match(
             /defaultUnit:\s*["']([^"']+)["']/
           );
+          const titleMatch = metaContent.match(/title:\s*["']([^"']+)["']/);
 
-          if (dimensionMatch) {
-            properties[prop.name] = {
-              dimension: dimensionMatch[1],
-            };
+          // Also check for .describe() which might be used for title/description
+          // Look for .describe("...") in the property definition
+          const describeMatch = propDefinition.match(
+            /\.describe\(["']([^"']+)["']\)/
+          );
+
+          if (
+            dimensionMatch ||
+            defaultUnitMatch ||
+            titleMatch ||
+            describeMatch
+          ) {
+            if (!properties[prop.name]) {
+              properties[prop.name] = {};
+            }
+            if (dimensionMatch) {
+              properties[prop.name].dimension = dimensionMatch[1];
+            }
             if (defaultUnitMatch) {
               properties[prop.name].defaultUnit = defaultUnitMatch[1];
+            }
+            if (titleMatch) {
+              properties[prop.name].title = titleMatch[1];
+            } else if (describeMatch) {
+              // Use describe() value as title if no explicit title in meta
+              properties[prop.name].title = describeMatch[1];
             }
           }
         }

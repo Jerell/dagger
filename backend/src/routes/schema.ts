@@ -5,6 +5,8 @@ import {
   validateBlock,
   getNetworkSchemas,
   getBlockSchemaProperties,
+  validateQueryBlocks,
+  validateNetworkBlocks,
 } from "../services/schema";
 
 export const schemaRoutes = new Hono();
@@ -68,6 +70,44 @@ schemaRoutes.get("/network", async (c) => {
 });
 
 /**
+ * GET /api/schema/network/validate
+ * Validate all blocks in a network and return both properties and validation results
+ * Returns the same flattened format as /api/schema/network but includes validation for each block
+ *
+ * Query params:
+ * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - version: Schema version (required)
+ * - schemasDir: Path to schemas directory (default: "../schemas")
+ */
+schemaRoutes.get("/network/validate", async (c) => {
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
+  const version = c.req.query("version");
+  const schemasDir = c.req.query("schemasDir") || "../schemas";
+
+  if (!version) {
+    return c.json({ error: "Missing required query parameter: version" }, 400);
+  }
+
+  try {
+    const result = await validateNetworkBlocks(
+      networkPath,
+      schemasDir,
+      version
+    );
+    return c.json(result);
+  } catch (error) {
+    return c.json(
+      {
+        error: "Failed to validate network blocks",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+/**
  * GET /api/schema/properties
  * Get schema properties for blocks matching a query path
  *
@@ -104,6 +144,50 @@ schemaRoutes.get("/properties", async (c) => {
     return c.json(
       {
         error: "Failed to get block schema properties",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+/**
+ * GET /api/schema/validate
+ * Validate blocks matching a query path and return both properties and validation results
+ *
+ * Query params:
+ * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - q: Query path (e.g., "branch-4/data/blocks/2" or "branch-4/data/blocks")
+ * - version: Schema version (required)
+ * - schemasDir: Path to schemas directory (default: "../schemas")
+ */
+schemaRoutes.get("/validate", async (c) => {
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
+  const query = c.req.query("q");
+  const version = c.req.query("version");
+  const schemasDir = c.req.query("schemasDir") || "../schemas";
+
+  if (!query) {
+    return c.json({ error: "Missing required query parameter: q" }, 400);
+  }
+
+  if (!version) {
+    return c.json({ error: "Missing required query parameter: version" }, 400);
+  }
+
+  try {
+    const result = await validateQueryBlocks(
+      networkPath,
+      query,
+      schemasDir,
+      version
+    );
+    return c.json(result);
+  } catch (error) {
+    return c.json(
+      {
+        error: "Validation failed",
         message: error instanceof Error ? error.message : String(error),
       },
       500
