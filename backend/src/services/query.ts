@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import dim from "./dim";
 import { formatQueryResult } from "./unitFormatter";
-import { getBlockSchemaProperties } from "./schema";
+import { getBlockSchemaProperties } from "./effectSchemaProperties";
 
 // With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
@@ -256,7 +256,6 @@ export async function queryNetwork(
         const schemaProperties = await getBlockSchemaProperties(
           networkPath,
           schemaQuery,
-          "../schemas",
           "v1.0" // TODO: Make version configurable
         );
         // Look for this property in the schema results

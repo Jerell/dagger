@@ -130,6 +130,7 @@ fn load_node_from_content(
         .ok_or("Missing 'type' field")?;
 
     // Deserialize based on type
+    #[allow(unused_mut)] // mut needed for process_units_in_node in non-WASM builds
     let mut node = match type_str {
         "branch" => {
             let mut branch: BranchNode = toml::from_str(content)?;
@@ -159,7 +160,9 @@ fn load_node_from_content(
     // Process unit strings in the node (no schema registry at this level for now)
     // Unit processing is disabled for WASM builds (wasmtime can't be compiled to WASM)
     #[cfg(not(target_arch = "wasm32"))]
-    process_units_in_node(&mut node, None, None)?;
+    {
+        process_units_in_node(&mut node, None, None)?;
+    }
 
     Ok(node)
 }

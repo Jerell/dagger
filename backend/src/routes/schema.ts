@@ -1,28 +1,25 @@
 import { Hono } from "hono";
 import {
-  getSchemas,
-  getSchema,
-  validateBlock,
-  getNetworkSchemas,
-  getBlockSchemaProperties,
   validateQueryBlocks,
   validateNetworkBlocks,
-} from "../services/schema";
+  validateBlockDirect,
+} from "../services/effectValidation";
+import {
+  getSchemas,
+  getSchema,
+  getNetworkSchemas,
+  getBlockSchemaProperties,
+} from "../services/effectSchemaProperties";
 
 export const schemaRoutes = new Hono();
 
 /**
  * GET /api/schema
- * Get all available schema versions
- *
- * Query params:
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * Get all available schema sets
  */
 schemaRoutes.get("/", async (c) => {
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
-
   try {
-    const schemas = await getSchemas(schemasDir);
+    const schemas = getSchemas();
     return c.json(schemas);
   } catch (error) {
     return c.json(
@@ -42,21 +39,19 @@ schemaRoutes.get("/", async (c) => {
  *
  * Query params:
  * - network: Network name (default: "preset1") - looks in backend/networks/
- * - version: Schema version (required)
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/network", async (c) => {
   const networkName = c.req.query("network") || "preset1";
   const networkPath = `networks/${networkName}`;
   const version = c.req.query("version");
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
 
   if (!version) {
     return c.json({ error: "Missing required query parameter: version" }, 400);
   }
 
   try {
-    const schemas = await getNetworkSchemas(networkPath, schemasDir, version);
+    const schemas = await getNetworkSchemas(networkPath, version);
     return c.json(schemas);
   } catch (error) {
     return c.json(
@@ -76,25 +71,19 @@ schemaRoutes.get("/network", async (c) => {
  *
  * Query params:
  * - network: Network name (default: "preset1") - looks in backend/networks/
- * - version: Schema version (required)
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/network/validate", async (c) => {
   const networkName = c.req.query("network") || "preset1";
   const networkPath = `networks/${networkName}`;
   const version = c.req.query("version");
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
 
   if (!version) {
     return c.json({ error: "Missing required query parameter: version" }, 400);
   }
 
   try {
-    const result = await validateNetworkBlocks(
-      networkPath,
-      schemasDir,
-      version
-    );
+    const result = await validateNetworkBlocks(networkPath, version);
     return c.json(result);
   } catch (error) {
     return c.json(
@@ -113,16 +102,14 @@ schemaRoutes.get("/network/validate", async (c) => {
  *
  * Query params:
  * - network: Network name (default: "preset1") - looks in backend/networks/
- * - q: Query path (e.g., "branch-4/data/blocks/2" or "branch-4/data/blocks")
- * - version: Schema version (required)
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * - q: Query path (e.g., "branch-4/blocks/2" or "branch-4/blocks")
+ * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/properties", async (c) => {
   const networkName = c.req.query("network") || "preset1";
   const networkPath = `networks/${networkName}`;
   const query = c.req.query("q");
   const version = c.req.query("version");
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
 
   if (!query) {
     return c.json({ error: "Missing required query parameter: q" }, 400);
@@ -136,7 +123,6 @@ schemaRoutes.get("/properties", async (c) => {
     const properties = await getBlockSchemaProperties(
       networkPath,
       query,
-      schemasDir,
       version
     );
     return c.json(properties);
@@ -157,16 +143,14 @@ schemaRoutes.get("/properties", async (c) => {
  *
  * Query params:
  * - network: Network name (default: "preset1") - looks in backend/networks/
- * - q: Query path (e.g., "branch-4/data/blocks/2" or "branch-4/data/blocks")
- * - version: Schema version (required)
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * - q: Query path (e.g., "branch-4/blocks/2" or "branch-4/blocks")
+ * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/validate", async (c) => {
   const networkName = c.req.query("network") || "preset1";
   const networkPath = `networks/${networkName}`;
   const query = c.req.query("q");
   const version = c.req.query("version");
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
 
   if (!query) {
     return c.json({ error: "Missing required query parameter: q" }, 400);
@@ -177,12 +161,7 @@ schemaRoutes.get("/validate", async (c) => {
   }
 
   try {
-    const result = await validateQueryBlocks(
-      networkPath,
-      query,
-      schemasDir,
-      version
-    );
+    const result = await validateQueryBlocks(networkPath, query, version);
     return c.json(result);
   } catch (error) {
     return c.json(
@@ -200,15 +179,14 @@ schemaRoutes.get("/validate", async (c) => {
  * Validate a block against a schema
  *
  * Body:
- * - version: Schema version
+ * - version: Schema set (e.g., "v1.0" or "v1.0-costing")
  * - blockType: Type of block to validate
  * - block: Block data to validate
- * - schemasDir: Path to schemas directory (optional)
  */
 schemaRoutes.post("/validate", async (c) => {
   try {
     const body = await c.req.json();
-    const { version, blockType, block, schemasDir } = body;
+    const { version, blockType, block } = body;
 
     if (!version || !blockType || !block) {
       return c.json(
@@ -217,12 +195,9 @@ schemaRoutes.post("/validate", async (c) => {
       );
     }
 
-    const result = await validateBlock(
-      schemasDir || "../schemas",
-      version,
-      blockType,
-      block
-    );
+    // For POST validation, we validate a single block without network context
+    // This is a simplified validation that doesn't include scope resolution
+    const result = await validateBlockDirect(block, blockType, version);
     return c.json(result);
   } catch (error) {
     return c.json(
@@ -237,17 +212,13 @@ schemaRoutes.post("/validate", async (c) => {
 
 /**
  * GET /api/schema/:version
- * Get schemas for a specific version
- *
- * Query params:
- * - schemasDir: Path to schemas directory (default: "../schemas")
+ * Get schemas for a specific schema set
  */
 schemaRoutes.get("/:version", async (c) => {
   const version = c.req.param("version");
-  const schemasDir = c.req.query("schemasDir") || "../schemas";
 
   try {
-    const schema = await getSchema(schemasDir, version);
+    const schema = getSchema(version);
     return c.json(schema);
   } catch (error) {
     return c.json(
