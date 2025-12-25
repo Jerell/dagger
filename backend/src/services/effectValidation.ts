@@ -507,7 +507,9 @@ async function validateBlockInternal(
         continue;
       }
 
-      const hasError = errorMessage.includes(propertyName);
+      const errorPathMatches = errorMessage.matchAll(/└─\s*\["([^"]+)"\]/g);
+      const errorPaths = Array.from(errorPathMatches, (m) => m[1]);
+      const hasError = errorPaths.includes(propertyName);
       if (hasError) {
         let simpleMessage: string;
 
@@ -565,12 +567,14 @@ async function validateBlockInternal(
             simpleMessage = `Property '${propertyName}' exceeds the maximum constraint`;
           }
         } else {
-          const lines = errorMessage.split("\n");
-          const relevantLine = lines.find(
-            (line) => line.includes(propertyName) && !line.includes("readonly")
+          const errorLines = errorMessage.split("\n");
+          const propertyErrorLine = errorLines.find(
+            (line) =>
+              line.includes(`["${propertyName}"]`) && !line.includes("readonly")
           );
-          if (relevantLine) {
-            let cleaned = relevantLine.trim();
+          if (propertyErrorLine) {
+            let cleaned = propertyErrorLine.trim();
+            cleaned = cleaned.replace(/^└─\s*\["[^"]+"\]\s*/, "");
             cleaned = cleaned.replace(/^Length\s*/, "");
             cleaned = cleaned.replace(/^From side refinement failure\s*/, "");
             simpleMessage =
