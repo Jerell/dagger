@@ -82,8 +82,8 @@ export async function validateBlockDirect(
   if (!schema) {
     return {
       [`${blockType}/_schema`]: {
-        is_valid: false,
-        severity: "error",
+        is_valid: true,
+        severity: "warning",
         message: `Schema not found for block type '${blockType}' in schema set '${schemaSet}'`,
       },
     };
@@ -273,8 +273,8 @@ async function validateBlockInternal(
   if (!schema) {
     return {
       [`${blockPath}/_schema`]: {
-        is_valid: false,
-        severity: "error",
+        is_valid: true,
+        severity: "warning",
         message: `Schema not found for block type '${blockType}' in schema set '${schemaSet}'`,
       },
     };
