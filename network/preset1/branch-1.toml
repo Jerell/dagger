@@ -25,6 +25,7 @@ type = "Pipe"
 
 [[block]]
 type = "Compressor"
+pressure = "120 bar"
 
 [[block]]
 type = "Pipe"

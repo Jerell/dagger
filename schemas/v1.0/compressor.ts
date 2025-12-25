@@ -8,7 +8,7 @@ export const CompressorSchema = z.object({
   pressure: z
     .number()
     .min(0)
-    .describe("Operating pressure")
+    .describe("Outlet pressure")
     .meta({ dimension: "pressure", defaultUnit: "bar" }),
 
   // Optional properties

@@ -39,14 +39,14 @@ export async function formatValue(
       unitPreferences.dimensions?.[propertyMetadata.dimension]) ||
     propertyMetadata?.defaultUnit;
 
-  if (!preferredUnit) {
-    // No preferred unit, return as number
-    return value.toString();
-  }
-
-  // Get the base unit from the original string if available
+  // Get the original string if available
   const originalKey = `_${propertyName}_original`;
   const originalString = unitPreferences.originalStrings?.[originalKey];
+
+  if (!preferredUnit) {
+    // No preferred unit - return original string if available, otherwise just the number
+    return originalString || value.toString();
+  }
 
   if (!originalString) {
     // No original string, can't determine base unit - return as-is

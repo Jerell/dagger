@@ -27,6 +27,7 @@ length = "1000 m"
 
 [[block]]
 type = "Compressor"
+pressure = "120 bar"
 
 [[block]]
 type = "Pipe"
