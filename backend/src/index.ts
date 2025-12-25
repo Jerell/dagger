@@ -1,9 +1,9 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { queryRoutes } from "./routes/query.js";
-import { networkRoutes } from "./routes/network.js";
-import { schemaRoutes } from "./routes/schema.js";
+import { queryRoutes } from "./routes/query";
+import { networkRoutes } from "./routes/network";
+import { schemaRoutes } from "./routes/schema";
 
 const app = new Hono();
 

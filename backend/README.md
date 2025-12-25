@@ -34,11 +34,13 @@ The server will start on `http://localhost:3000` by default.
 
 ### Schema API
 
-- `GET /api/schema?schemasDir=<path>` - Get all available schema versions
-- `GET /api/schema/:version?schemasDir=<path>` - Get schemas for a specific version
+- `GET /api/schema` - Get all available schema versions
+- `GET /api/schema/:version` - Get schemas for a specific version
 - `GET /api/schema/network?network=<name>&version=<version>` - Get schema properties for all blocks in a network (flattened format)
 - `GET /api/schema/properties?network=<name>&q=<query>&version=<version>` - Get schema properties for blocks matching a query path
-- `POST /api/schema/validate` - Validate a block against a schema
+- `GET /api/schema/validate?network=<name>&q=<query>&version=<version>` - Validate blocks matching a query path
+- `GET /api/schema/network/validate?network=<name>&version=<version>` - Validate all blocks in a network
+- `POST /api/schema/validate` - Validate a block against a schema (without network context)
 
 ## WebAssembly Integration
 

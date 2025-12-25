@@ -1,7 +1,11 @@
 // Unit formatting service for backend
 // Applies unit preferences to query results
+//
+// NOTE: For formatting single values, use formatValueUnified from valueFormatter.ts
+// This file contains formatQueryResult for recursively formatting complex objects
 
 import dim from "./dim";
+import { formatValueUnified } from "./valueFormatter";
 
 export interface UnitPreferences {
   queryOverrides?: Record<string, string>;
@@ -93,38 +97,18 @@ export async function formatQueryResult(
     // Check if this is a top-level unit string (from scope resolution)
     // and we have property context to format it the same way as block properties
     if (propertyName) {
-      // Check if it looks like a unit string (has space separating number and unit)
-      const unitStringMatch = result.match(
-        /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
-      );
-      if (unitStringMatch) {
-        // This looks like a unit string - format it using the same logic as block properties
-        try {
-          // Store original string in preferences (same as block properties)
-          const originalKey = `_${propertyName}_original`;
-          const formatPrefs = {
-            ...unitPreferences,
-            originalStrings: {
-              ...unitPreferences.originalStrings,
-              [originalKey]: result,
-            },
-          };
-
-          // Extract numeric value (formatValue uses originalString for conversion, but needs number as fallback)
-          const numericValue = parseFloat(unitStringMatch[1]);
-
-          // Use formatValue with property metadata (same as block properties)
-          return await formatValue(
-            numericValue,
-            propertyName,
-            blockType,
-            formatPrefs,
-            propertyMetadata
-          );
-        } catch (error) {
-          // Formatting failed, keep original string
-          return result;
-        }
+      // Use unified formatter for consistency
+      try {
+        const formatted = await formatValueUnified(result, {
+          propertyName,
+          blockType,
+          unitPreferences,
+          propertyMetadata,
+        });
+        return formatted ?? result;
+      } catch (error) {
+        // Formatting failed, keep original string
+        return result;
       }
     }
     return result;
@@ -168,43 +152,24 @@ export async function formatQueryResult(
           formatted[key] = value;
         }
       } else if (typeof value === "string") {
-        // Check if this string looks like a unit value (e.g., "100 bar", "10 m")
-        // WASM builds return original strings instead of normalized numbers
-        const unitStringMatch = value.match(
-          /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
-        );
-        if (unitStringMatch) {
-          const numericValue = parseFloat(unitStringMatch[1]);
-
-          if (!isNaN(numericValue)) {
-            // This looks like a unit string - try to format it
-            try {
-              // Store original string in preferences for this formatting
-              const originalKey = `_${key}_original`;
-              const formatPrefs = {
-                ...unitPreferences,
-                originalStrings: {
-                  ...unitPreferences.originalStrings,
-                  [originalKey]: value,
-                },
-              };
-
-              formatted[key] = await formatValue(
-                numericValue,
-                key,
-                currentBlockType,
-                formatPrefs
-              );
-            } catch (error) {
-              // Formatting failed, keep original string
-              formatted[key] = value;
-            }
-          } else {
-            // Not a valid number, keep as-is
-            formatted[key] = value;
+        // Use unified formatter for consistency
+        try {
+          // Try to get property metadata from schema if available
+          let propMetadata = propertyMetadata;
+          if (!propMetadata && currentBlockType) {
+            // Could look up schema metadata here, but for now use what's provided
+            propMetadata = undefined;
           }
-        } else {
-          // Not a unit string, keep as-is
+
+          const formattedValue = await formatValueUnified(value, {
+            propertyName: key,
+            blockType: currentBlockType,
+            unitPreferences,
+            propertyMetadata: propMetadata,
+          });
+          formatted[key] = formattedValue ?? value;
+        } catch (error) {
+          // Formatting failed, keep original string
           formatted[key] = value;
         }
       } else {

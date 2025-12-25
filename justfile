@@ -67,11 +67,6 @@ cli-list NETWORK="network/preset1":
   # List all nodes in network
   cd {{justfile_directory()}}/cli && cargo run -- list {{NETWORK}}
 
-# Schema generation
-generate-schemas:
-  # Generate JSON schemas from Zod TypeScript files
-  cd {{justfile_directory()}}/schemas && npm run generate
-
 # Linting and formatting
 lint:
   # Run clippy on Rust code
@@ -130,8 +125,6 @@ dev-full:
   # Build WASM, generate schemas, and start backend
   @echo "Building WASM module..."
   just build-wasm
-  @echo "Generating schemas..."
-  just generate-schemas
   @echo "Starting backend server..."
   just dev-backend
 

@@ -7,10 +7,11 @@ import {
   getSchemaMetadata,
   getPropertyConstraints,
   PropertyMetadata,
-} from "./effectSchemas.js";
-import { formatValue, UnitPreferences } from "./unitFormatter.js";
-import { parseUnitPreferences } from "./query.js";
-import dim from "./dim.js";
+} from "./effectSchemas";
+import { UnitPreferences } from "./unitFormatter";
+import { formatValueUnified, FormatValueOptions } from "./valueFormatter";
+import { parseUnitPreferences } from "./query";
+import dim from "./dim";
 
 // With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
@@ -301,8 +302,43 @@ async function validateBlockInternal(
 
   const results: Record<string, ValidationResult> = {};
 
-  // Validate using Effect Schema
-  const validationResult = Schema.decodeUnknownEither(schema)(block);
+  // Convert unit strings to numbers in default units before validation
+  // Effect Schema expects numbers, not unit strings
+  const blockForValidation = { ...block };
+  for (const propertyName of Object.keys(blockForValidation)) {
+    const value = blockForValidation[propertyName];
+    if (typeof value === "string") {
+      // Check if it's a unit string (e.g., "1 mi", "100 bar")
+      const unitStringMatch = value.match(
+        /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
+      );
+      if (unitStringMatch) {
+        const propertyMetadata = schemaMetadata.properties[propertyName];
+        // If we have a defaultUnit, convert to that unit and extract the numeric value
+        if (propertyMetadata?.defaultUnit) {
+          try {
+            const converted = dim.eval(
+              `${value} as ${propertyMetadata.defaultUnit}`
+            );
+            const numericValue = parseFloat(converted.split(" ")[0]);
+            if (!isNaN(numericValue)) {
+              blockForValidation[propertyName] = numericValue;
+            }
+          } catch (error) {
+            // Conversion failed, keep original string (validation will fail)
+            console.warn(
+              `Failed to convert ${propertyName} value "${value}" to ${propertyMetadata.defaultUnit}:`,
+              error
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Validate using Effect Schema with converted values
+  const validationResult =
+    Schema.decodeUnknownEither(schema)(blockForValidation);
 
   // Get all properties from schema (required + optional)
   const allProperties = [
@@ -356,20 +392,26 @@ async function validateBlockInternal(
       resolvedValue !== undefined ? resolvedValue : block[propertyName];
 
     if (valueToValidate !== undefined && valueToValidate !== null) {
-      // Format value for display
-      let formattedValue: string | undefined;
-      if (typeof valueToValidate === "string") {
-        formattedValue = valueToValidate;
-      } else if (typeof valueToValidate === "number") {
-        // Format with unit if we have metadata
-        formattedValue = await formatValue(
-          valueToValidate,
-          propertyName,
-          blockType,
-          unitPreferences,
-          propertyMetadata
-        );
-      }
+      // Format value using unified formatter
+      const formatOptions: FormatValueOptions = {
+        propertyName,
+        blockType,
+        unitPreferences,
+        propertyMetadata,
+        networkPath,
+        schemaSet,
+        blockPath,
+      };
+
+      // If we have a resolved value from query, use it (it's already a string from WASM)
+      // Otherwise use the value from the block
+      const valueToFormat =
+        resolvedValue !== undefined ? resolvedValue : valueToValidate;
+
+      const formattedValue = await formatValueUnified(
+        valueToFormat,
+        formatOptions
+      );
 
       // Validate constraints if we have defaultUnit
       let constraintValid = true;
@@ -420,13 +462,95 @@ async function validateBlockInternal(
       if (Either.isLeft(validationResult)) {
         const errors = validationResult.left;
         // Check if this property has validation errors
-        // Effect Schema errors are structured, we need to check if this property is mentioned
+        // Effect Schema errors are structured, we need to extract a user-friendly message
         const errorMessage = String(errors);
         if (errorMessage.includes(propertyName)) {
+          // Extract a simpler error message from Effect Schema's verbose output
+          let simpleMessage: string;
+
+          // Try to extract the actual error reason
+          // Effect Schema error format: "Expected number, actual \"1 mi\""
+          if (
+            errorMessage.includes("Expected number") &&
+            errorMessage.includes("actual")
+          ) {
+            // This means a unit string wasn't converted - extract the actual value
+            const actualMatch = errorMessage.match(/actual "([^"]+)"/);
+            const actualValue = actualMatch ? actualMatch[1] : "a unit string";
+            simpleMessage = `Property '${propertyName}' must be a number, but received "${actualValue}". Unit conversion may have failed.`;
+          } else if (errorMessage.includes("From side refinement failure")) {
+            // Constraint violation - check if we have min/max metadata
+            if (propertyMetadata.min !== undefined) {
+              simpleMessage = `Property '${propertyName}' must be greater than ${
+                propertyMetadata.min
+              }${
+                propertyMetadata.defaultUnit
+                  ? ` ${propertyMetadata.defaultUnit}`
+                  : ""
+              }`;
+            } else if (propertyMetadata.max !== undefined) {
+              simpleMessage = `Property '${propertyName}' must be less than ${
+                propertyMetadata.max
+              }${
+                propertyMetadata.defaultUnit
+                  ? ` ${propertyMetadata.defaultUnit}`
+                  : ""
+              }`;
+            } else {
+              simpleMessage = `Property '${propertyName}' does not meet the constraint requirements`;
+            }
+          } else if (errorMessage.includes("greater than")) {
+            // Constraint violation - extract the constraint info
+            const minMatch = errorMessage.match(/greater than (\d+)/);
+            if (minMatch) {
+              simpleMessage = `Property '${propertyName}' must be greater than ${
+                minMatch[1]
+              }${
+                propertyMetadata.defaultUnit
+                  ? ` ${propertyMetadata.defaultUnit}`
+                  : ""
+              }`;
+            } else {
+              simpleMessage = `Property '${propertyName}' does not meet the minimum constraint`;
+            }
+          } else if (errorMessage.includes("less than")) {
+            // Constraint violation - extract the constraint info
+            const maxMatch = errorMessage.match(/less than (\d+)/);
+            if (maxMatch) {
+              simpleMessage = `Property '${propertyName}' must be less than ${
+                maxMatch[1]
+              }${
+                propertyMetadata.defaultUnit
+                  ? ` ${propertyMetadata.defaultUnit}`
+                  : ""
+              }`;
+            } else {
+              simpleMessage = `Property '${propertyName}' exceeds the maximum constraint`;
+            }
+          } else {
+            // Generic error - try to extract the key part
+            const lines = errorMessage.split("\n");
+            const relevantLine = lines.find(
+              (line) =>
+                line.includes(propertyName) && !line.includes("readonly")
+            );
+            if (relevantLine) {
+              // Extract just the error reason, not the full schema structure
+              // Remove common verbose parts
+              let cleaned = relevantLine.trim();
+              cleaned = cleaned.replace(/^Length\s*/, "");
+              cleaned = cleaned.replace(/^From side refinement failure\s*/, "");
+              simpleMessage =
+                cleaned || `Property '${propertyName}' validation failed`;
+            } else {
+              simpleMessage = `Property '${propertyName}' validation failed`;
+            }
+          }
+
           results[propertyPath] = {
             is_valid: false,
             severity: "error",
-            message: `Validation error for property '${propertyName}': ${errorMessage}`,
+            message: simpleMessage,
             value: formattedValue,
             scope: resolvedScope,
           };

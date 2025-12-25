@@ -105,13 +105,13 @@ curl "http://localhost:3000/api/network/edges?network=preset1&source=branch-1"
 Get all schema versions:
 
 ```bash
-curl "http://localhost:3000/api/schema?schemasDir=../schemas"
+curl "http://localhost:3000/api/schema"
 ```
 
 Get schemas for a version:
 
 ```bash
-curl "http://localhost:3000/api/schema/v1.0?schemasDir=../schemas"
+curl "http://localhost:3000/api/schema/v1.0"
 ```
 
 Get network schemas (all blocks):
@@ -138,7 +138,7 @@ Validate entire network:
 curl "http://localhost:3000/api/schema/network/validate?network=preset1&version=v1.0"
 ```
 
-Validate a block (POST):
+Validate a block (POST, without network context):
 
 ```bash
 curl -X POST http://localhost:3000/api/schema/validate \
@@ -149,22 +149,24 @@ curl -X POST http://localhost:3000/api/schema/validate \
     "block": {
       "type": "Compressor",
       "pressure": 15.5
-    },
-    "schemasDir": "../schemas"
+    }
   }'
 ```
 
 **Note:**
 
-- All schema property endpoints now include metadata (`title`, `dimension`, `defaultUnit`) when available in the schema definitions.
-- Validation endpoints include `value` and `scope` fields when properties are found via scope resolution.
+- All schema property endpoints include metadata (`title`, `dimension`, `defaultUnit`) when available in the schema definitions.
+- Validation endpoints (GET) include `value` (formatted strings according to unit preferences) and `scope` fields when properties are found via scope resolution.
+- Values in validation responses are formatted using unit preferences from config (block-type preferences, dimension-level preferences, or schema defaultUnit).
 - Unknown properties are not validated (allows validating subsets of properties with different schemas).
+- Validation uses Effect Schema (not Zod) and is performed entirely in TypeScript.
+- Schemas are located in `backend/src/schemas/` and organized by version (e.g., `v1.0/`, `v1.0-costing/`).
 
 ## Notes
 
 - **Network parameter**: Use network names (e.g., `preset1`) not full paths. The API maps these to `backend/networks/{name}/`
 - **Default network**: If `network` parameter is omitted, defaults to `preset1`
-- **Schemas directory**: The `schemasDir` parameter defaults to `../schemas` (relative to backend directory)
+- **Schemas**: Schemas are located in `backend/src/schemas/` and organized by version (e.g., `v1.0/`, `v1.0-costing/`). They use Effect Schema (not Zod).
 - **WASM module**: Must be built before the API will work (`just build-wasm`)
 - **File system access**: WASM runs in a browser-like environment, so file paths are resolved relative to where the Node.js process is running (the backend directory)
 - **Setting up networks**: Use `just setup-networks` to copy networks from project root to `backend/networks/`

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { schemaRegistry } from "../schemas/index.js";
+import { schemaRegistry } from "../schemas/index";
 
 export interface PropertyMetadata {
   dimension?: string;
@@ -51,28 +51,29 @@ export function listBlockTypes(schemaSet: string): string[] {
 
 /**
  * Extract annotations from a schema
+ * Annotations are stored in the AST's annotations object
  */
 function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
   try {
-    // Effect Schema stores annotations in the schema's internal structure
-    // We can access them via the AST or annotations method
-    const ast = Schema.ast(schema);
-    if (ast && "_tag" in ast && ast._tag === "Refinement") {
-      // For refined schemas, get annotations from the from schema
-      const fromSchema = (ast as any).from;
-      if (fromSchema) {
-        return getAnnotations(fromSchema);
+    // Effect Schema stores annotations in the AST
+    const ast = (schema as any).ast;
+    if (!ast) {
+      return {};
+    }
+
+    // Get annotations from AST - they're stored as a plain object
+    const annotations = ast.annotations || {};
+
+    // Extract plain object properties (not Symbol keys)
+    const result: Record<string, any> = {};
+    for (const key in annotations) {
+      // Skip Symbol keys, only get string keys
+      if (typeof key === "string") {
+        result[key] = annotations[key];
       }
     }
-    // Try to get annotations directly
-    if ("annotations" in schema) {
-      return (schema as any).annotations || {};
-    }
-    // Fallback: check AST for annotations
-    if (ast && "annotations" in ast) {
-      return (ast as any).annotations || {};
-    }
-    return {};
+
+    return result;
   } catch {
     return {};
   }
@@ -84,52 +85,75 @@ function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
 function getPropertyMetadata(
   propertySchema: Schema.Schema<any>
 ): PropertyMetadata {
-  const annotations = getAnnotations(propertySchema);
+  const schemaAny = propertySchema as any;
+
+  // Get the AST - check the schema itself first
+  let ast = schemaAny.ast;
+
+  // If no AST on the schema itself, and it has a 'from' field, check the 'from' schema
+  // This handles optional properties (PropertySignatureWithFromImpl) where the actual schema is in 'from'
+  if (!ast && schemaAny.from) {
+    const fromSchema = schemaAny.from;
+    // Check if fromSchema has an ast (it might be a Refinement or other schema type)
+    if (fromSchema && typeof fromSchema === "object" && "ast" in fromSchema) {
+      ast = fromSchema.ast;
+    }
+  }
+
+  if (!ast) {
+    return {};
+  }
+
+  const annotations = ast.annotations || {};
   const metadata: PropertyMetadata = {};
 
-  if (annotations.dimension) {
-    metadata.dimension = String(annotations.dimension);
-  }
-  if (annotations.defaultUnit) {
-    metadata.defaultUnit = String(annotations.defaultUnit);
-  }
-  if (annotations.title) {
-    metadata.title = String(annotations.title);
+  // Extract plain object properties from annotations (not Symbol keys)
+  // Use Object.keys to get string keys
+  const stringKeys = Object.keys(annotations);
+  for (const key of stringKeys) {
+    const value = annotations[key];
+    if (key === "dimension") {
+      metadata.dimension = String(value);
+    } else if (key === "defaultUnit") {
+      metadata.defaultUnit = String(value);
+    } else if (key === "title") {
+      metadata.title = String(value);
+    }
   }
 
-  // Extract min/max from constraints
-  const ast = Schema.ast(propertySchema);
-  if (ast) {
-    metadata.min = extractMinConstraint(ast);
-    metadata.max = extractMaxConstraint(ast);
-  }
+  // Extract min/max from constraints in JSONSchema annotation
+  metadata.min = extractMinConstraint(ast);
+  metadata.max = extractMaxConstraint(ast);
 
   return metadata;
 }
 
 /**
  * Extract min constraint from schema AST
+ * Constraints are stored in annotations JSONSchema object
  */
 function extractMinConstraint(ast: any): number | undefined {
   if (!ast) return undefined;
 
-  // Check if this is a refinement with greaterThan
-  if (ast._tag === "Refinement") {
-    const predicate = ast.predicate;
-    if (predicate && predicate._tag === "GreaterThan") {
-      return predicate.min;
-    }
-    // Recursively check nested refinements
-    if (ast.from) {
-      const nested = extractMinConstraint(ast.from);
-      if (nested !== undefined) return nested;
+  // Check annotations for JSONSchema with minimum/exclusiveMinimum
+  const annotations = ast.annotations || {};
+
+  // Find the JSONSchema annotation (it's a Symbol key)
+  let jsonSchema: any = undefined;
+  for (const key of Object.getOwnPropertySymbols(annotations)) {
+    if (String(key).includes("JSONSchema")) {
+      jsonSchema = annotations[key];
+      break;
     }
   }
 
-  // Check nested refinements (pipe chains)
-  if (ast._tag === "Union" || ast._tag === "Tuple") {
-    // Not applicable for min/max
-    return undefined;
+  if (jsonSchema) {
+    if (jsonSchema.minimum !== undefined) {
+      return jsonSchema.minimum;
+    }
+    if (jsonSchema.exclusiveMinimum !== undefined) {
+      return jsonSchema.exclusiveMinimum;
+    }
   }
 
   return undefined;
@@ -137,23 +161,29 @@ function extractMinConstraint(ast: any): number | undefined {
 
 /**
  * Extract max constraint from schema AST
+ * Constraints are stored in annotations JSONSchema object
  */
 function extractMaxConstraint(ast: any): number | undefined {
   if (!ast) return undefined;
 
-  // Check if this is a refinement with lessThan or lessThanOrEqualTo
-  if (ast._tag === "Refinement") {
-    const predicate = ast.predicate;
-    if (predicate && predicate._tag === "LessThan") {
-      return predicate.max;
+  // Check annotations for JSONSchema with maximum/exclusiveMaximum
+  const annotations = ast.annotations || {};
+
+  // Find the JSONSchema annotation (it's a Symbol key)
+  let jsonSchema: any = undefined;
+  for (const key of Object.getOwnPropertySymbols(annotations)) {
+    if (String(key).includes("JSONSchema")) {
+      jsonSchema = annotations[key];
+      break;
     }
-    if (predicate && predicate._tag === "LessThanOrEqualTo") {
-      return predicate.max;
+  }
+
+  if (jsonSchema) {
+    if (jsonSchema.maximum !== undefined) {
+      return jsonSchema.maximum;
     }
-    // Recursively check nested refinements
-    if (ast.from) {
-      const nested = extractMaxConstraint(ast.from);
-      if (nested !== undefined) return nested;
+    if (jsonSchema.exclusiveMaximum !== undefined) {
+      return jsonSchema.exclusiveMaximum;
     }
   }
 
@@ -168,13 +198,13 @@ function isOptionalProperty(
   propertyName: string
 ): boolean {
   try {
-    const ast = Schema.ast(structSchema);
+    const ast = (structSchema as any).ast;
     if (ast && ast._tag === "TypeLiteral") {
-      const property = (ast as any).propertySignatures?.find(
+      const property = ast.propertySignatures?.find(
         (p: any) => p.name === propertyName
       );
       if (property) {
-        return property.type._tag === "Optional";
+        return property.isOptional === true;
       }
     }
     return false;
@@ -188,9 +218,9 @@ function isOptionalProperty(
  */
 function getPropertyNames(structSchema: Schema.Schema<any>): string[] {
   try {
-    const ast = Schema.ast(structSchema);
+    const ast = (structSchema as any).ast;
     if (ast && ast._tag === "TypeLiteral") {
-      return (ast as any).propertySignatures?.map((p: any) => p.name) || [];
+      return ast.propertySignatures?.map((p: any) => p.name) || [];
     }
     return [];
   } catch {
@@ -200,22 +230,37 @@ function getPropertyNames(structSchema: Schema.Schema<any>): string[] {
 
 /**
  * Get property schema from a struct schema
+ * For optional properties, the type is a Union, we need to extract the actual schema
+ * We use the fields directly from the schema object for better access
  */
 function getPropertySchema(
   structSchema: Schema.Schema<any>,
   propertyName: string
 ): Schema.Schema<any> | undefined {
   try {
-    const ast = Schema.ast(structSchema);
+    // Access the schema's fields directly - this gives us the actual schema objects
+    const schemaAny = structSchema as any;
+    const fields = schemaAny.fields;
+    if (fields && fields[propertyName]) {
+      return fields[propertyName];
+    }
+
+    // Fallback: try AST approach
+    const ast = schemaAny.ast;
     if (ast && ast._tag === "TypeLiteral") {
-      const property = (ast as any).propertySignatures?.find(
+      const property = ast.propertySignatures?.find(
         (p: any) => p.name === propertyName
       );
       if (property) {
-        // Unwrap Optional if needed
-        if (property.type._tag === "Optional") {
-          return property.type.element;
+        // For optional properties, type is a Union, extract the non-undefined branch
+        if (property.isOptional && property.type._tag === "Union") {
+          // Find the non-undefined type in the union
+          const nonUndefined = property.type.types?.find(
+            (t: any) => t._tag !== "UndefinedKeyword"
+          );
+          return nonUndefined || property.type;
         }
+        // For required properties, return the type directly
         return property.type;
       }
     }
@@ -255,7 +300,24 @@ export function getSchemaMetadata(
       required.push(propName);
     }
 
-    const propSchema = getPropertySchema(schema, propName);
+    // Get schema directly from fields - this works for both required and optional
+    const schemaAny = schema as any;
+    let propSchema: Schema.Schema<any> | undefined;
+
+    if (schemaAny.fields && schemaAny.fields[propName]) {
+      propSchema = schemaAny.fields[propName];
+
+      // For optional properties, the field is a PropertySignatureWithFromImpl
+      // We need to get the actual schema from the 'from' field
+      // But only do this if the property is optional (required properties with refinements should use the schema directly)
+      if (isOptional && propSchema && (propSchema as any).from) {
+        propSchema = (propSchema as any).from;
+      }
+    } else {
+      // Fallback to getPropertySchema
+      propSchema = getPropertySchema(schema, propName);
+    }
+
     if (propSchema) {
       properties[propName] = getPropertyMetadata(propSchema);
     }

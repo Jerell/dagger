@@ -5,7 +5,7 @@ import {
   getSchemaMetadata,
   listSchemaSets,
   listBlockTypes,
-} from "./effectSchemas.js";
+} from "./effectSchemas";
 
 // With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
@@ -236,4 +236,3 @@ export function getSchema(schemaSet: string): Record<string, any> {
 
   return result;
 }
-

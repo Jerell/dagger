@@ -237,19 +237,19 @@ http GET localhost:3000/api/network/edges network==preset1 source==branch-1 targ
 ### Get All Schema Versions
 
 ```bash
-http GET localhost:3000/api/schema schemasDir==../schemas
+http GET localhost:3000/api/schema
 ```
 
 **Expected Response:**
 
 ```json
-["v1.0", "v1.1"]
+["v1.0", "v1.0-costing"]
 ```
 
 ### Get Schemas for a Version
 
 ```bash
-http GET localhost:3000/api/schema/v1.0 schemasDir==../schemas
+http GET localhost:3000/api/schema/v1.0
 ```
 
 ### Get Network Schemas
@@ -365,20 +365,43 @@ This endpoint:
 ```json
 {
   "Compressor": {
-    "type": "object",
+    "block_type": "Compressor",
+    "version": "v1.0",
+    "required": ["pressure"],
+    "optional": ["quantity", "efficiency"],
     "properties": {
-      "pressure": { "type": "number" },
-      "temperature": { "type": "number" }
-    },
-    "required": ["pressure"]
+      "pressure": {
+        "dimension": "pressure",
+        "defaultUnit": "bar",
+        "title": "Outlet pressure",
+        "min": 0
+      },
+      "efficiency": {
+        "title": "Efficiency",
+        "min": 0,
+        "max": 1
+      }
+    }
   },
   "Pipe": {
-    "type": "object",
+    "block_type": "Pipe",
+    "version": "v1.0",
+    "required": ["length"],
+    "optional": ["quantity", "diameter", "uValue"],
     "properties": {
-      "length": { "type": "number" },
-      "diameter": { "type": "number" }
-    },
-    "required": ["length"]
+      "length": {
+        "dimension": "length",
+        "defaultUnit": "m",
+        "title": "Length",
+        "min": 200
+      },
+      "diameter": {
+        "dimension": "length",
+        "defaultUnit": "m",
+        "title": "Diameter",
+        "min": 0
+      }
+    }
   }
 }
 ```
@@ -404,18 +427,18 @@ http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks
 {
   "branch-4/blocks/2/length": {
     "is_valid": true,
-    "value": 100.0,
-    "scope": "block",
-    "message": "Value found in block scope"
+    "value": "1.60934 km",
+    "scope": "block"
   },
   "branch-4/blocks/2/diameter": {
-    "is_valid": true
+    "is_valid": true,
+    "value": "0.5 m",
+    "scope": "block"
   },
   "branch-4/blocks/2/ambientTemperature": {
     "is_valid": true,
-    "value": 20.0,
-    "scope": "global",
-    "message": "Value found in global scope"
+    "value": "-253.15 C",
+    "scope": "global"
   },
   "branch-4/blocks/2/pressure": {
     "is_valid": false,
@@ -429,11 +452,13 @@ This endpoint:
 
 - Returns validation results for each property path
 - Each property has `is_valid: true` if valid, or `is_valid: false` with `severity` and `message` if invalid
-- When a property value is found (via scope resolution), includes `value` and `scope` fields
+- When a property value is found (via scope resolution), includes `value` (formatted string according to unit preferences) and `scope` fields
 - The `scope` field indicates where the value came from: "block", "branch", "group", or "global"
+- Values are formatted using unit preferences from config (block-type preferences, dimension-level preferences, or schema defaultUnit)
 - Required properties that are missing will have `severity: "error"`
 - Optional properties that are present or missing are both considered valid
 - Unknown properties are not validated (not an issue - allows validating subsets of properties)
+- Validation uses Effect Schema (not Zod) and is performed entirely in TypeScript
 
 ### Validate Entire Network
 
@@ -449,18 +474,18 @@ http GET localhost:3000/api/schema/network/validate network==preset1 version==v1
 {
   "branch-1/blocks/0/length": {
     "is_valid": true,
-    "value": 50.0,
-    "scope": "block",
-    "message": "Value found in block scope"
+    "value": "0.05 km",
+    "scope": "block"
   },
   "branch-1/blocks/0/diameter": {
-    "is_valid": true
+    "is_valid": true,
+    "value": "0.3 m",
+    "scope": "block"
   },
   "branch-1/blocks/0/ambientTemperature": {
     "is_valid": true,
-    "value": 20.0,
-    "scope": "global",
-    "message": "Value found in global scope"
+    "value": "-253.15 C",
+    "scope": "global"
   },
   "branch-1/blocks/1/pressure": {
     "is_valid": false,
@@ -469,9 +494,8 @@ http GET localhost:3000/api/schema/network/validate network==preset1 version==v1
   },
   "branch-1/blocks/1/cost": {
     "is_valid": true,
-    "value": 1000.0,
-    "scope": "branch",
-    "message": "Value found in branch scope"
+    "value": "1000 USD",
+    "scope": "branch"
   }
 }
 ```
@@ -480,23 +504,24 @@ This endpoint:
 
 - Returns validation results for each property path in the network
 - Each property has `is_valid: true` if valid, or `is_valid: false` with `severity` and `message` if invalid
-- When a property value is found (via scope resolution), includes `value` and `scope` fields
+- When a property value is found (via scope resolution), includes `value` (formatted string according to unit preferences) and `scope` fields
 - The `scope` field indicates where the value came from: "block", "branch", "group", or "global"
+- Values are formatted using unit preferences from config (block-type preferences, dimension-level preferences, or schema defaultUnit)
 - Required properties that are missing will have `severity: "error"`
 - Optional properties that are present or missing are both considered valid
 - Unknown properties are not validated (not an issue - allows validating subsets of properties)
 - Perfect for validating entire networks and identifying validation issues per property
+- Validation uses Effect Schema (not Zod) and is performed entirely in TypeScript
 
 ### Validate a Block (POST)
 
-Validate a single block against a schema:
+Validate a single block against a schema (without network context):
 
 ```bash
 http POST localhost:3000/api/schema/validate \
   version==v1.0 \
   blockType==Compressor \
-  block:='{"type":"Compressor","pressure":15.5}' \
-  schemasDir==../schemas
+  block:='{"type":"Compressor","pressure":15.5}'
 ```
 
 Validate with missing required field:
@@ -505,25 +530,22 @@ Validate with missing required field:
 http POST localhost:3000/api/schema/validate \
   version==v1.0 \
   blockType==Compressor \
-  block:='{"type":"Compressor"}' \
-  schemasDir==../schemas
+  block:='{"type":"Compressor"}'
 ```
 
 **Expected Response (validation error):**
 
 ```json
 {
-  "is_valid": false,
-  "has_issues": true,
-  "issues": [
-    {
-      "severity": "error",
-      "message": "Required property 'pressure' is missing for block type 'Compressor'",
-      "property": "pressure"
-    }
-  ]
+  "Compressor/pressure": {
+    "is_valid": false,
+    "severity": "error",
+    "message": "Required property 'pressure' is missing for block type 'Compressor'"
+  }
 }
 ```
+
+**Note:** POST validation does not include scope resolution or unit formatting, as it validates blocks without network context.
 
 ## Tips and Tricks
 
