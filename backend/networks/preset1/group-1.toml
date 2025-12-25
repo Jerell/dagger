@@ -2,6 +2,10 @@ type = "labeledGroup"
 
 label = "Labeled Group"
 
+efficiency = 0.75
+
+pressure = "100 bar" # ignored
+
 [position]
 x = 0
 y = 0

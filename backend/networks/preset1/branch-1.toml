@@ -3,7 +3,7 @@ type = "branch"
 label = "Branch 1"
 parentId = "group-1"
 
-efficiency = 0.7
+# efficiency = 0.7
 
 [position]
 x = 20
