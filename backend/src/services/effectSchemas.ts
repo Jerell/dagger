@@ -24,7 +24,10 @@ export function getSchema(
   schemaSet: string,
   blockType: string
 ): Schema.Schema<any> | undefined {
-  const registry = schemaRegistry as Record<string, Record<string, Schema.Schema<any>>>;
+  const registry = schemaRegistry as Record<
+    string,
+    Record<string, Schema.Schema<any>>
+  >;
   return registry[schemaSet]?.[blockType];
 }
 
@@ -39,7 +42,10 @@ export function listSchemaSets(): string[] {
  * List all block types for a given schema set
  */
 export function listBlockTypes(schemaSet: string): string[] {
-  const registry = schemaRegistry as Record<string, Record<string, Schema.Schema<any>>>;
+  const registry = schemaRegistry as Record<
+    string,
+    Record<string, Schema.Schema<any>>
+  >;
   return Object.keys(registry[schemaSet] || {});
 }
 
@@ -75,7 +81,9 @@ function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
 /**
  * Extract property metadata from a schema property
  */
-function getPropertyMetadata(propertySchema: Schema.Schema<any>): PropertyMetadata {
+function getPropertyMetadata(
+  propertySchema: Schema.Schema<any>
+): PropertyMetadata {
   const annotations = getAnnotations(propertySchema);
   const metadata: PropertyMetadata = {};
 
@@ -286,4 +294,3 @@ export function getPropertyConstraints(
     max: metadata.max,
   };
 }
-

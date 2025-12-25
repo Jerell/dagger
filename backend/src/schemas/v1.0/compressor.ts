@@ -16,12 +16,8 @@ export const CompressorSchema = Schema.Struct({
 
   // Optional properties
   efficiency: Schema.optional(
-    Schema.Number.pipe(
-      Schema.greaterThan(0),
-      Schema.lessThanOrEqualTo(1)
-    )
+    Schema.Number.pipe(Schema.greaterThan(0), Schema.lessThanOrEqualTo(1))
   ),
 });
 
 export type Compressor = Schema.Schema.Type<typeof CompressorSchema>;
-

@@ -109,7 +109,8 @@ export async function validateBlockDirect(
 
     // Check if property is required and missing
     const isRequired = schemaMetadata.required.includes(propertyName);
-    const hasValue = block[propertyName] !== undefined && block[propertyName] !== null;
+    const hasValue =
+      block[propertyName] !== undefined && block[propertyName] !== null;
 
     if (isRequired && !hasValue) {
       results[propertyPath] = {
@@ -211,8 +212,8 @@ export async function validateQueryBlocks(
       // Query for blocks, need to find each block's path
       // Query for the block's type to find its path
       try {
-        const blockQuery = query.endsWith("/blocks") 
-          ? `${query}/${i}` 
+        const blockQuery = query.endsWith("/blocks")
+          ? `${query}/${i}`
           : `${query}/blocks/${i}`;
         const blockPathResult = wasm.query_from_files(
           filesJson,
@@ -338,7 +339,8 @@ async function validateBlockInternal(
 
     // Check if property is required and missing
     const isRequired = schemaMetadata.required.includes(propertyName);
-    const hasValue = block[propertyName] !== undefined && block[propertyName] !== null;
+    const hasValue =
+      block[propertyName] !== undefined && block[propertyName] !== null;
 
     if (isRequired && !hasValue && !resolvedValue) {
       results[propertyPath] = {
@@ -350,8 +352,9 @@ async function validateBlockInternal(
     }
 
     // If we have a value (from block or scope), validate constraints
-    const valueToValidate = resolvedValue !== undefined ? resolvedValue : block[propertyName];
-    
+    const valueToValidate =
+      resolvedValue !== undefined ? resolvedValue : block[propertyName];
+
     if (valueToValidate !== undefined && valueToValidate !== null) {
       // Format value for display
       let formattedValue: string | undefined;
@@ -372,22 +375,35 @@ async function validateBlockInternal(
       let constraintValid = true;
       let constraintMessage: string | undefined;
 
-      if (propertyMetadata.defaultUnit && (propertyMetadata.min !== undefined || propertyMetadata.max !== undefined)) {
+      if (
+        propertyMetadata.defaultUnit &&
+        (propertyMetadata.min !== undefined ||
+          propertyMetadata.max !== undefined)
+      ) {
         try {
           // Convert value to defaultUnit for comparison
-          const valueString = typeof valueToValidate === "string" 
-            ? valueToValidate 
-            : `${valueToValidate} ${propertyMetadata.defaultUnit}`;
-          
+          const valueString =
+            typeof valueToValidate === "string"
+              ? valueToValidate
+              : `${valueToValidate} ${propertyMetadata.defaultUnit}`;
+
           const valueInDefaultUnitString = dim.eval(
             `${valueString} as ${propertyMetadata.defaultUnit}`
           );
-          const numericValue = parseFloat(valueInDefaultUnitString.split(" ")[0]);
+          const numericValue = parseFloat(
+            valueInDefaultUnitString.split(" ")[0]
+          );
 
-          if (propertyMetadata.min !== undefined && numericValue < propertyMetadata.min) {
+          if (
+            propertyMetadata.min !== undefined &&
+            numericValue < propertyMetadata.min
+          ) {
             constraintValid = false;
             constraintMessage = `Value ${numericValue} ${propertyMetadata.defaultUnit} is less than minimum ${propertyMetadata.min} ${propertyMetadata.defaultUnit}`;
-          } else if (propertyMetadata.max !== undefined && numericValue > propertyMetadata.max) {
+          } else if (
+            propertyMetadata.max !== undefined &&
+            numericValue > propertyMetadata.max
+          ) {
             constraintValid = false;
             constraintMessage = `Value ${numericValue} ${propertyMetadata.defaultUnit} is greater than maximum ${propertyMetadata.max} ${propertyMetadata.defaultUnit}`;
           }
@@ -496,7 +512,9 @@ export async function validateNetworkBlocks(
         `${branchId}/blocks`
       );
       const branchBlocks = JSON.parse(branchBlocksQuery);
-      const branchBlocksArray = Array.isArray(branchBlocks) ? branchBlocks : [branchBlocks];
+      const branchBlocksArray = Array.isArray(branchBlocks)
+        ? branchBlocks
+        : [branchBlocks];
 
       for (let i = 0; i < branchBlocksArray.length; i++) {
         const block = branchBlocksArray[i];
@@ -522,7 +540,10 @@ export async function validateNetworkBlocks(
     }
   } catch (error) {
     // Fallback: try to validate blocks directly
-    console.warn("Failed to query branches, falling back to direct block validation", error);
+    console.warn(
+      "Failed to query branches, falling back to direct block validation",
+      error
+    );
     for (let i = 0; i < blocksArray.length; i++) {
       const block = blocksArray[i];
       if (!block || typeof block !== "object" || !block.type) {
@@ -548,4 +569,3 @@ export async function validateNetworkBlocks(
 
   return allResults;
 }
-
