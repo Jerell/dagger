@@ -63,11 +63,18 @@ export interface ValidationResult {
   scope?: string;
 }
 
+export interface Block {
+  type: string;
+  [key: string]: string | number | null | undefined;
+}
+
+export type PropertyValue = string | number | null | undefined;
+
 /**
  * Validate a block directly without network context (for POST /api/schema/validate)
  */
 export async function validateBlockDirect(
-  block: any,
+  block: Block,
   blockType: string,
   schemaSet: string
 ): Promise<Record<string, ValidationResult>> {
@@ -255,7 +262,7 @@ export async function validateQueryBlocks(
  * Validate a block with a known path (internal helper)
  */
 async function validateBlockInternal(
-  block: any,
+  block: Block,
   blockType: string,
   blockPath: string,
   schemaSet: string,
@@ -304,7 +311,7 @@ async function validateBlockInternal(
   const results: Record<string, ValidationResult> = {};
 
   async function convertValueForValidation(
-    value: any,
+    value: PropertyValue,
     propertyName: string,
     propertyMetadata: PropertyMetadata
   ): Promise<number | undefined> {
@@ -346,7 +353,10 @@ async function validateBlockInternal(
   }
 
   const pathParts = blockPath.split("/blocks/");
-  const completeValidationObject: any = {
+  const completeValidationObject: Record<
+    string,
+    string | number | null | undefined
+  > = {
     ...blockForValidation,
     type: block.type,
   };
@@ -357,7 +367,7 @@ async function validateBlockInternal(
   ];
 
   const propertyScopes: Record<string, string> = {};
-  const propertyValues: Record<string, any> = {};
+  const propertyValues: Record<string, PropertyValue> = {};
 
   for (const propName of allProperties) {
     if (completeValidationObject[propName] !== undefined) {

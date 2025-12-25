@@ -23,10 +23,10 @@ export interface SchemaMetadata {
 export function getSchema(
   schemaSet: string,
   blockType: string
-): Schema.Schema<any> | undefined {
+): Schema.Schema<unknown> | undefined {
   const registry = schemaRegistry as Record<
     string,
-    Record<string, Schema.Schema<any>>
+    Record<string, Schema.Schema<unknown>>
   >;
   return registry[schemaSet]?.[blockType];
 }
@@ -83,8 +83,9 @@ function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
  * Extract property metadata from a schema property
  */
 function getPropertyMetadata(
-  propertySchema: Schema.Schema<any>
+  propertySchema: Schema.Schema<unknown>
 ): PropertyMetadata {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schemaAny = propertySchema as any;
 
   // Get the AST - check the schema itself first
@@ -194,12 +195,14 @@ function extractMaxConstraint(ast: any): number | undefined {
  * Check if a property is optional in a struct schema
  */
 function isOptionalProperty(
-  structSchema: Schema.Schema<any>,
+  structSchema: Schema.Schema<unknown>,
   propertyName: string
 ): boolean {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ast = (structSchema as any).ast;
     if (ast && ast._tag === "TypeLiteral") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const property = ast.propertySignatures?.find(
         (p: any) => p.name === propertyName
       );
@@ -216,10 +219,12 @@ function isOptionalProperty(
 /**
  * Get all property names from a struct schema
  */
-function getPropertyNames(structSchema: Schema.Schema<any>): string[] {
+function getPropertyNames(structSchema: Schema.Schema<unknown>): string[] {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ast = (structSchema as any).ast;
     if (ast && ast._tag === "TypeLiteral") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return ast.propertySignatures?.map((p: any) => p.name) || [];
     }
     return [];
@@ -234,11 +239,12 @@ function getPropertyNames(structSchema: Schema.Schema<any>): string[] {
  * We use the fields directly from the schema object for better access
  */
 function getPropertySchema(
-  structSchema: Schema.Schema<any>,
+  structSchema: Schema.Schema<unknown>,
   propertyName: string
-): Schema.Schema<any> | undefined {
+): Schema.Schema<unknown> | undefined {
   try {
     // Access the schema's fields directly - this gives us the actual schema objects
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const schemaAny = structSchema as any;
     const fields = schemaAny.fields;
     if (fields && fields[propertyName]) {
