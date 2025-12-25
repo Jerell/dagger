@@ -65,6 +65,38 @@ schemaRoutes.get("/network", async (c) => {
 });
 
 /**
+ * GET /api/schema/network/properties
+ * Get schema properties for all blocks in a network
+ * Returns the same flattened format as /api/schema/properties but for all blocks
+ *
+ * Query params:
+ * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
+ */
+schemaRoutes.get("/network/properties", async (c) => {
+  const networkName = c.req.query("network") || "preset1";
+  const networkPath = `networks/${networkName}`;
+  const version = c.req.query("version");
+
+  if (!version) {
+    return c.json({ error: "Missing required query parameter: version" }, 400);
+  }
+
+  try {
+    const properties = await getNetworkSchemas(networkPath, version);
+    return c.json(properties);
+  } catch (error) {
+    return c.json(
+      {
+        error: "Failed to get network schema properties",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+/**
  * GET /api/schema/network/validate
  * Validate all blocks in a network and return both properties and validation results
  * Returns the same flattened format as /api/schema/network but includes validation for each block

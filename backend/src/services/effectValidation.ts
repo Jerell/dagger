@@ -594,11 +594,20 @@ async function validateBlockInternal(
         continue;
       }
 
-      results[propertyPath] = {
+      const validResult: ValidationResult = {
         is_valid: true,
-        value: formattedValue,
-        scope: resolvedScope,
       };
+      // Always include value and scope for valid properties that have values
+      if (formattedValue !== undefined && formattedValue !== null) {
+        validResult.value = formattedValue;
+      } else if (resolvedValue !== undefined && resolvedValue !== null) {
+        // Fallback to original value if formatting failed (convert to string)
+        validResult.value = String(resolvedValue);
+      }
+      if (resolvedScope !== undefined && resolvedScope !== null) {
+        validResult.scope = resolvedScope;
+      }
+      results[propertyPath] = validResult;
     } else {
       results[propertyPath] = {
         is_valid: true,
@@ -620,32 +629,27 @@ export async function validateNetworkBlocks(
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
 
-  // Query for all blocks
-  const queryResult = wasm.query_from_files(
-    filesJson,
-    configContent || undefined,
-    "blocks"
-  );
-  const blocks = JSON.parse(queryResult);
-
-  // If query result is a single block, wrap it
-  const blocksArray = Array.isArray(blocks) ? blocks : [blocks];
-
   const allResults: Record<string, ValidationResult> = {};
 
-  // Query for all blocks to get their paths
-  // For network validation, we need to iterate through branches
+  // Query for all nodes and filter for branches
   try {
-    // Query for all branches first
-    const branchesQuery = wasm.query_from_files(
+    const nodesQuery = wasm.query_from_files(
       filesJson,
       configContent || undefined,
-      "branches"
+      "network/nodes"
     );
-    const branches = JSON.parse(branchesQuery);
-    const branchesArray = Array.isArray(branches) ? branches : [branches];
+    const nodes = JSON.parse(nodesQuery);
+    const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
-    for (const branch of branchesArray) {
+    // Filter for branch nodes (type is "branchNode" in the query result)
+    const branches = nodesArray.filter(
+      (node: any) =>
+        node &&
+        typeof node === "object" &&
+        (node.type === "branch" || node.type === "branchNode")
+    );
+
+    for (const branch of branches) {
       if (!branch || typeof branch !== "object" || !branch.id) {
         continue;
       }
@@ -685,32 +689,8 @@ export async function validateNetworkBlocks(
       }
     }
   } catch (error) {
-    // Fallback: try to validate blocks directly
-    console.warn(
-      "Failed to query branches, falling back to direct block validation",
-      error
-    );
-    for (let i = 0; i < blocksArray.length; i++) {
-      const block = blocksArray[i];
-      if (!block || typeof block !== "object" || !block.type) {
-        continue;
-      }
-
-      const blockPath = `blocks/${i}`;
-      const blockResults = await validateBlockInternal(
-        block,
-        block.type,
-        blockPath,
-        schemaSet,
-        networkPath,
-        configContent
-      );
-
-      // Merge results
-      for (const [propPath, result] of Object.entries(blockResults)) {
-        allResults[propPath] = result;
-      }
-    }
+    console.warn("Failed to query network nodes for validation", error);
+    throw error;
   }
 
   return allResults;
