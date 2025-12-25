@@ -94,10 +94,14 @@ export async function getBlockSchemaProperties(
           schemaMetadata.properties
         )) {
           const propertyPath = `${blockPath}/${propName}`;
+          const isRequired = schemaMetadata.required.includes(propName);
           result[propertyPath] = {
+            block_type: blockType,
+            property: propName,
+            required: isRequired,
+            title: propMetadata.title,
             dimension: propMetadata.dimension,
             defaultUnit: propMetadata.defaultUnit,
-            title: propMetadata.title,
             min: propMetadata.min,
             max: propMetadata.max,
           };
@@ -117,10 +121,14 @@ export async function getBlockSchemaProperties(
           schemaMetadata.properties
         )) {
           const propertyPath = `${query}/${propName}`;
+          const isRequired = schemaMetadata.required.includes(propName);
           result[propertyPath] = {
+            block_type: blockType,
+            property: propName,
+            required: isRequired,
+            title: propMetadata.title,
             dimension: propMetadata.dimension,
             defaultUnit: propMetadata.defaultUnit,
-            title: propMetadata.title,
             min: propMetadata.min,
             max: propMetadata.max,
           };
@@ -146,17 +154,25 @@ export async function getNetworkSchemas(
 
   const result: Record<string, any> = {};
 
-  // Query for all branches
+  // Query for all nodes and filter for branches
   try {
-    const branchesQuery = wasm.query_from_files(
+    const nodesQuery = wasm.query_from_files(
       filesJson,
       configContent || undefined,
-      "branches"
+      "network/nodes"
     );
-    const branches = JSON.parse(branchesQuery);
-    const branchesArray = Array.isArray(branches) ? branches : [branches];
+    const nodes = JSON.parse(nodesQuery);
+    const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
-    for (const branch of branchesArray) {
+    // Filter for branch nodes (type is "branchNode" in the query result)
+    const branches = nodesArray.filter(
+      (node: any) =>
+        node &&
+        typeof node === "object" &&
+        (node.type === "branch" || node.type === "branchNode")
+    );
+
+    for (const branch of branches) {
       if (!branch || typeof branch !== "object" || !branch.id) {
         continue;
       }
@@ -189,10 +205,14 @@ export async function getNetworkSchemas(
             schemaMetadata.properties
           )) {
             const propertyPath = `${blockPath}/${propName}`;
+            const isRequired = schemaMetadata.required.includes(propName);
             result[propertyPath] = {
+              block_type: blockType,
+              property: propName,
+              required: isRequired,
+              title: propMetadata.title,
               dimension: propMetadata.dimension,
               defaultUnit: propMetadata.defaultUnit,
-              title: propMetadata.title,
               min: propMetadata.min,
               max: propMetadata.max,
             };
@@ -201,7 +221,7 @@ export async function getNetworkSchemas(
       }
     }
   } catch (error) {
-    console.warn("Failed to query branches for network schemas", error);
+    console.warn("Failed to query network nodes for network schemas", error);
   }
 
   return result;

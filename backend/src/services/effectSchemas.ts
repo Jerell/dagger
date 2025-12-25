@@ -108,8 +108,7 @@ function getPropertyMetadata(
   const annotations = ast.annotations || {};
   const metadata: PropertyMetadata = {};
 
-  // Extract plain object properties from annotations (not Symbol keys)
-  // Use Object.keys to get string keys
+  // Extract plain object properties from annotations (string keys)
   const stringKeys = Object.keys(annotations);
   for (const key of stringKeys) {
     const value = annotations[key];
@@ -119,6 +118,15 @@ function getPropertyMetadata(
       metadata.defaultUnit = String(value);
     } else if (key === "title") {
       metadata.title = String(value);
+    }
+  }
+
+  // Extract title from Symbol key (Effect Schema stores it as Symbol(effect/annotation/Title))
+  const symbolKeys = Object.getOwnPropertySymbols(annotations);
+  for (const key of symbolKeys) {
+    const keyStr = String(key);
+    if (keyStr.includes("Title")) {
+      metadata.title = String(annotations[key]);
     }
   }
 
