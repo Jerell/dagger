@@ -154,7 +154,11 @@ curl -X POST http://localhost:3000/api/schema/validate \
   }'
 ```
 
-**Note:** All schema property endpoints now include metadata (`title`, `dimension`, `defaultUnit`) when available in the schema definitions.
+**Note:**
+
+- All schema property endpoints now include metadata (`title`, `dimension`, `defaultUnit`) when available in the schema definitions.
+- Validation endpoints include `value` and `scope` fields when properties are found via scope resolution.
+- Unknown properties are not validated (allows validating subsets of properties with different schemas).
 
 ## Notes
 

@@ -25,6 +25,10 @@ pub struct PropertyMetadata {
     pub default_unit: Option<String>,
     /// Display name/title for the property
     pub title: Option<String>,
+    /// Minimum value constraint
+    pub min: Option<f64>,
+    /// Maximum value constraint
+    pub max: Option<f64>,
 }
 
 pub struct SchemaRegistry {
@@ -148,6 +152,10 @@ struct PropertyMetadataJson {
     default_unit: Option<String>,
     #[serde(default)]
     title: Option<String>,
+    #[serde(default)]
+    min: Option<f64>,
+    #[serde(default)]
+    max: Option<f64>,
 }
 
 impl From<SchemaJson> for SchemaDefinition {
@@ -162,6 +170,8 @@ impl From<SchemaJson> for SchemaDefinition {
                         dimension: meta.dimension,
                         default_unit: meta.default_unit,
                         title: meta.title,
+                        min: meta.min,
+                        max: meta.max,
                     },
                 )
             })

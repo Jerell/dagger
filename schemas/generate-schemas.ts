@@ -9,6 +9,8 @@ interface PropertyMetadata {
   dimension?: string; // Dimension type (e.g., "pressure", "length", "temperature")
   defaultUnit?: string; // Default unit for display (e.g., "bar", "m", "C")
   title?: string; // Display name for the property
+  min?: number; // Minimum value constraint
+  max?: number; // Maximum value constraint
 }
 
 interface SchemaMetadata {
@@ -208,6 +210,27 @@ async function extractSchemaMetadata(
       optional.push(prop.name);
     } else {
       required.push(prop.name);
+    }
+
+    // Extract min/max constraints
+    // Match .min(number) or .min("number")
+    const minMatch = propDefinition.match(
+      /\.min\s*\(\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s*\)/
+    );
+    const maxMatch = propDefinition.match(
+      /\.max\s*\(\s*([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s*\)/
+    );
+
+    if (minMatch || maxMatch) {
+      if (!properties[prop.name]) {
+        properties[prop.name] = {};
+      }
+      if (minMatch) {
+        properties[prop.name].min = parseFloat(minMatch[1]);
+      }
+      if (maxMatch) {
+        properties[prop.name].max = parseFloat(maxMatch[1]);
+      }
     }
 
     // Extract unit metadata from .meta({ unit: "...", defaultUnit: "..." })

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const PipeSchema = z.object({
   type: z.literal("Pipe"),
   quantity: z.number().optional().default(1),
-  length: z.number().min(0).meta({ dimension: "length", defaultUnit: "m" }),
+  length: z.number().min(200).meta({ dimension: "length", defaultUnit: "m" }),
 
   // Optional properties
   diameter: z

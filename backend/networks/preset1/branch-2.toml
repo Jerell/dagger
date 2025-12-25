@@ -18,6 +18,7 @@ weight = 3
 [[block]]
 quantity = 1
 type = "Pipe"
+length = "1 mi"
 
 [[block]]
 quantity = 2

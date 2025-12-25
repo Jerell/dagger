@@ -170,7 +170,37 @@ impl<'a> QueryExecutor<'a> {
             }
             QueryPath::Property(name, inner) => {
                 let value = self.execute_with_context(inner, context)?;
-                self.get_property(&value, name)
+                // If we're accessing a property on a block and it's not found, try scope resolution
+                // Check if this looks like a block object (has "type" property)
+                let is_block = value
+                    .as_object()
+                    .and_then(|obj| obj.get("type"))
+                    .and_then(|t| t.as_str())
+                    .is_some();
+
+                if is_block && context.block_index.is_some() && context.node_id.is_some() {
+                    // Check if property exists directly first
+                    match self.get_property(&value, name) {
+                        Ok(v) => Ok(v),
+                        Err(QueryError::PropertyNotFound(_)) => {
+                            // Property not found directly, try scope resolution
+                            if let Some(resolver) = self.scope_resolver {
+                                // Use config's default scope chain (no explicit scopes)
+                                self.resolve_scoped_property_from_context(
+                                    name,
+                                    &[],
+                                    context,
+                                    resolver,
+                                )
+                            } else {
+                                Err(QueryError::PropertyNotFound(name.clone()))
+                            }
+                        }
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    self.get_property(&value, name)
+                }
             }
             QueryPath::Index(idx, inner) => {
                 context.block_index = Some(*idx);
@@ -192,7 +222,7 @@ impl<'a> QueryExecutor<'a> {
             }
             QueryPath::ScopeResolve {
                 property,
-                scopes: _,
+                scopes,
                 inner,
             } => {
                 // Execute inner path to establish context
@@ -200,7 +230,7 @@ impl<'a> QueryExecutor<'a> {
 
                 // Now resolve the property using scope inheritance
                 if let Some(resolver) = self.scope_resolver {
-                    self.resolve_scoped_property_from_context(property, context, resolver)
+                    self.resolve_scoped_property_from_context(property, scopes, context, resolver)
                 } else {
                     Err(QueryError::InvalidType(
                         "Scope resolution requires scope resolver. Use resolve command instead."
@@ -252,7 +282,7 @@ impl<'a> QueryExecutor<'a> {
                         {
                             // Collect original strings first
                             let mut original_strings = std::collections::HashMap::new();
-                            for (key, _value) in &b.extra {
+                            for key in b.extra.keys() {
                                 let original_key = format!("_{}_original", key);
                                 if let Some(original_value) = b.extra.get(&original_key) {
                                     if let Some(original_str) = original_value.as_str() {
@@ -483,12 +513,9 @@ impl<'a> QueryExecutor<'a> {
                         };
 
                         match field_value {
-                            Ok(fv) => {
-                                match self.matches_filter_value(&fv, operator, filter_value) {
-                                    Ok(matches) => matches,
-                                    Err(_) => false,
-                                }
-                            }
+                            Ok(fv) => self
+                                .matches_filter_value(&fv, operator, filter_value)
+                                .unwrap_or_default(),
                             Err(_) => false,
                         }
                     })
@@ -584,6 +611,7 @@ impl<'a> QueryExecutor<'a> {
     fn resolve_scoped_property_from_context(
         &self,
         property: &str,
+        explicit_scopes: &[String],
         context: &QueryContext,
         resolver: &crate::scope::resolver::ScopeResolver,
     ) -> Result<JsonValue, QueryError> {
@@ -614,7 +642,10 @@ impl<'a> QueryExecutor<'a> {
         let block = branch_node
             .blocks
             .get(block_index)
-            .ok_or_else(|| QueryError::IndexOutOfRange(block_index, branch_node.blocks.len()))?;
+            .ok_or(QueryError::IndexOutOfRange(
+                block_index,
+                branch_node.blocks.len(),
+            ))?;
 
         // Find the group if parent_id exists
         let group = branch_node.base.parent_id.as_ref().and_then(|parent_id| {
@@ -624,8 +655,32 @@ impl<'a> QueryExecutor<'a> {
             })
         });
 
-        // Resolve the property using scope inheritance
-        let value = resolver.resolve_property(property, block, branch_node, group);
+        // Parse explicit scopes from query string to ScopeLevel enums
+        let scope_levels: Vec<crate::scope::config::ScopeLevel> = explicit_scopes
+            .iter()
+            .filter_map(|s| match s.to_lowercase().as_str() {
+                "block" => Some(crate::scope::config::ScopeLevel::Block),
+                "branch" => Some(crate::scope::config::ScopeLevel::Branch),
+                "group" => Some(crate::scope::config::ScopeLevel::Group),
+                "global" => Some(crate::scope::config::ScopeLevel::Global),
+                _ => None,
+            })
+            .collect();
+
+        // Resolve the property using explicit scopes if provided, otherwise use config defaults
+        let value = if !scope_levels.is_empty() {
+            resolver
+                .resolve_property_with_explicit_scopes(
+                    property,
+                    block,
+                    branch_node,
+                    group,
+                    &scope_levels,
+                )
+                .map(|(v, _)| v)
+        } else {
+            resolver.resolve_property(property, block, branch_node, group)
+        };
 
         // Convert TOML Value to JSON Value
         match value {

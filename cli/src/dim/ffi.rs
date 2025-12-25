@@ -72,7 +72,7 @@ impl DimParser {
             };
 
             // Parse the result (format: "value unit" or just "value")
-            let parts: Vec<&str> = result_str.trim().split_whitespace().collect();
+            let parts: Vec<&str> = result_str.split_whitespace().collect();
             let value = if parts.is_empty() {
                 return Err(DimError::ParseError(
                     "Empty result from dim_eval".to_string(),

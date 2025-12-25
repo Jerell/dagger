@@ -8,6 +8,7 @@ export interface UnitPreferences {
   blockTypes?: Record<string, Record<string, string>>;
   dimensions?: Record<string, string>;
   originalStrings?: Record<string, string>;
+  propertyDimensions?: Record<string, string>; // Maps property names to dimensions
 }
 
 interface UnitMetadata {
@@ -50,6 +51,7 @@ export async function formatValue(
 
   if (!originalString) {
     // No original string, can't determine base unit - return as-is
+    // But if we have the result as a string, return that instead
     return value.toString();
   }
 
@@ -59,10 +61,11 @@ export async function formatValue(
   } catch (error) {
     // Conversion failed, return original value
     console.warn(
-      `Failed to convert ${propertyName} to ${preferredUnit}:`,
+      `Failed to convert ${propertyName} from ${originalString} to ${preferredUnit}:`,
       error
     );
-    return value.toString();
+    // Return original string instead of just the number
+    return originalString;
   }
 }
 
@@ -72,7 +75,9 @@ export async function formatValue(
 export async function formatQueryResult(
   result: any,
   unitPreferences: UnitPreferences,
-  blockType?: string
+  blockType?: string,
+  propertyName?: string,
+  propertyMetadata?: UnitMetadata
 ): Promise<any> {
   if (result === null || result === undefined) {
     return result;
@@ -85,6 +90,43 @@ export async function formatQueryResult(
   }
 
   if (typeof result === "string") {
+    // Check if this is a top-level unit string (from scope resolution)
+    // and we have property context to format it the same way as block properties
+    if (propertyName) {
+      // Check if it looks like a unit string (has space separating number and unit)
+      const unitStringMatch = result.match(
+        /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
+      );
+      if (unitStringMatch) {
+        // This looks like a unit string - format it using the same logic as block properties
+        try {
+          // Store original string in preferences (same as block properties)
+          const originalKey = `_${propertyName}_original`;
+          const formatPrefs = {
+            ...unitPreferences,
+            originalStrings: {
+              ...unitPreferences.originalStrings,
+              [originalKey]: result,
+            },
+          };
+
+          // Extract numeric value (formatValue uses originalString for conversion, but needs number as fallback)
+          const numericValue = parseFloat(unitStringMatch[1]);
+
+          // Use formatValue with property metadata (same as block properties)
+          return await formatValue(
+            numericValue,
+            propertyName,
+            blockType,
+            formatPrefs,
+            propertyMetadata
+          );
+        } catch (error) {
+          // Formatting failed, keep original string
+          return result;
+        }
+      }
+    }
     return result;
   }
 

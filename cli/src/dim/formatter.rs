@@ -14,7 +14,15 @@ impl UnitFormatter {
         let parser = DimParser::new().ok();
         Self { parser }
     }
+}
 
+impl Default for UnitFormatter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UnitFormatter {
     /// Format a property value with unit preferences
     /// Returns the formatted value (may be converted to preferred unit)
     pub fn format_property(
@@ -85,8 +93,7 @@ impl UnitFormatter {
                 // Try to infer from property metadata
                 property_metadata
                     .and_then(|meta| meta.dimension.as_ref())
-                    .map(|dim| get_reference_unit_for_dimension(dim))
-                    .flatten()
+                    .and_then(|dim| get_reference_unit_for_dimension(dim))
             };
 
         let base_unit = match base_unit {
@@ -117,7 +124,7 @@ impl UnitFormatter {
 }
 
 /// Unit preferences for formatting
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct UnitPreferences {
     /// Query parameter overrides (highest priority)
     pub query_overrides: HashMap<String, String>, // property -> unit
@@ -127,17 +134,6 @@ pub struct UnitPreferences {
     pub dimensions: HashMap<String, String>, // dimension -> unit
     /// Original unit strings (from _property_original keys)
     pub original_strings: HashMap<String, String>, // _property_original -> original string
-}
-
-impl Default for UnitPreferences {
-    fn default() -> Self {
-        Self {
-            query_overrides: HashMap::new(),
-            block_types: HashMap::new(),
-            dimensions: HashMap::new(),
-            original_strings: HashMap::new(),
-        }
-    }
 }
 
 /// Get reference unit for a dimension (for conversion)

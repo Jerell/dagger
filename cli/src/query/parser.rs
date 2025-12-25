@@ -240,7 +240,9 @@ pub fn parse_query_path(path: &str) -> Result<QueryPath, ParseError> {
     Ok(current)
 }
 
-fn parse_range(part: &str) -> Result<Option<(Option<usize>, Option<usize>)>, ParseError> {
+type RangeBounds = Option<(Option<usize>, Option<usize>)>;
+
+fn parse_range(part: &str) -> Result<RangeBounds, ParseError> {
     // Check for range syntax: "1:2", ":2", "1:", ":"
     if part.contains(':') {
         let parts: Vec<&str> = part.split(':').collect();

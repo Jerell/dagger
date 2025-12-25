@@ -385,7 +385,7 @@ This endpoint:
 
 ### Validate Blocks by Query
 
-Validate blocks matching a query path. Returns both schema properties (with metadata) and validation results:
+Validate blocks matching a query path. Returns validation results for each property:
 
 ```bash
 # Validate a specific block
@@ -403,32 +403,41 @@ http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks
 ```json
 {
   "branch-4/blocks/2/length": {
-    "required": true,
-    "block_type": "Pipe",
-    "property": "length",
-    "title": "Length",
-    "dimension": "length",
-    "defaultUnit": "m"
+    "is_valid": true,
+    "value": 100.0,
+    "scope": "block",
+    "message": "Value found in block scope"
   },
   "branch-4/blocks/2/diameter": {
-    "required": false,
-    "block_type": "Pipe",
-    "property": "diameter",
-    "title": "Diameter",
-    "dimension": "length",
-    "defaultUnit": "m"
+    "is_valid": true
   },
-  "branch-4/blocks/2/_validation": {
+  "branch-4/blocks/2/ambientTemperature": {
     "is_valid": true,
-    "has_issues": false,
-    "issues": []
+    "value": 20.0,
+    "scope": "global",
+    "message": "Value found in global scope"
+  },
+  "branch-4/blocks/2/pressure": {
+    "is_valid": false,
+    "severity": "error",
+    "message": "Required property 'pressure' is missing for block type 'Pipe'"
   }
 }
 ```
 
+This endpoint:
+
+- Returns validation results for each property path
+- Each property has `is_valid: true` if valid, or `is_valid: false` with `severity` and `message` if invalid
+- When a property value is found (via scope resolution), includes `value` and `scope` fields
+- The `scope` field indicates where the value came from: "block", "branch", "group", or "global"
+- Required properties that are missing will have `severity: "error"`
+- Optional properties that are present or missing are both considered valid
+- Unknown properties are not validated (not an issue - allows validating subsets of properties)
+
 ### Validate Entire Network
 
-Validate all blocks in a network. Returns both schema properties (with metadata) and validation results for every block:
+Validate all blocks in a network. Returns validation results for each property in every block:
 
 ```bash
 http GET localhost:3000/api/schema/network/validate network==preset1 version==v1.0
@@ -439,47 +448,44 @@ http GET localhost:3000/api/schema/network/validate network==preset1 version==v1
 ```json
 {
   "branch-1/blocks/0/length": {
-    "block_type": "Pipe",
-    "property": "length",
-    "required": false,
-    "title": "Length",
-    "dimension": "length",
-    "defaultUnit": "m"
-  },
-  "branch-1/blocks/0/_validation": {
     "is_valid": true,
-    "has_issues": false,
-    "issues": []
+    "value": 50.0,
+    "scope": "block",
+    "message": "Value found in block scope"
+  },
+  "branch-1/blocks/0/diameter": {
+    "is_valid": true
+  },
+  "branch-1/blocks/0/ambientTemperature": {
+    "is_valid": true,
+    "value": 20.0,
+    "scope": "global",
+    "message": "Value found in global scope"
   },
   "branch-1/blocks/1/pressure": {
-    "block_type": "Compressor",
-    "property": "pressure",
-    "required": true,
-    "title": "Outlet pressure",
-    "dimension": "pressure",
-    "defaultUnit": "bar"
-  },
-  "branch-1/blocks/1/_validation": {
     "is_valid": false,
-    "has_issues": true,
-    "issues": [
-      {
-        "severity": "error",
-        "message": "Required property 'pressure' is missing for block type 'Compressor'",
-        "property": "pressure"
-      }
-    ]
+    "severity": "error",
+    "message": "Required property 'pressure' is missing for block type 'Compressor'"
+  },
+  "branch-1/blocks/1/cost": {
+    "is_valid": true,
+    "value": 1000.0,
+    "scope": "branch",
+    "message": "Value found in branch scope"
   }
 }
 ```
 
 This endpoint:
 
-- Returns schema properties and validation results for every block instance in the network
-- Uses the same flattened path format as `/api/schema/network`
-- Keys are paths like `branch-1/blocks/0/length` for properties and `branch-1/blocks/0/_validation` for validation
-- Includes metadata: `title` (display name), `dimension`, and `defaultUnit` when available
-- Perfect for validating entire networks and generating comprehensive form fields
+- Returns validation results for each property path in the network
+- Each property has `is_valid: true` if valid, or `is_valid: false` with `severity` and `message` if invalid
+- When a property value is found (via scope resolution), includes `value` and `scope` fields
+- The `scope` field indicates where the value came from: "block", "branch", "group", or "global"
+- Required properties that are missing will have `severity: "error"`
+- Optional properties that are present or missing are both considered valid
+- Unknown properties are not validated (not an issue - allows validating subsets of properties)
+- Perfect for validating entire networks and identifying validation issues per property
 
 ### Validate a Block (POST)
 

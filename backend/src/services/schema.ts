@@ -2,6 +2,9 @@ import { DaggerWasm } from "../../pkg/dagger.js";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import * as fs from "fs/promises";
+import { formatValue, UnitPreferences } from "./unitFormatter";
+import { parseUnitPreferences } from "./query";
+import dim from "./dim";
 
 // With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
@@ -153,6 +156,178 @@ async function readSchemaFiles(
   return files;
 }
 
+/**
+ * Format validation results by applying unit preferences to value fields
+ */
+async function formatValidationResults(
+  validationResults: Record<string, any>,
+  networkPath: string,
+  schemasDir: string,
+  version: string,
+  configContent: string | null
+): Promise<Record<string, any>> {
+  // Initialize dim library for unit conversions
+  await dim.init();
+
+  const wasm = getWasm();
+  const { files } = await readNetworkFiles(networkPath);
+  const filesJson = JSON.stringify(files);
+
+  // Parse unit preferences from config
+  const { blockTypes, dimensions, propertyDimensions } =
+    parseUnitPreferences(configContent);
+
+  const unitPreferences: UnitPreferences = {
+    blockTypes,
+    dimensions,
+    propertyDimensions,
+  };
+
+  const formatted: Record<string, any> = {};
+
+  for (const [propertyPath, validation] of Object.entries(validationResults)) {
+    // Parse path like "branch-1/blocks/2/length"
+    const pathParts = propertyPath.split("/");
+    if (pathParts.length < 4 || pathParts[1] !== "blocks") {
+      // Not a block property path, keep as-is
+      formatted[propertyPath] = validation;
+      continue;
+    }
+
+    const branchName = pathParts[0];
+    const blockIndex = parseInt(pathParts[2], 10);
+    const propertyName = pathParts[3];
+
+    // Get block type by querying the network
+    let blockType: string | undefined;
+    try {
+      const blockQuery = `${branchName}/blocks/${blockIndex}`;
+      const blockResult = wasm.query_from_files(
+        filesJson,
+        configContent || undefined,
+        blockQuery
+      );
+      const block = JSON.parse(blockResult);
+      blockType = block.type;
+    } catch {
+      // Block query failed, continue without block type
+    }
+
+    // Get property metadata from schema (including constraints)
+    let propertyMetadata: {
+      dimension?: string;
+      defaultUnit?: string;
+      min?: number;
+      max?: number;
+    } | undefined;
+    if (blockType && propertyName) {
+      try {
+        const schemaQuery = `${branchName}/blocks/${blockIndex}`;
+        const schemaProperties = await getBlockSchemaProperties(
+          networkPath,
+          schemaQuery,
+          schemasDir,
+          version
+        );
+        const propertyKey = `${schemaQuery}/${propertyName}`;
+        if (schemaProperties[propertyKey]) {
+          const propInfo = schemaProperties[propertyKey];
+          propertyMetadata = {
+            dimension: propInfo.dimension,
+            defaultUnit: propInfo.defaultUnit,
+            min: propInfo.min,
+            max: propInfo.max,
+          };
+        }
+      } catch {
+        // Schema lookup failed, continue without metadata
+      }
+    }
+
+    // If no schema metadata, try config dimension map
+    if (!propertyMetadata?.dimension && propertyDimensions[propertyName]) {
+      propertyMetadata = {
+        dimension: propertyDimensions[propertyName],
+      };
+    }
+
+    // Format the validation result
+    const formattedValidation = { ...validation };
+
+    // Format the value if it exists and is a string (unit string)
+    let originalValueString: string | undefined;
+    if (formattedValidation.value && typeof formattedValidation.value === "string") {
+      originalValueString = formattedValidation.value;
+      const unitStringMatch = formattedValidation.value.match(
+        /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
+      );
+      if (unitStringMatch) {
+        const numericValue = parseFloat(unitStringMatch[1]);
+        const originalKey = `_${propertyName}_original`;
+        const formatPrefs: UnitPreferences = {
+          ...unitPreferences,
+          originalStrings: {
+            ...unitPreferences.originalStrings,
+            [originalKey]: formattedValidation.value,
+          },
+        };
+        try {
+          formattedValidation.value = await formatValue(
+            numericValue,
+            propertyName,
+            blockType,
+            formatPrefs,
+            propertyMetadata
+          );
+        } catch {
+          // Formatting failed, keep original value
+        }
+      }
+    }
+
+    // Re-validate constraints with proper unit conversion if we have defaultUnit
+    if (
+      propertyMetadata?.defaultUnit &&
+      (propertyMetadata.min !== undefined || propertyMetadata.max !== undefined) &&
+      originalValueString &&
+      formattedValidation.is_valid !== false // Only re-validate if not already marked invalid
+    ) {
+      try {
+        // Convert the original value to the defaultUnit for comparison
+        const valueInDefaultUnit = dim.eval(
+          `${originalValueString} as ${propertyMetadata.defaultUnit}`
+        );
+        const numericValue = parseFloat(valueInDefaultUnit.split(" ")[0]);
+
+        // Check min constraint
+        if (propertyMetadata.min !== undefined && numericValue < propertyMetadata.min) {
+          formattedValidation.is_valid = false;
+          formattedValidation.severity = "error";
+          formattedValidation.message = `Value ${numericValue} ${propertyMetadata.defaultUnit} is less than minimum ${propertyMetadata.min} ${propertyMetadata.defaultUnit}`;
+        }
+
+        // Check max constraint
+        if (
+          formattedValidation.is_valid !== false &&
+          propertyMetadata.max !== undefined &&
+          numericValue > propertyMetadata.max
+        ) {
+          formattedValidation.is_valid = false;
+          formattedValidation.severity = "error";
+          formattedValidation.message = `Value ${numericValue} ${propertyMetadata.defaultUnit} is greater than maximum ${propertyMetadata.max} ${propertyMetadata.defaultUnit}`;
+        }
+      } catch (error) {
+        // Unit conversion failed, skip constraint validation
+        // The Rust validation will have caught basic issues
+      }
+    }
+
+    formatted[propertyPath] = formattedValidation;
+  }
+
+  return formatted;
+}
+
 export async function validateQueryBlocks(
   networkPath: string,
   query: string,
@@ -176,7 +351,16 @@ export async function validateQueryBlocks(
     schemaFilesJson,
     version
   );
-  return JSON.parse(result);
+  const validationResults = JSON.parse(result);
+
+  // Format validation results with unit preferences
+  return await formatValidationResults(
+    validationResults,
+    networkPath,
+    schemasDir,
+    version,
+    configContent
+  );
 }
 
 export async function validateNetworkBlocks(
@@ -200,5 +384,14 @@ export async function validateNetworkBlocks(
     schemaFilesJson,
     version
   );
-  return JSON.parse(result);
+  const validationResults = JSON.parse(result);
+
+  // Format validation results with unit preferences
+  return await formatValidationResults(
+    validationResults,
+    networkPath,
+    schemasDir,
+    version,
+    configContent
+  );
 }

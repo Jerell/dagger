@@ -1,6 +1,6 @@
 # Global properties (preset-level defaults)
 [properties]
-ambientTemperature = 20.0
+ambientTemperature = "20.0 C"
 pressure = 14.7
 
 # Inheritance rules
@@ -11,6 +11,11 @@ general = ["block", "branch", "group", "global"]
 ambientTemperature = ["group", "global"]
 pressure = ["block"]
 
+# Map property names to dimensions (for global properties not in schemas)
+[dimensions]
+ambientTemperature = "temperature"
+
+# Unit preferences
 [unitPreferences.Pipe]
 length = "km"
 
@@ -20,4 +25,4 @@ pressure = "bar"
 [unitPreferences.dimensions]
 length = "m"
 pressure = "Pa"
-temperature = "C"
+temperature = "K"

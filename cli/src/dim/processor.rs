@@ -18,7 +18,15 @@ impl UnitProcessor {
         let parser = DimParser::new().ok();
         Self { parser }
     }
+}
 
+impl Default for UnitProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UnitProcessor {
     /// Process a TOML Value, parsing any unit strings found
     /// Returns a new Value with normalized units (original strings preserved in metadata)
     pub fn process_value(&mut self, value: &Value) -> Result<Value, DimError> {
