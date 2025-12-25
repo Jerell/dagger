@@ -11,6 +11,7 @@
 
 import { formatValue, UnitPreferences } from "./unitFormatter";
 import { getBlockSchemaProperties } from "./effectSchemaProperties";
+import { parseValue } from "./valueParser";
 
 export interface FormatValueOptions {
   /** Property name (e.g., "length", "ambientTemperature") */
@@ -100,69 +101,63 @@ export async function formatValueUnified(
   }
 
   // Handle different value types
-  if (typeof value === "string") {
-    // Check if it's a unit string (e.g., "1 mi", "100 bar")
-    const unitStringMatch = value.match(
-      /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
-    );
+  const parsed = parseValue(value);
 
-    if (unitStringMatch) {
-      // This is a unit string - format it
-      const numericValue = parseFloat(unitStringMatch[1]);
-      if (isNaN(numericValue)) {
-        return value; // Not a valid number, return as-is
-      }
-
-      // Store original string in preferences for formatValue
-      const originalKey = `_${propertyName}_original`;
-      const formatPrefs: UnitPreferences = {
-        ...unitPreferences,
-        originalStrings: {
-          ...unitPreferences.originalStrings,
-          [originalKey]: value,
-        },
-      };
-
-      // Format with unit preferences
-      return await formatValue(
-        numericValue,
-        propertyName,
-        blockType,
-        formatPrefs,
-        propertyMetadata
-      );
-    } else {
-      // Not a unit string, return as-is
-      return value;
-    }
-  } else if (typeof value === "number") {
-    // Numeric value - need original string for conversion
-    // If we don't have it, we can't format it properly
-    // Return as string representation
+  if (parsed && parsed.isUnitString) {
+    // This is a unit string - format it
+    // Store original string in preferences for formatValue
     const originalKey = `_${propertyName}_original`;
-    const originalString = unitPreferences.originalStrings?.[originalKey];
+    const formatPrefs: UnitPreferences = {
+      ...unitPreferences,
+      originalStrings: {
+        ...unitPreferences.originalStrings,
+        [originalKey]: parsed.unitString!,
+      },
+    };
 
-    if (originalString) {
-      // We have the original string, format it
-      const formatPrefs: UnitPreferences = {
-        ...unitPreferences,
-        originalStrings: {
-          ...unitPreferences.originalStrings,
-          [originalKey]: originalString,
-        },
-      };
-      return await formatValue(
-        value,
-        propertyName,
-        blockType,
-        formatPrefs,
-        propertyMetadata
-      );
+    // Format with unit preferences
+    return await formatValue(
+      parsed.numericValue,
+      propertyName,
+      blockType,
+      formatPrefs,
+      propertyMetadata
+    );
+  } else if (parsed && !parsed.isUnitString) {
+    // Plain numeric string or number - check if we have original string for formatting
+    if (typeof value === "number") {
+      // Numeric value - need original string for conversion
+      // If we don't have it, we can't format it properly
+      // Return as string representation
+      const originalKey = `_${propertyName}_original`;
+      const originalString = unitPreferences.originalStrings?.[originalKey];
+
+      if (originalString) {
+        // We have the original string, format it
+        const formatPrefs: UnitPreferences = {
+          ...unitPreferences,
+          originalStrings: {
+            ...unitPreferences.originalStrings,
+            [originalKey]: originalString,
+          },
+        };
+        return await formatValue(
+          value,
+          propertyName,
+          blockType,
+          formatPrefs,
+          propertyMetadata
+        );
+      } else {
+        // No original string, can't format - return number as string
+        return value.toString();
+      }
     } else {
-      // No original string, can't format - return number as string
-      return value.toString();
+      // Plain numeric string (e.g., "0.7") - return as-is
+      return value;
     }
   }
 
-  return String(value);
+  // Value couldn't be parsed or is null/undefined
+  return value === null || value === undefined ? undefined : String(value);
 }

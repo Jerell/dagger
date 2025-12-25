@@ -12,6 +12,7 @@ import { UnitPreferences } from "./unitFormatter";
 import { formatValueUnified, FormatValueOptions } from "./valueFormatter";
 import { parseUnitPreferences } from "./query";
 import dim from "./dim";
+import { parseValue, convertToNumber } from "./valueParser";
 
 // With nodejs target, WASM is initialized synchronously when module loads
 let daggerWasm: DaggerWasm | null = null;
@@ -302,43 +303,50 @@ async function validateBlockInternal(
 
   const results: Record<string, ValidationResult> = {};
 
+  // Helper function to convert a value to a number for validation
+  // Uses shared value parser utility
+  async function convertValueForValidation(
+    value: any,
+    propertyName: string,
+    propertyMetadata: PropertyMetadata
+  ): Promise<number | undefined> {
+    const parsed = parseValue(value);
+    if (!parsed) {
+      return undefined;
+    }
+
+    // If it's a unit string and we have a defaultUnit, convert to that unit
+    if (parsed.isUnitString && propertyMetadata?.defaultUnit) {
+      try {
+        return await convertToNumber(value, propertyMetadata.defaultUnit);
+      } catch (error) {
+        console.warn(
+          `Failed to convert ${propertyName} value "${value}" to ${propertyMetadata.defaultUnit}:`,
+          error
+        );
+        return undefined;
+      }
+    }
+
+    // Otherwise, return the numeric value as-is
+    return parsed.numericValue;
+  }
+
   // Convert unit strings to numbers in default units before validation
   // Effect Schema expects numbers, not unit strings
   const blockForValidation = { ...block };
   for (const propertyName of Object.keys(blockForValidation)) {
     const value = blockForValidation[propertyName];
-    if (typeof value === "string") {
-      // Check if it's a unit string (e.g., "1 mi", "100 bar")
-      const unitStringMatch = value.match(
-        /^([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+(.+)$/
-      );
-      if (unitStringMatch) {
-        const propertyMetadata = schemaMetadata.properties[propertyName];
-        // If we have a defaultUnit, convert to that unit and extract the numeric value
-        if (propertyMetadata?.defaultUnit) {
-          try {
-            const converted = dim.eval(
-              `${value} as ${propertyMetadata.defaultUnit}`
-            );
-            const numericValue = parseFloat(converted.split(" ")[0]);
-            if (!isNaN(numericValue)) {
-              blockForValidation[propertyName] = numericValue;
-            }
-          } catch (error) {
-            // Conversion failed, keep original string (validation will fail)
-            console.warn(
-              `Failed to convert ${propertyName} value "${value}" to ${propertyMetadata.defaultUnit}:`,
-              error
-            );
-          }
-        }
-      }
+    const propertyMetadata = schemaMetadata.properties[propertyName];
+    const converted = await convertValueForValidation(
+      value,
+      propertyName,
+      propertyMetadata
+    );
+    if (converted !== undefined) {
+      blockForValidation[propertyName] = converted;
     }
   }
-
-  // Validate using Effect Schema with converted values
-  const validationResult =
-    Schema.decodeUnknownEither(schema)(blockForValidation);
 
   // Get all properties from schema (required + optional)
   const allProperties = [
@@ -354,23 +362,52 @@ async function validateBlockInternal(
     // Try to get scope-resolved value by querying for the property
     let resolvedValue: any = undefined;
     let resolvedScope: string | undefined = undefined;
+    let resolvedValueForValidation: number | undefined = undefined;
 
-    try {
-      const propertyQuery = `${blockPath}/${propertyName}`;
-      const queryResult = wasm.query_from_files(
-        filesJson,
-        configContent || undefined,
-        propertyQuery
-      );
-      const parsed = JSON.parse(queryResult);
-      if (parsed !== null && parsed !== undefined) {
-        resolvedValue = parsed;
-        // TODO: Get actual scope from query result if available
-        // For now, assume it came from block scope if present in block, otherwise from scope resolution
-        resolvedScope = block[propertyName] !== undefined ? "block" : "scope";
+    // Check if property is directly in block
+    const hasBlockValue =
+      block[propertyName] !== undefined && block[propertyName] !== null;
+
+    if (hasBlockValue) {
+      // Property is directly in block
+      resolvedValue = block[propertyName];
+      resolvedScope = "block";
+    } else {
+      // Property not in block, use WASM function to get value with scope
+      try {
+        // Extract node ID and block index from blockPath (e.g., "branch-1/blocks/3" -> "branch-1", 3)
+        const pathParts = blockPath.split("/blocks/");
+        if (pathParts.length === 2) {
+          const nodeId = pathParts[0];
+          const blockIndex = parseInt(pathParts[1], 10);
+
+          if (!isNaN(blockIndex)) {
+            const result = wasm.resolve_property_with_scope(
+              filesJson,
+              configContent || undefined,
+              nodeId,
+              blockIndex,
+              propertyName
+            );
+            const parsed = JSON.parse(result);
+            if (parsed && parsed.value !== undefined && parsed.scope) {
+              resolvedValue = parsed.value;
+              resolvedScope = parsed.scope; // "block" | "branch" | "group" | "global"
+            }
+          }
+        }
+      } catch {
+        // Resolution failed, property not found
       }
-    } catch {
-      // Query failed, property not found
+    }
+
+    // Convert resolved value to number for validation if needed
+    if (resolvedValue !== undefined && resolvedValue !== null) {
+      resolvedValueForValidation = await convertValueForValidation(
+        resolvedValue,
+        propertyName,
+        propertyMetadata
+      );
     }
 
     // Check if property is required and missing
@@ -388,7 +425,16 @@ async function validateBlockInternal(
     }
 
     // If we have a value (from block or scope), validate constraints
+    // Use the converted numeric value for validation if available, otherwise use the original
     const valueToValidate =
+      resolvedValueForValidation !== undefined
+        ? resolvedValueForValidation
+        : resolvedValue !== undefined
+        ? resolvedValue
+        : block[propertyName];
+
+    // Also get the original value for formatting
+    const originalValueForFormatting =
       resolvedValue !== undefined ? resolvedValue : block[propertyName];
 
     if (valueToValidate !== undefined && valueToValidate !== null) {
@@ -403,13 +449,9 @@ async function validateBlockInternal(
         blockPath,
       };
 
-      // If we have a resolved value from query, use it (it's already a string from WASM)
-      // Otherwise use the value from the block
-      const valueToFormat =
-        resolvedValue !== undefined ? resolvedValue : valueToValidate;
-
+      // Use the original value for formatting (preserves unit strings)
       const formattedValue = await formatValueUnified(
-        valueToFormat,
+        originalValueForFormatting,
         formatOptions
       );
 
@@ -423,18 +465,23 @@ async function validateBlockInternal(
           propertyMetadata.max !== undefined)
       ) {
         try {
-          // Convert value to defaultUnit for comparison
-          const valueString =
-            typeof valueToValidate === "string"
-              ? valueToValidate
-              : `${valueToValidate} ${propertyMetadata.defaultUnit}`;
+          // Use the converted numeric value if available, otherwise convert the original
+          let numericValue: number;
+          if (typeof valueToValidate === "number") {
+            // Already converted to number in defaultUnit
+            numericValue = valueToValidate;
+          } else {
+            // Convert value to defaultUnit for comparison
+            const valueString =
+              typeof originalValueForFormatting === "string"
+                ? originalValueForFormatting
+                : `${originalValueForFormatting} ${propertyMetadata.defaultUnit}`;
 
-          const valueInDefaultUnitString = dim.eval(
-            `${valueString} as ${propertyMetadata.defaultUnit}`
-          );
-          const numericValue = parseFloat(
-            valueInDefaultUnitString.split(" ")[0]
-          );
+            const valueInDefaultUnitString = dim.eval(
+              `${valueString} as ${propertyMetadata.defaultUnit}`
+            );
+            numericValue = parseFloat(valueInDefaultUnitString.split(" ")[0]);
+          }
 
           if (
             propertyMetadata.min !== undefined &&
@@ -458,9 +505,39 @@ async function validateBlockInternal(
         }
       }
 
+      // Validate this specific property with Effect Schema
+      // Build a validation object with the converted value for this property
+      const propertyValidationObject: any = {
+        ...blockForValidation,
+      };
+
+      // Use the converted numeric value if available, otherwise try to convert the original
+      if (resolvedValueForValidation !== undefined) {
+        propertyValidationObject[propertyName] = resolvedValueForValidation;
+      } else if (typeof valueToValidate === "number") {
+        propertyValidationObject[propertyName] = valueToValidate;
+      } else {
+        // Try to convert the value now if it's a string
+        const converted = await convertValueForValidation(
+          valueToValidate,
+          propertyName,
+          propertyMetadata
+        );
+        if (converted !== undefined) {
+          propertyValidationObject[propertyName] = converted;
+        } else {
+          propertyValidationObject[propertyName] = valueToValidate;
+        }
+      }
+
+      // Validate this property specifically
+      const propertyValidationResult = Schema.decodeUnknownEither(schema)(
+        propertyValidationObject
+      );
+
       // Check Effect Schema validation errors for this property
-      if (Either.isLeft(validationResult)) {
-        const errors = validationResult.left;
+      if (Either.isLeft(propertyValidationResult)) {
+        const errors = propertyValidationResult.left;
         // Check if this property has validation errors
         // Effect Schema errors are structured, we need to extract a user-friendly message
         const errorMessage = String(errors);

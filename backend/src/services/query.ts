@@ -161,7 +161,8 @@ function parseUnitOverrides(query: string): Record<string, string> {
 
 export async function queryNetwork(
   networkPath: string,
-  query: string
+  query: string,
+  schemaVersion?: string
 ): Promise<any> {
   // Initialize dim module
   await dim.init();
@@ -256,7 +257,7 @@ export async function queryNetwork(
         const schemaProperties = await getBlockSchemaProperties(
           networkPath,
           schemaQuery,
-          "v1.0" // TODO: Make version configurable
+          schemaVersion || "v1.0"
         );
         // Look for this property in the schema results
         const propertyKey = `${schemaQuery}/${propertyName}`;

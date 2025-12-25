@@ -10,10 +10,12 @@ export const queryRoutes = new Hono();
  * Query params:
  * - q: The query path (e.g., "branch-4/data/blocks[type=Pipe]")
  * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - version: Schema version for metadata lookup (default: "v1.0")
  */
 queryRoutes.get("/", async (c) => {
   const query = c.req.query("q");
   const networkName = c.req.query("network") || "preset1";
+  const schemaVersion = c.req.query("version");
   const networkPath = `networks/${networkName}`;
 
   if (!query) {
@@ -21,7 +23,7 @@ queryRoutes.get("/", async (c) => {
   }
 
   try {
-    const result = await queryNetwork(networkPath, query);
+    const result = await queryNetwork(networkPath, query, schemaVersion);
     return c.json(result);
   } catch (error) {
     return c.json(

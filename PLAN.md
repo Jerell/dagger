@@ -709,7 +709,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] Schema registry (version management)
 - [x] Block validation against schemas
 - [x] CLI validate command
-- [ ] Schema API endpoints (Phase 5)
+- [x] Schema API endpoints (Phase 5)
 
 ### Phase 5: API Server (Week 5-6)
 

@@ -141,6 +141,93 @@ impl DaggerWasm {
         Ok(json)
     }
 
+    /// Resolve a property with scope information
+    /// Returns JSON string with both value and scope: {"value": ..., "scope": "block"|"branch"|"group"|"global"}
+    #[wasm_bindgen]
+    pub fn resolve_property_with_scope(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        node_id: &str,
+        block_index: usize,
+        property: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network
+        let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Load config for scope resolution
+        let config = if let Some(config_content) = config_content {
+            scope::config::Config::load_from_str(&config_content)
+                .map_err(|e| JsValue::from_str(&format!("Failed to load config: {}", e)))?
+        } else {
+            scope::config::Config::empty()
+        };
+        let resolver = scope::resolver::ScopeResolver::new(config);
+
+        // Find the branch node
+        let branch_node = network
+            .nodes
+            .iter()
+            .find_map(|n| match n {
+                parser::models::NodeData::Branch(b) if b.base.id == node_id => Some(b),
+                _ => None,
+            })
+            .ok_or_else(|| JsValue::from_str(&format!("Node '{}' not found", node_id)))?;
+
+        // Get the block
+        let block = branch_node.blocks.get(block_index).ok_or_else(|| {
+            JsValue::from_str(&format!(
+                "Block index {} out of range ({} blocks)",
+                block_index,
+                branch_node.blocks.len()
+            ))
+        })?;
+
+        // Find the group if parent_id exists
+        let group = branch_node.base.parent_id.as_ref().and_then(|parent_id| {
+            network.nodes.iter().find_map(|n| match n {
+                parser::models::NodeData::Group(g) if g.base.id == *parent_id => Some(g),
+                _ => None,
+            })
+        });
+
+        // Resolve the property with scope
+        let result = resolver.resolve_property_with_scope(property, block, branch_node, group);
+
+        match result {
+            Some((value, scope_level)) => {
+                // Convert TOML Value to JSON Value
+                let json_value = query::executor::toml_to_json(&value);
+
+                // Convert scope level to string
+                let scope_str = match scope_level {
+                    scope::config::ScopeLevel::Block => "block",
+                    scope::config::ScopeLevel::Branch => "branch",
+                    scope::config::ScopeLevel::Group => "group",
+                    scope::config::ScopeLevel::Global => "global",
+                };
+
+                // Return both value and scope
+                let result_obj = serde_json::json!({
+                    "value": json_value,
+                    "scope": scope_str
+                });
+
+                serde_json::to_string(&result_obj)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to serialize result: {}", e)))
+            }
+            None => Err(JsValue::from_str(&format!(
+                "Property '{}' not found in any scope",
+                property
+            ))),
+        }
+    }
+
     /// Get all edges in the network
     /// Returns JSON string array of edges
     #[wasm_bindgen]
