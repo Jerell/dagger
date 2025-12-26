@@ -140,6 +140,7 @@ function getPropertyMetadata(
 /**
  * Extract min constraint from schema AST
  * Constraints are stored in annotations JSONSchema object
+ * Need to traverse nested refinements to find all constraints
  */
 function extractMinConstraint(ast: any): number | undefined {
   if (!ast) return undefined;
@@ -165,12 +166,27 @@ function extractMinConstraint(ast: any): number | undefined {
     }
   }
 
+  // If this is a Refinement, check the nested refinement chain
+  // ast.from is the nested AST itself, not an object with an ast property
+  if (
+    ast._tag === "Refinement" &&
+    ast.from &&
+    typeof ast.from === "object" &&
+    ast.from._tag
+  ) {
+    const nestedMin = extractMinConstraint(ast.from);
+    if (nestedMin !== undefined) {
+      return nestedMin;
+    }
+  }
+
   return undefined;
 }
 
 /**
  * Extract max constraint from schema AST
  * Constraints are stored in annotations JSONSchema object
+ * Need to traverse nested refinements to find all constraints
  */
 function extractMaxConstraint(ast: any): number | undefined {
   if (!ast) return undefined;
@@ -193,6 +209,20 @@ function extractMaxConstraint(ast: any): number | undefined {
     }
     if (jsonSchema.exclusiveMaximum !== undefined) {
       return jsonSchema.exclusiveMaximum;
+    }
+  }
+
+  // If this is a Refinement, check the nested refinement chain
+  // ast.from is the nested AST itself, not an object with an ast property
+  if (
+    ast._tag === "Refinement" &&
+    ast.from &&
+    typeof ast.from === "object" &&
+    ast.from._tag
+  ) {
+    const nestedMax = extractMaxConstraint(ast.from);
+    if (nestedMax !== undefined) {
+      return nestedMax;
     }
   }
 
