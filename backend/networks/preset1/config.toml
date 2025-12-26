@@ -25,4 +25,4 @@ pressure = "bar"
 [unitPreferences.dimensions]
 length = "m"
 pressure = "Pa"
-temperature = "K"
+temperature = "°C"

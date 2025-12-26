@@ -33,6 +33,16 @@ export const PipeSchema = Schema.Struct({
       })
     )
   ),
+  ambientTemperature: Schema.optional(
+    Schema.Number.pipe(
+      Schema.greaterThan(0),
+      Schema.annotations({
+        dimension: "temperature",
+        defaultUnit: "°C",
+        title: "Ambient Temperature",
+      })
+    )
+  ),
 });
 
 export type Pipe = Schema.Schema.Type<typeof PipeSchema>;

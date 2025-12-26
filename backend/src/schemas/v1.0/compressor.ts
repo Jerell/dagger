@@ -16,7 +16,12 @@ export const CompressorSchema = Schema.Struct({
 
   efficiency: Schema.Number.pipe(
     Schema.greaterThan(0),
-    Schema.lessThanOrEqualTo(1)
+    Schema.lessThanOrEqualTo(1),
+    Schema.annotations({
+      dimension: "efficiency",
+      defaultUnit: "",
+      title: "Efficiency",
+    })
   ),
 });
 

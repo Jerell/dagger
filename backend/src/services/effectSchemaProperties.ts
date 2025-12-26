@@ -74,17 +74,86 @@ export async function getBlockSchemaProperties(
 
   // Extract block paths from query
   // For queries like "branch-1/blocks/0", the path is the query itself
-  // For queries like "branch-1/blocks", we need to iterate
+  // For queries like "branch-1/blocks" or "branch-1/blocks[type=Compressor]", we need to iterate
+  // First, get the base path by removing filters
   let basePath = query;
-  if (query.endsWith("/blocks")) {
-    // Query for all blocks in a branch
+  const filterMatch = query.match(/^(.+?)\[.+\]$/);
+  if (filterMatch) {
+    basePath = filterMatch[1];
+  }
+
+  // If the query is for blocks (with or without filter), we need to get the original blocks
+  // to determine the correct indices for the filtered results
+  if (basePath.endsWith("/blocks")) {
+    // Get all blocks to determine original indices
+    const allBlocksQuery = wasm.query_from_files(
+      filesJson,
+      configContent || undefined,
+      basePath
+    );
+    const allBlocks = JSON.parse(allBlocksQuery);
+    const allBlocksArray = Array.isArray(allBlocks) ? allBlocks : [allBlocks];
+
+    // Query for all blocks in a branch (filtered or not)
     for (let i = 0; i < blocksArray.length; i++) {
       const block = blocksArray[i];
       if (!block || typeof block !== "object" || !block.type) {
         continue;
       }
 
-      const blockPath = `${basePath}/${i}`;
+      // Find the original index of this block in the unfiltered array
+      // Match by type and other identifying properties
+      let originalIndex = -1;
+      for (let j = 0; j < allBlocksArray.length; j++) {
+        const origBlock = allBlocksArray[j];
+        if (
+          origBlock &&
+          typeof origBlock === "object" &&
+          origBlock.type === block.type
+        ) {
+          // Check if this is the same block by comparing key properties
+          let matches = true;
+          for (const key of Object.keys(block)) {
+            if (key !== "type" && origBlock[key] !== block[key]) {
+              matches = false;
+              break;
+            }
+          }
+          if (matches) {
+            // Check if we've already used this index
+            let alreadyUsed = false;
+            for (let k = 0; k < i; k++) {
+              const prevBlock = blocksArray[k];
+              if (
+                prevBlock &&
+                typeof prevBlock === "object" &&
+                prevBlock.type === origBlock.type
+              ) {
+                let prevMatches = true;
+                for (const key of Object.keys(prevBlock)) {
+                  if (key !== "type" && origBlock[key] !== prevBlock[key]) {
+                    prevMatches = false;
+                    break;
+                  }
+                }
+                if (prevMatches) {
+                  alreadyUsed = true;
+                  break;
+                }
+              }
+            }
+            if (!alreadyUsed) {
+              originalIndex = j;
+              break;
+            }
+          }
+        }
+      }
+
+      // If we couldn't find the original index, use the filtered index
+      // This can happen if blocks are identical
+      const blockIndex = originalIndex >= 0 ? originalIndex : i;
+      const blockPath = `${basePath}/${blockIndex}`;
       const blockType = block.type;
       const schemaMetadata = getSchemaMetadata(schemaSet, blockType);
 
