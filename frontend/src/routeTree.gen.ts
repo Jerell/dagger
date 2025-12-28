@@ -10,17 +10,49 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSchemaRouteImport } from './routes/api/schema'
+import { Route as ApiQueryRouteImport } from './routes/api/query'
+import { Route as ApiNetworkRouteImport } from './routes/api/network'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as ApiSchemaValidateRouteImport } from './routes/api/schema/validate'
+import { Route as ApiSchemaPropertiesRouteImport } from './routes/api/schema/properties'
+import { Route as ApiSchemaNetworkRouteImport } from './routes/api/schema/network'
+import { Route as ApiSchemaVersionRouteImport } from './routes/api/schema/$version'
+import { Route as ApiNetworkNodesRouteImport } from './routes/api/network/nodes'
+import { Route as ApiNetworkEdgesRouteImport } from './routes/api/network/edges'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as ApiSchemaNetworkValidateRouteImport } from './routes/api/schema/network/validate'
+import { Route as ApiSchemaNetworkPropertiesRouteImport } from './routes/api/schema/network/properties'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSchemaRoute = ApiSchemaRouteImport.update({
+  id: '/api/schema',
+  path: '/api/schema',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQueryRoute = ApiQueryRouteImport.update({
+  id: '/api/query',
+  path: '/api/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNetworkRoute = ApiNetworkRouteImport.update({
+  id: '/api/network',
+  path: '/api/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
@@ -37,6 +69,36 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   id: '/demo/api/names',
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSchemaValidateRoute = ApiSchemaValidateRouteImport.update({
+  id: '/validate',
+  path: '/validate',
+  getParentRoute: () => ApiSchemaRoute,
+} as any)
+const ApiSchemaPropertiesRoute = ApiSchemaPropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => ApiSchemaRoute,
+} as any)
+const ApiSchemaNetworkRoute = ApiSchemaNetworkRouteImport.update({
+  id: '/network',
+  path: '/network',
+  getParentRoute: () => ApiSchemaRoute,
+} as any)
+const ApiSchemaVersionRoute = ApiSchemaVersionRouteImport.update({
+  id: '/$version',
+  path: '/$version',
+  getParentRoute: () => ApiSchemaRoute,
+} as any)
+const ApiNetworkNodesRoute = ApiNetworkNodesRouteImport.update({
+  id: '/nodes',
+  path: '/nodes',
+  getParentRoute: () => ApiNetworkRoute,
+} as any)
+const ApiNetworkEdgesRoute = ApiNetworkEdgesRouteImport.update({
+  id: '/edges',
+  path: '/edges',
+  getParentRoute: () => ApiNetworkRoute,
 } as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
@@ -58,12 +120,36 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSchemaNetworkValidateRoute =
+  ApiSchemaNetworkValidateRouteImport.update({
+    id: '/validate',
+    path: '/validate',
+    getParentRoute: () => ApiSchemaNetworkRoute,
+  } as any)
+const ApiSchemaNetworkPropertiesRoute =
+  ApiSchemaNetworkPropertiesRouteImport.update({
+    id: '/properties',
+    path: '/properties',
+    getParentRoute: () => ApiSchemaNetworkRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/network': typeof ApiNetworkRouteWithChildren
+  '/api/query': typeof ApiQueryRoute
+  '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/api/network/edges': typeof ApiNetworkEdgesRoute
+  '/api/network/nodes': typeof ApiNetworkNodesRoute
+  '/api/schema/$version': typeof ApiSchemaVersionRoute
+  '/api/schema/network': typeof ApiSchemaNetworkRouteWithChildren
+  '/api/schema/properties': typeof ApiSchemaPropertiesRoute
+  '/api/schema/validate': typeof ApiSchemaValidateRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/api/schema/network/properties': typeof ApiSchemaNetworkPropertiesRoute
+  '/api/schema/network/validate': typeof ApiSchemaNetworkValidateRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -71,9 +157,21 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/network': typeof ApiNetworkRouteWithChildren
+  '/api/query': typeof ApiQueryRoute
+  '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/api/network/edges': typeof ApiNetworkEdgesRoute
+  '/api/network/nodes': typeof ApiNetworkNodesRoute
+  '/api/schema/$version': typeof ApiSchemaVersionRoute
+  '/api/schema/network': typeof ApiSchemaNetworkRouteWithChildren
+  '/api/schema/properties': typeof ApiSchemaPropertiesRoute
+  '/api/schema/validate': typeof ApiSchemaValidateRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/api/schema/network/properties': typeof ApiSchemaNetworkPropertiesRoute
+  '/api/schema/network/validate': typeof ApiSchemaNetworkValidateRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -82,9 +180,21 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/network': typeof ApiNetworkRouteWithChildren
+  '/api/query': typeof ApiQueryRoute
+  '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/api/network/edges': typeof ApiNetworkEdgesRoute
+  '/api/network/nodes': typeof ApiNetworkNodesRoute
+  '/api/schema/$version': typeof ApiSchemaVersionRoute
+  '/api/schema/network': typeof ApiSchemaNetworkRouteWithChildren
+  '/api/schema/properties': typeof ApiSchemaPropertiesRoute
+  '/api/schema/validate': typeof ApiSchemaValidateRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/api/schema/network/properties': typeof ApiSchemaNetworkPropertiesRoute
+  '/api/schema/network/validate': typeof ApiSchemaNetworkValidateRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -94,9 +204,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/health'
+    | '/api/network'
+    | '/api/query'
+    | '/api/schema'
+    | '/api/network/edges'
+    | '/api/network/nodes'
+    | '/api/schema/$version'
+    | '/api/schema/network'
+    | '/api/schema/properties'
+    | '/api/schema/validate'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/api/schema/network/properties'
+    | '/api/schema/network/validate'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -104,9 +226,21 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/health'
+    | '/api/network'
+    | '/api/query'
+    | '/api/schema'
+    | '/api/network/edges'
+    | '/api/network/nodes'
+    | '/api/schema/$version'
+    | '/api/schema/network'
+    | '/api/schema/properties'
+    | '/api/schema/validate'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/api/schema/network/properties'
+    | '/api/schema/network/validate'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -114,9 +248,21 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/health'
+    | '/api/network'
+    | '/api/query'
+    | '/api/schema'
+    | '/api/network/edges'
+    | '/api/network/nodes'
+    | '/api/schema/$version'
+    | '/api/schema/network'
+    | '/api/schema/properties'
+    | '/api/schema/validate'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/api/schema/network/properties'
+    | '/api/schema/network/validate'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -125,6 +271,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiNetworkRoute: typeof ApiNetworkRouteWithChildren
+  ApiQueryRoute: typeof ApiQueryRoute
+  ApiSchemaRoute: typeof ApiSchemaRouteWithChildren
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -141,6 +291,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/schema': {
+      id: '/api/schema'
+      path: '/api/schema'
+      fullPath: '/api/schema'
+      preLoaderRoute: typeof ApiSchemaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/query': {
+      id: '/api/query'
+      path: '/api/query'
+      fullPath: '/api/query'
+      preLoaderRoute: typeof ApiQueryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/network': {
+      id: '/api/network'
+      path: '/api/network'
+      fullPath: '/api/network'
+      preLoaderRoute: typeof ApiNetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/start/server-funcs': {
@@ -163,6 +341,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/api/names'
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/schema/validate': {
+      id: '/api/schema/validate'
+      path: '/validate'
+      fullPath: '/api/schema/validate'
+      preLoaderRoute: typeof ApiSchemaValidateRouteImport
+      parentRoute: typeof ApiSchemaRoute
+    }
+    '/api/schema/properties': {
+      id: '/api/schema/properties'
+      path: '/properties'
+      fullPath: '/api/schema/properties'
+      preLoaderRoute: typeof ApiSchemaPropertiesRouteImport
+      parentRoute: typeof ApiSchemaRoute
+    }
+    '/api/schema/network': {
+      id: '/api/schema/network'
+      path: '/network'
+      fullPath: '/api/schema/network'
+      preLoaderRoute: typeof ApiSchemaNetworkRouteImport
+      parentRoute: typeof ApiSchemaRoute
+    }
+    '/api/schema/$version': {
+      id: '/api/schema/$version'
+      path: '/$version'
+      fullPath: '/api/schema/$version'
+      preLoaderRoute: typeof ApiSchemaVersionRouteImport
+      parentRoute: typeof ApiSchemaRoute
+    }
+    '/api/network/nodes': {
+      id: '/api/network/nodes'
+      path: '/nodes'
+      fullPath: '/api/network/nodes'
+      preLoaderRoute: typeof ApiNetworkNodesRouteImport
+      parentRoute: typeof ApiNetworkRoute
+    }
+    '/api/network/edges': {
+      id: '/api/network/edges'
+      path: '/edges'
+      fullPath: '/api/network/edges'
+      preLoaderRoute: typeof ApiNetworkEdgesRouteImport
+      parentRoute: typeof ApiNetworkRoute
     }
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
@@ -192,11 +412,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/schema/network/validate': {
+      id: '/api/schema/network/validate'
+      path: '/validate'
+      fullPath: '/api/schema/network/validate'
+      preLoaderRoute: typeof ApiSchemaNetworkValidateRouteImport
+      parentRoute: typeof ApiSchemaNetworkRoute
+    }
+    '/api/schema/network/properties': {
+      id: '/api/schema/network/properties'
+      path: '/properties'
+      fullPath: '/api/schema/network/properties'
+      preLoaderRoute: typeof ApiSchemaNetworkPropertiesRouteImport
+      parentRoute: typeof ApiSchemaNetworkRoute
+    }
   }
 }
 
+interface ApiNetworkRouteChildren {
+  ApiNetworkEdgesRoute: typeof ApiNetworkEdgesRoute
+  ApiNetworkNodesRoute: typeof ApiNetworkNodesRoute
+}
+
+const ApiNetworkRouteChildren: ApiNetworkRouteChildren = {
+  ApiNetworkEdgesRoute: ApiNetworkEdgesRoute,
+  ApiNetworkNodesRoute: ApiNetworkNodesRoute,
+}
+
+const ApiNetworkRouteWithChildren = ApiNetworkRoute._addFileChildren(
+  ApiNetworkRouteChildren,
+)
+
+interface ApiSchemaNetworkRouteChildren {
+  ApiSchemaNetworkPropertiesRoute: typeof ApiSchemaNetworkPropertiesRoute
+  ApiSchemaNetworkValidateRoute: typeof ApiSchemaNetworkValidateRoute
+}
+
+const ApiSchemaNetworkRouteChildren: ApiSchemaNetworkRouteChildren = {
+  ApiSchemaNetworkPropertiesRoute: ApiSchemaNetworkPropertiesRoute,
+  ApiSchemaNetworkValidateRoute: ApiSchemaNetworkValidateRoute,
+}
+
+const ApiSchemaNetworkRouteWithChildren =
+  ApiSchemaNetworkRoute._addFileChildren(ApiSchemaNetworkRouteChildren)
+
+interface ApiSchemaRouteChildren {
+  ApiSchemaVersionRoute: typeof ApiSchemaVersionRoute
+  ApiSchemaNetworkRoute: typeof ApiSchemaNetworkRouteWithChildren
+  ApiSchemaPropertiesRoute: typeof ApiSchemaPropertiesRoute
+  ApiSchemaValidateRoute: typeof ApiSchemaValidateRoute
+}
+
+const ApiSchemaRouteChildren: ApiSchemaRouteChildren = {
+  ApiSchemaVersionRoute: ApiSchemaVersionRoute,
+  ApiSchemaNetworkRoute: ApiSchemaNetworkRouteWithChildren,
+  ApiSchemaPropertiesRoute: ApiSchemaPropertiesRoute,
+  ApiSchemaValidateRoute: ApiSchemaValidateRoute,
+}
+
+const ApiSchemaRouteWithChildren = ApiSchemaRoute._addFileChildren(
+  ApiSchemaRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiNetworkRoute: ApiNetworkRouteWithChildren,
+  ApiQueryRoute: ApiQueryRoute,
+  ApiSchemaRoute: ApiSchemaRouteWithChildren,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

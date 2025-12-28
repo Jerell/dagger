@@ -20,6 +20,9 @@ app.route("/api/query", queryRoutes);
 app.route("/api/network", networkRoutes);
 app.route("/api/schema", schemaRoutes);
 
+// Export app type for type inference in frontend
+export type App = typeof app;
+
 // 404 handler
 app.notFound((c) => {
   return c.json({ error: "Not found" }, 404);

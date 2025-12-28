@@ -26,6 +26,8 @@ services:
       - "3000:3000"
     env_file:
       - ../frontend/.env
+    environment:
+      - BACKEND_URL=http://backend:3001
     volumes:
       - ../frontend:/app/frontend
       - ../backend:/app/backend
