@@ -144,11 +144,12 @@ export function parseUnitPreferences(configContent: string | null): {
 /**
  * Extract unit overrides from query string (e.g., "?units=length:km,diameter:m")
  */
-function parseUnitOverrides(query: string): Record<string, string> {
+export function parseUnitOverrides(query: string): Record<string, string> {
   const overrides: Record<string, string> = {};
   const unitsMatch = query.match(/[?&]units=([^&]+)/);
   if (unitsMatch) {
-    const unitsStr = unitsMatch[1];
+    // Decode URL-encoded values (e.g., length%3Ami -> length:mi)
+    const unitsStr = decodeURIComponent(unitsMatch[1]);
     for (const pair of unitsStr.split(",")) {
       const [prop, unit] = pair.split(":").map((s) => s.trim());
       if (prop && unit) {
@@ -162,7 +163,8 @@ function parseUnitOverrides(query: string): Record<string, string> {
 export async function queryNetwork(
   networkPath: string,
   query: string,
-  schemaVersion?: string
+  schemaVersion?: string,
+  queryOverrides: Record<string, string> = {}
 ): Promise<any> {
   // Initialize dim module
   await dim.init();
@@ -177,8 +179,10 @@ export async function queryNetwork(
   const { blockTypes, dimensions, propertyDimensions } =
     parseUnitPreferences(configContent);
 
-  // Parse unit overrides from query string
-  const queryOverrides = parseUnitOverrides(query);
+  // Merge HTTP query string overrides with any overrides from query path
+  // (Query path can also have units like "branch-1/blocks?units=length:km")
+  const pathOverrides = parseUnitOverrides(query);
+  const mergedOverrides = { ...pathOverrides, ...queryOverrides };
 
   // Extract original query path (remove unit parameters)
   const baseQuery = query.split("?")[0].split("&")[0];
@@ -286,7 +290,7 @@ export async function queryNetwork(
 
     // Apply unit preferences
     const unitPreferences: UnitPreferences = {
-      queryOverrides,
+      queryOverrides: mergedOverrides,
       blockTypes,
       dimensions,
       originalStrings,

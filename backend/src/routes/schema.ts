@@ -114,8 +114,20 @@ schemaRoutes.get("/network/validate", async (c) => {
     return c.json({ error: "Missing required query parameter: version" }, 400);
   }
 
+  // Extract unit preferences from query string
+  // Use raw query string to handle colons and special characters correctly
+  const queryString = c.req.url.split("?")[1] || "";
+  const { parseUnitOverrides } = await import("../services/query");
+  const queryOverrides = queryString
+    ? parseUnitOverrides(`?${queryString}`)
+    : {};
+
   try {
-    const result = await validateNetworkBlocks(networkPath, version);
+    const result = await validateNetworkBlocks(
+      networkPath,
+      version,
+      queryOverrides
+    );
     return c.json(result);
   } catch (error) {
     return c.json(
@@ -192,8 +204,21 @@ schemaRoutes.get("/validate", async (c) => {
     return c.json({ error: "Missing required query parameter: version" }, 400);
   }
 
+  // Extract unit preferences from query string
+  // Use raw query string to handle colons and special characters correctly
+  const queryString = c.req.url.split("?")[1] || "";
+  const { parseUnitOverrides } = await import("../services/query");
+  const queryOverrides = queryString
+    ? parseUnitOverrides(`?${queryString}`)
+    : {};
+
   try {
-    const result = await validateQueryBlocks(networkPath, query, version);
+    const result = await validateQueryBlocks(
+      networkPath,
+      query,
+      version,
+      queryOverrides
+    );
     return c.json(result);
   } catch (error) {
     return c.json(

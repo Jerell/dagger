@@ -10,8 +10,9 @@ export const Route = createFileRoute("/api/query" as any)({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const queryParams = url.searchParams.toString();
-        const backendPath = `/api/query${queryParams ? `?${queryParams}` : ""}`;
+        // Use raw query string to preserve special characters like colons in units=length:mi
+        const queryString = url.search;
+        const backendPath = `/api/query${queryString}`;
 
         try {
           const response = await proxyToBackend(backendPath, {

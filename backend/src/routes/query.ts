@@ -22,8 +22,20 @@ queryRoutes.get("/", async (c) => {
     return c.json({ error: "Missing required query parameter: q" }, 400);
   }
 
+  // Extract unit preferences from HTTP query string
+  const queryString = c.req.url.split("?")[1] || "";
+  const { parseUnitOverrides } = await import("../services/query");
+  const queryOverrides = queryString
+    ? parseUnitOverrides(`?${queryString}`)
+    : {};
+
   try {
-    const result = await queryNetwork(networkPath, query, schemaVersion);
+    const result = await queryNetwork(
+      networkPath,
+      query,
+      schemaVersion,
+      queryOverrides
+    );
     return c.json(result);
   } catch (error) {
     return c.json(

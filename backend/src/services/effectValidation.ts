@@ -5,7 +5,6 @@ import * as fs from "fs/promises";
 import {
   getSchema,
   getSchemaMetadata,
-  getPropertyConstraints,
   PropertyMetadata,
 } from "./effectSchemas";
 import { UnitPreferences } from "./unitFormatter";
@@ -186,12 +185,35 @@ function extractBlockPathFromQuery(query: string, blockIndex?: number): string {
 export async function validateQueryBlocks(
   networkPath: string,
   query: string,
-  schemaSet: string
+  schemaSet: string,
+  queryOverrides: Record<string, string> = {}
 ): Promise<Record<string, ValidationResult>> {
-  const wasm = getWasm();
+  // Read files once at the top level
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
+  
+  // Initialize dim once for all blocks
+  await dim.init();
+  
+  // Parse unit preferences once
+  const { blockTypes, dimensions: configDimensions, propertyDimensions } =
+    parseUnitPreferences(configContent);
+  
+  // Merge query overrides into dimensions
+  const mergedDimensions = { ...configDimensions };
+  for (const [key, unit] of Object.entries(queryOverrides)) {
+    mergedDimensions[key] = unit;
+  }
+  
+  const unitPreferences: UnitPreferences = {
+    queryOverrides,
+    blockTypes,
+    dimensions: mergedDimensions,
+    propertyDimensions,
+  };
 
+  const wasm = getWasm();
+  
   // Execute query to get blocks
   const queryResult = wasm.query_from_files(
     filesJson,
@@ -246,7 +268,11 @@ export async function validateQueryBlocks(
       blockPath,
       schemaSet,
       networkPath,
-      configContent
+      configContent,
+      queryOverrides,
+      files,
+      filesJson,
+      unitPreferences
     );
 
     // Merge results
@@ -267,7 +293,11 @@ async function validateBlockInternal(
   blockPath: string,
   schemaSet: string,
   networkPath: string,
-  configContent: string | null
+  configContent: string | null,
+  queryOverrides: Record<string, string> = {},
+  files: Record<string, string>,
+  filesJson: string,
+  unitPreferences: UnitPreferences
 ): Promise<Record<string, ValidationResult>> {
   const schema = getSchema(schemaSet, blockType);
   if (!schema) {
@@ -281,8 +311,6 @@ async function validateBlockInternal(
   }
 
   const wasm = getWasm();
-  const { files } = await readNetworkFiles(networkPath);
-  const filesJson = JSON.stringify(files);
 
   // Get schema metadata
   const schemaMetadata = getSchemaMetadata(schemaSet, blockType);
@@ -296,17 +324,7 @@ async function validateBlockInternal(
     };
   }
 
-  // Parse unit preferences
-  const { blockTypes, dimensions, propertyDimensions } =
-    parseUnitPreferences(configContent);
-  const unitPreferences: UnitPreferences = {
-    blockTypes,
-    dimensions,
-    propertyDimensions,
-  };
-
-  // Initialize dim for unit conversions
-  await dim.init();
+  // Unit preferences are passed in from the caller (already initialized)
 
   const results: Record<string, ValidationResult> = {};
 
@@ -623,12 +641,34 @@ async function validateBlockInternal(
  */
 export async function validateNetworkBlocks(
   networkPath: string,
-  schemaSet: string
+  schemaSet: string,
+  queryOverrides: Record<string, string> = {}
 ): Promise<Record<string, ValidationResult>> {
-  const wasm = getWasm();
+  // Read files once at the top level
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
+  
+  // Initialize dim once for all blocks
+  await dim.init();
+  
+  // Parse unit preferences once
+  const { blockTypes, dimensions: configDimensions, propertyDimensions } =
+    parseUnitPreferences(configContent);
+  
+  // Merge query overrides into dimensions if the key matches a known dimension
+  const mergedDimensions = { ...configDimensions };
+  for (const [key, unit] of Object.entries(queryOverrides)) {
+    mergedDimensions[key] = unit;
+  }
+  
+  const unitPreferences: UnitPreferences = {
+    queryOverrides,
+    blockTypes,
+    dimensions: mergedDimensions,
+    propertyDimensions,
+  };
 
+  const wasm = getWasm();
   const allResults: Record<string, ValidationResult> = {};
 
   // Query for all nodes and filter for branches
@@ -679,7 +719,11 @@ export async function validateNetworkBlocks(
           blockPath,
           schemaSet,
           networkPath,
-          configContent
+          configContent,
+          queryOverrides,
+          files,
+          filesJson,
+          unitPreferences
         );
 
         // Merge results
