@@ -120,7 +120,7 @@ Filter on nested properties using dot notation:
 
 ```bash
 # Filter nodes by type
-dagger query "nodes[data.type=branchNode]" ../network/preset1
+dagger query "nodes[data.type=branch]" ../network/preset1
 ```
 
 ## Network-Level Queries
@@ -134,10 +134,10 @@ Query the entire network structure:
 dagger query "nodes" ../network/preset1
 
 # Get all branch nodes
-dagger query "nodes[type=branchNode]" ../network/preset1
+dagger query "nodes[type=branch]" ../network/preset1
 
 # Get all group nodes
-dagger query "nodes[type=labeledGroupNode]" ../network/preset1
+dagger query "nodes[type=labeledGroup]" ../network/preset1
 ```
 
 ### All Edges

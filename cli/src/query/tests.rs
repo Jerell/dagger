@@ -12,7 +12,7 @@ mod tests {
         let branch = BranchNode {
             base: NodeBase {
                 id: "branch-1".to_string(),
-                type_: "branchNode".to_string(),
+                type_: "branch".to_string(),
                 label: Some("Test Branch".to_string()),
                 position: Position { x: 0, y: 0 },
                 parent_id: None,
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_parse_network_query_with_filter() {
-        let result = parse_query_path("nodes[type=branchNode]").unwrap();
+        let result = parse_query_path("nodes[type=branch]").unwrap();
         match result {
             QueryPath::Filter {
                 field,
@@ -188,7 +188,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(field, "type");
-                assert_eq!(value, "branchNode");
+                assert_eq!(value, "branch");
                 match *inner {
                     QueryPath::Property(name, inner2) => {
                         assert_eq!(name, "nodes");
@@ -369,7 +369,7 @@ mod tests {
     fn test_execute_network_query_with_filter() {
         let network = create_test_network();
         let executor = QueryExecutor::new(&network);
-        let query = parse_query_path("nodes[type=branchNode]").unwrap();
+        let query = parse_query_path("nodes[type=branch]").unwrap();
         let result = executor.execute(&query);
 
         // Network query with filter - verify it executes without error

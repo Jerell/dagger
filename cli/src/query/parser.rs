@@ -323,7 +323,7 @@ fn parse_filter_expression(expr: &str) -> Result<(String, FilterOperator, String
 
 fn parse_network_query(path: &str) -> Result<QueryPath, ParseError> {
     // Parse network-level queries like:
-    // nodes[type=branchNode]
+    // nodes[type=branch]
     // edges[source=branch-1]
     // nodes
     // edges

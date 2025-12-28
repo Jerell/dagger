@@ -82,7 +82,7 @@ pub struct BranchNode {
     pub blocks: Vec<Block>,
 }
 
-// Custom serialization for BranchNode to match example.json format
+// Custom serialization for BranchNode
 impl Serialize for BranchNode {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -105,7 +105,7 @@ impl Serialize for BranchNode {
             state.serialize_field("parentId", parent_id)?;
             state.serialize_field("extent", "parent")?;
         }
-        state.serialize_field("type", "branchNode")?;
+        state.serialize_field("type", &self.base.type_)?;
         state.end()
     }
 }
@@ -142,7 +142,7 @@ impl From<&Block> for BlockData {
     }
 }
 
-// Group node
+// Group node - just use default serialization with flattened base
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GroupNode {
     #[serde(flatten)]
@@ -164,20 +164,27 @@ pub struct GeographicWindowNode {
 }
 
 // Node data enum for network structure
-// Serialized to match example.json format
-#[derive(Debug, Clone, Serialize)]
+// Serialized as a flat structure (not wrapped in type-keyed object)
+#[derive(Debug, Clone)]
 pub enum NodeData {
-    #[serde(rename = "branchNode")]
     Branch(BranchNode),
-
-    #[serde(rename = "labeledGroupNode")]
     Group(GroupNode),
-
-    #[serde(rename = "geographicAnchorNode")]
     GeographicAnchor(GeographicAnchorNode),
-
-    #[serde(rename = "geographicWindowNode")]
     GeographicWindow(GeographicWindowNode),
+}
+
+impl Serialize for NodeData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            NodeData::Branch(node) => node.serialize(serializer),
+            NodeData::Group(node) => node.serialize(serializer),
+            NodeData::GeographicAnchor(node) => node.serialize(serializer),
+            NodeData::GeographicWindow(node) => node.serialize(serializer),
+        }
+    }
 }
 
 impl NodeData {

@@ -141,7 +141,7 @@ http GET localhost:3000/api/query q==nodes network==preset1
 Query nodes filtered by type:
 
 ```bash
-http GET localhost:3000/api/query q=="nodes[type=branchNode]" network==preset1
+http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
 ```
 
 Query all edges:
@@ -187,25 +187,25 @@ http GET localhost:3000/api/network/nodes network==preset1
 Filter by branch nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==branchNode
+http GET localhost:3000/api/network/nodes network==preset1 type==branch
 ```
 
 Filter by group nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==labeledGroupNode
+http GET localhost:3000/api/network/nodes network==preset1 type==labeledGroup
 ```
 
 Filter by geographic anchor nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==geographicAnchorNode
+http GET localhost:3000/api/network/nodes network==preset1 type==geographicAnchor
 ```
 
 Filter by geographic window nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==geographicWindowNode
+http GET localhost:3000/api/network/nodes network==preset1 type==geographicWindow
 ```
 
 ### Get All Edges
@@ -608,7 +608,7 @@ http GET localhost:3000/api/query q=="branch-4/data/blocks/0/type" network==pres
 ### Get All Branch Nodes
 
 ```bash
-http GET localhost:3000/api/query q=="nodes[type=branchNode]" network==preset1
+http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
 ```
 
 ### Get Edges from a Specific Source
@@ -712,7 +712,7 @@ http GET localhost:3000/api/network
 5. **Test filtered queries:**
 
    ```bash
-   http GET localhost:3000/api/query q=="nodes[type=branchNode]" network==preset1
+   http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
    ```
 
 6. **Test scope resolution:**

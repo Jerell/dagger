@@ -52,12 +52,6 @@ function getNodeKey(node: NetworkNode, index: number): string {
         return String((node as Record<string, unknown>)[field]);
       }
     }
-    if ("branchNode" in node) {
-      const branchNode = (node as { branchNode?: { id?: string } }).branchNode;
-      if (branchNode?.id) {
-        return branchNode.id;
-      }
-    }
   }
   return `node-${index}-${JSON.stringify(node).slice(0, 50)}`;
 }

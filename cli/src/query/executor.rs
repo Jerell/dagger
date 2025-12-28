@@ -255,7 +255,10 @@ impl<'a> QueryExecutor<'a> {
             NodeData::Branch(branch) => {
                 let mut node_obj = serde_json::Map::new();
                 node_obj.insert("id".to_string(), JsonValue::String(branch.base.id.clone()));
-                node_obj.insert("type".to_string(), JsonValue::String("branch".to_string()));
+                node_obj.insert(
+                    "type".to_string(),
+                    JsonValue::String(branch.base.type_.clone()),
+                );
                 if let Some(label) = &branch.base.label {
                     node_obj.insert("label".to_string(), JsonValue::String(label.clone()));
                 }
@@ -369,7 +372,7 @@ impl<'a> QueryExecutor<'a> {
                 node_obj.insert("id".to_string(), JsonValue::String(group.base.id.clone()));
                 node_obj.insert(
                     "type".to_string(),
-                    JsonValue::String("labeledGroup".to_string()),
+                    JsonValue::String(group.base.type_.clone()),
                 );
                 if let Some(label) = &group.base.label {
                     node_obj.insert("label".to_string(), JsonValue::String(label.clone()));
@@ -390,7 +393,7 @@ impl<'a> QueryExecutor<'a> {
                 node_obj.insert("id".to_string(), JsonValue::String(anchor.base.id.clone()));
                 node_obj.insert(
                     "type".to_string(),
-                    JsonValue::String("geographicAnchor".to_string()),
+                    JsonValue::String(anchor.base.type_.clone()),
                 );
                 if let Some(label) = &anchor.base.label {
                     node_obj.insert("label".to_string(), JsonValue::String(label.clone()));
@@ -408,7 +411,7 @@ impl<'a> QueryExecutor<'a> {
                 node_obj.insert("id".to_string(), JsonValue::String(window.base.id.clone()));
                 node_obj.insert(
                     "type".to_string(),
-                    JsonValue::String("geographicWindow".to_string()),
+                    JsonValue::String(window.base.type_.clone()),
                 );
                 if let Some(label) = &window.base.label {
                     node_obj.insert("label".to_string(), JsonValue::String(label.clone()));

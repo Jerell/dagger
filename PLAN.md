@@ -383,7 +383,7 @@ branch-4/outgoing/target
 branch-4/outgoing[weight>1]
 
 # Network-level queries
-nodes[type=branchNode]
+nodes[type=branch]
 edges[source=branch-1]
 ```
 
@@ -696,7 +696,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] Filter operators (=, !=, >, <, >=, <=)
 - [x] Scope resolution query parser (`?scope=block,branch,group`)
 - [x] Full scope resolution in queries (with block context tracking)
-- [x] Network-level queries (`nodes[type=branchNode]`, `edges[source=branch-1]`)
+- [x] Network-level queries (`nodes[type=branch]`, `edges[source=branch-1]`)
 - [x] Comprehensive tests for query system (16 tests)
 - [x] Tests for scope resolution (block, global, not found)
 - [x] Tests for network-level queries (nodes, edges, with filters)

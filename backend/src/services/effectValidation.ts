@@ -191,20 +191,23 @@ export async function validateQueryBlocks(
   // Read files once at the top level
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
-  
+
   // Initialize dim once for all blocks
   await dim.init();
-  
+
   // Parse unit preferences once
-  const { blockTypes, dimensions: configDimensions, propertyDimensions } =
-    parseUnitPreferences(configContent);
-  
+  const {
+    blockTypes,
+    dimensions: configDimensions,
+    propertyDimensions,
+  } = parseUnitPreferences(configContent);
+
   // Merge query overrides into dimensions
   const mergedDimensions = { ...configDimensions };
   for (const [key, unit] of Object.entries(queryOverrides)) {
     mergedDimensions[key] = unit;
   }
-  
+
   const unitPreferences: UnitPreferences = {
     queryOverrides,
     blockTypes,
@@ -213,7 +216,7 @@ export async function validateQueryBlocks(
   };
 
   const wasm = getWasm();
-  
+
   // Execute query to get blocks
   const queryResult = wasm.query_from_files(
     filesJson,
@@ -647,20 +650,23 @@ export async function validateNetworkBlocks(
   // Read files once at the top level
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
-  
+
   // Initialize dim once for all blocks
   await dim.init();
-  
+
   // Parse unit preferences once
-  const { blockTypes, dimensions: configDimensions, propertyDimensions } =
-    parseUnitPreferences(configContent);
-  
+  const {
+    blockTypes,
+    dimensions: configDimensions,
+    propertyDimensions,
+  } = parseUnitPreferences(configContent);
+
   // Merge query overrides into dimensions if the key matches a known dimension
   const mergedDimensions = { ...configDimensions };
   for (const [key, unit] of Object.entries(queryOverrides)) {
     mergedDimensions[key] = unit;
   }
-  
+
   const unitPreferences: UnitPreferences = {
     queryOverrides,
     blockTypes,
@@ -681,12 +687,9 @@ export async function validateNetworkBlocks(
     const nodes = JSON.parse(nodesQuery);
     const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
-    // Filter for branch nodes (type is "branchNode" in the query result)
+    // Filter for branch nodes (type is "branch" from TOML)
     const branches = nodesArray.filter(
-      (node: any) =>
-        node &&
-        typeof node === "object" &&
-        (node.type === "branch" || node.type === "branchNode")
+      (node: any) => node && typeof node === "object" && node.type === "branch"
     );
 
     for (const branch of branches) {

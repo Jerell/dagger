@@ -233,12 +233,9 @@ export async function getNetworkSchemas(
     const nodes = JSON.parse(nodesQuery);
     const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
-    // Filter for branch nodes (type is "branchNode" in the query result)
+    // Filter for branch nodes (type is "branch" from TOML)
     const branches = nodesArray.filter(
-      (node: any) =>
-        node &&
-        typeof node === "object" &&
-        (node.type === "branch" || node.type === "branchNode")
+      (node: any) => node && typeof node === "object" && node.type === "branch"
     );
 
     for (const branch of branches) {

@@ -120,13 +120,13 @@ impl DaggerWasm {
             .filter(|n| {
                 if let Some(ref filter_type) = node_type {
                     match n {
-                        parser::models::NodeData::Branch(_) => filter_type == "branchNode",
-                        parser::models::NodeData::Group(_) => filter_type == "labeledGroupNode",
-                        parser::models::NodeData::GeographicAnchor(_) => {
-                            filter_type == "geographicAnchorNode"
+                        parser::models::NodeData::Branch(b) => filter_type == &b.base.type_,
+                        parser::models::NodeData::Group(g) => filter_type == &g.base.type_,
+                        parser::models::NodeData::GeographicAnchor(a) => {
+                            filter_type == &a.base.type_
                         }
-                        parser::models::NodeData::GeographicWindow(_) => {
-                            filter_type == "geographicWindowNode"
+                        parser::models::NodeData::GeographicWindow(w) => {
+                            filter_type == &w.base.type_
                         }
                     }
                 } else {

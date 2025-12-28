@@ -85,7 +85,7 @@ curl "http://localhost:3000/api/network/nodes?network=preset1"
 Get nodes by type:
 
 ```bash
-curl "http://localhost:3000/api/network/nodes?network=preset1&type=branchNode"
+curl "http://localhost:3000/api/network/nodes?network=preset1&type=branch"
 ```
 
 Get all edges:

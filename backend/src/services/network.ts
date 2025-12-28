@@ -60,25 +60,11 @@ export async function getNetworkNodes(
   networkPath: string,
   nodeType?: string
 ): Promise<any[]> {
-  // For now, load the full network and filter in Node.js
-  // TODO: Add get_nodes_from_files to WASM bindings
   const network = await loadNetwork(networkPath);
   const nodes = network.nodes || [];
 
   if (nodeType) {
-    return nodes.filter((n: any) => {
-      // Map node types
-      const typeMap: Record<string, string> = {
-        branchNode: "branchNode",
-        labeledGroupNode: "labeledGroupNode",
-        geographicAnchorNode: "geographicAnchorNode",
-        geographicWindowNode: "geographicWindowNode",
-      };
-      return (
-        Object.keys(n)[0] === nodeType ||
-        typeMap[Object.keys(n)[0]] === nodeType
-      );
-    });
+    return nodes.filter((n: any) => n?.type === nodeType);
   }
 
   return nodes;
