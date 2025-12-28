@@ -1,0 +1,16 @@
+{
+  "name": "dagger",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "dim"
+  ],
+  "scripts": {
+    "dev": "just dev",
+    "dev:backend": "cd backend && bun run dev",
+    "dev:frontend": "cd frontend && bun run dev",
+    "test": "bun run test:backend",
+    "test:backend": "cd backend && bun test"
+  }
+}

@@ -5,10 +5,31 @@ default:
   @just --list
 
 # Development
+# Start all services with docker compose
 dev:
-  # Start the backend server in development mode
-  cd {{justfile_directory()}}/backend && npm run dev
+  docker compose -f local/docker-compose.yml up --build
 
+# Start all services in detached mode
+dev-d:
+  docker compose -f local/docker-compose.yml up --build -d
+
+# Stop all services
+down:
+  docker compose -f local/docker-compose.yml down
+
+# Stop all services and remove volumes
+down-v:
+  docker compose -f local/docker-compose.yml down -v
+
+# View logs
+logs:
+  docker compose -f local/docker-compose.yml logs -f
+
+# Rebuild without cache
+rebuild:
+  docker compose -f local/docker-compose.yml build --no-cache
+
+# Local development (without docker)
 dev-backend:
   cd {{justfile_directory()}}/backend && npm run dev
 
@@ -106,6 +127,7 @@ setup:
   cd {{justfile_directory()}}/backend && npm install
   cd {{justfile_directory()}}/schemas && npm install
   just setup-networks
+  just setup-dim
 
 setup-backend:
   # Setup backend dependencies
@@ -120,13 +142,22 @@ setup-networks:
   mkdir -p {{justfile_directory()}}/backend/networks
   cp -r {{justfile_directory()}}/network/preset1 {{justfile_directory()}}/backend/networks/ || echo "Network preset1 already exists or not found"
 
+setup-dim:
+  # Copy dim WASM files to backend and frontend directories
+  mkdir -p {{justfile_directory()}}/backend/dim/wasm
+  mkdir -p {{justfile_directory()}}/frontend/public/dim
+  cp {{justfile_directory()}}/dim/wasm/*.wasm {{justfile_directory()}}/backend/dim/wasm/ 2>/dev/null || echo "Dim WASM files not found in dim/wasm/"
+  cp {{justfile_directory()}}/dim/wasm/*.wasm {{justfile_directory()}}/frontend/public/dim/ 2>/dev/null || echo "Dim WASM files not found in dim/wasm/"
+
 # Full development workflow
 dev-full:
-  # Build WASM, generate schemas, and start backend
+  # Build WASM, copy dim files, and start all services
   @echo "Building WASM module..."
   just build-wasm
-  @echo "Starting backend server..."
-  just dev-backend
+  @echo "Setting up dim WASM files..."
+  just setup-dim
+  @echo "Starting all services..."
+  just dev
 
 # Check everything
 check:
