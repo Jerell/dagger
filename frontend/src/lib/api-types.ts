@@ -3,7 +3,7 @@
  * These types are inferred from the backend Hono app
  */
 
-import type { App } from "../../../backend/src/index";
+import type { App } from "@backend/index";
 
 /**
  * Extract the response type for a specific route
@@ -43,3 +43,8 @@ export type PostApiResponse<
  * Re-export the App type for convenience
  */
 export type { App };
+
+/**
+ * Re-export API client types
+ */
+export type { NetworkResponse } from "./api-client";

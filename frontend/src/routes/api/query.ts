@@ -5,7 +5,7 @@ import type { GetApiResponse, App } from "../../lib/api-types";
 // Type for the query endpoint response
 export type QueryResponse = GetApiResponse<App, "/api/query">;
 
-export const Route = createFileRoute("/api/query" as any)({
+export const Route = createFileRoute("/api/query")({
   server: {
     handlers: {
       GET: async ({ request }) => {

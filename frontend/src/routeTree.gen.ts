@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NetworkNetworkIdRouteImport } from './routes/network/$networkId'
 import { Route as ApiSchemaRouteImport } from './routes/api/schema'
 import { Route as ApiQueryRouteImport } from './routes/api/query'
 import { Route as ApiNetworkRouteImport } from './routes/api/network'
@@ -33,6 +34,11 @@ import { Route as ApiSchemaNetworkPropertiesRouteImport } from './routes/api/sch
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NetworkNetworkIdRoute = NetworkNetworkIdRouteImport.update({
+  id: '/network/$networkId',
+  path: '/network/$networkId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSchemaRoute = ApiSchemaRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/network/$networkId': typeof NetworkNetworkIdRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/network/$networkId': typeof NetworkNetworkIdRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
+  '/network/$networkId': typeof NetworkNetworkIdRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/network'
     | '/api/query'
     | '/api/schema'
+    | '/network/$networkId'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/network'
     | '/api/query'
     | '/api/schema'
+    | '/network/$networkId'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/network'
     | '/api/query'
     | '/api/schema'
+    | '/network/$networkId'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   ApiNetworkRoute: typeof ApiNetworkRouteWithChildren
   ApiQueryRoute: typeof ApiQueryRoute
   ApiSchemaRoute: typeof ApiSchemaRouteWithChildren
+  NetworkNetworkIdRoute: typeof NetworkNetworkIdRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/network/$networkId': {
+      id: '/network/$networkId'
+      path: '/network/$networkId'
+      fullPath: '/network/$networkId'
+      preLoaderRoute: typeof NetworkNetworkIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/schema': {
@@ -480,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNetworkRoute: ApiNetworkRouteWithChildren,
   ApiQueryRoute: ApiQueryRoute,
   ApiSchemaRoute: ApiSchemaRouteWithChildren,
+  NetworkNetworkIdRoute: NetworkNetworkIdRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

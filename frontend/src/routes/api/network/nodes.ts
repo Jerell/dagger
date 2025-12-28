@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { proxyToBackend } from "../../../lib/api-proxy";
 
-export const Route = createFileRoute("/api/network/nodes" as any)({
+export const Route = createFileRoute("/api/network/nodes")({
   server: {
     handlers: {
       GET: async ({ request }) => {

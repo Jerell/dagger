@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { proxyToBackend } from "../../../lib/api-proxy";
 
-export const Route = createFileRoute("/api/schema/properties" as any)({
+export const Route = createFileRoute("/api/schema/properties")({
   server: {
     handlers: {
       GET: async ({ request }) => {
