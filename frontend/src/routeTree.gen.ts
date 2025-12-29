@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NetworkRouteRouteImport } from './routes/network/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NetworkNetworkIdRouteImport } from './routes/network/$networkId'
 import { Route as ApiSchemaRouteImport } from './routes/api/schema'
@@ -31,15 +32,20 @@ import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ss
 import { Route as ApiSchemaNetworkValidateRouteImport } from './routes/api/schema/network/validate'
 import { Route as ApiSchemaNetworkPropertiesRouteImport } from './routes/api/schema/network/properties'
 
+const NetworkRouteRoute = NetworkRouteRouteImport.update({
+  id: '/network',
+  path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NetworkNetworkIdRoute = NetworkNetworkIdRouteImport.update({
-  id: '/network/$networkId',
-  path: '/network/$networkId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$networkId',
+  path: '/$networkId',
+  getParentRoute: () => NetworkRouteRoute,
 } as any)
 const ApiSchemaRoute = ApiSchemaRouteImport.update({
   id: '/api/schema',
@@ -141,6 +147,7 @@ const ApiSchemaNetworkPropertiesRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/network': typeof NetworkRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/network': typeof NetworkRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
@@ -188,6 +196,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/network': typeof NetworkRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/network': typeof ApiNetworkRouteWithChildren
   '/api/query': typeof ApiQueryRoute
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/network'
     | '/api/health'
     | '/api/network'
     | '/api/query'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/network'
     | '/api/health'
     | '/api/network'
     | '/api/query'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/network'
     | '/api/health'
     | '/api/network'
     | '/api/query'
@@ -283,11 +295,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NetworkRouteRoute: typeof NetworkRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiNetworkRoute: typeof ApiNetworkRouteWithChildren
   ApiQueryRoute: typeof ApiQueryRoute
   ApiSchemaRoute: typeof ApiSchemaRouteWithChildren
-  NetworkNetworkIdRoute: typeof NetworkNetworkIdRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -299,6 +311,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/network': {
+      id: '/network'
+      path: '/network'
+      fullPath: '/network'
+      preLoaderRoute: typeof NetworkRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -308,10 +327,10 @@ declare module '@tanstack/react-router' {
     }
     '/network/$networkId': {
       id: '/network/$networkId'
-      path: '/network/$networkId'
+      path: '/$networkId'
       fullPath: '/network/$networkId'
       preLoaderRoute: typeof NetworkNetworkIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof NetworkRouteRoute
     }
     '/api/schema': {
       id: '/api/schema'
@@ -449,6 +468,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface NetworkRouteRouteChildren {
+  NetworkNetworkIdRoute: typeof NetworkNetworkIdRoute
+}
+
+const NetworkRouteRouteChildren: NetworkRouteRouteChildren = {
+  NetworkNetworkIdRoute: NetworkNetworkIdRoute,
+}
+
+const NetworkRouteRouteWithChildren = NetworkRouteRoute._addFileChildren(
+  NetworkRouteRouteChildren,
+)
+
 interface ApiNetworkRouteChildren {
   ApiNetworkEdgesRoute: typeof ApiNetworkEdgesRoute
   ApiNetworkNodesRoute: typeof ApiNetworkNodesRoute
@@ -496,11 +527,11 @@ const ApiSchemaRouteWithChildren = ApiSchemaRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NetworkRouteRoute: NetworkRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiNetworkRoute: ApiNetworkRouteWithChildren,
   ApiQueryRoute: ApiQueryRoute,
   ApiSchemaRoute: ApiSchemaRouteWithChildren,
-  NetworkNetworkIdRoute: NetworkNetworkIdRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

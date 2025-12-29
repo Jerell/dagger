@@ -5,16 +5,16 @@
 
 body {
   @apply m-0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 @theme inline {
@@ -25,6 +25,14 @@ code {
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-brand-white: var(--brand-white);
+  --color-brand-grey-1: var(--brand-grey-1);
+  --color-brand-grey-2: var(--brand-grey-2);
+  --color-brand-grey-3: var(--brand-grey-3);
+  --color-brand-blue-1: var(--brand-blue-1);
+  --color-brand-blue-2: var(--brand-blue-2);
+  --color-brand-blue-3: var(--brand-blue-3);
+  --color-brand-blue-4: var(--brand-blue-4);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -60,13 +68,23 @@ code {
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+
+  --brand-white: oklch(0.902 0.012 250.8);
+  --brand-grey-1: oklch(0.852 0.032 245.5);
+  --brand-grey-2: oklch(0.802 0.062 240.3);
+  --brand-grey-3: oklch(0.752 0.098 237.5);
+  --brand-blue-1: oklch(0.702 0.118 235.2);
+  --brand-blue-2: oklch(0.648 0.152 233.8);
+  --brand-blue-3: oklch(0.6 0.12 228.4);
+  --brand-blue-4: oklch(0.54 0.149 222.3);
+
+  --background: var(--brand-grey-1);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: var(--brand-blue-2);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -85,7 +103,7 @@ code {
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: var(--brand-blue-2);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
