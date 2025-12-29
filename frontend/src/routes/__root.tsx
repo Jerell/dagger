@@ -15,6 +15,8 @@ import Header from "../components/Header";
 
 import appCss from "../styles.css?url";
 import { DimProvider } from "@/contexts/dim-context";
+import DialogProvider from "@/contexts/dialog-provider";
+import KeybindProvider from "@/contexts/keybind-provider";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -50,7 +52,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <DimProvider>
         <RootDocument>
-          <Outlet />
+          <DialogProvider>
+            <KeybindProvider>
+              <Outlet />
+            </KeybindProvider>
+          </DialogProvider>
         </RootDocument>
       </DimProvider>
     </QueryClientProvider>
