@@ -14,6 +14,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import Header from "../components/Header";
 
 import appCss from "../styles.css?url";
+import { DimProvider } from "@/contexts/dim-context";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -47,9 +48,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
+      <DimProvider>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </DimProvider>
     </QueryClientProvider>
   );
 }

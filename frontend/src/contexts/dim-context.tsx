@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { defineConst, initDim } from "../lib/dim";
+import { defineConst, initDim } from "../lib/dim/dim";
 
 type DimConstant = { name: string; expr: string };
 

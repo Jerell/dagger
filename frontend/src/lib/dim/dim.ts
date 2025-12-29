@@ -27,9 +27,32 @@ let runtime: DimRuntime | null = null;
 export async function initDim(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
-      // Frontend is browser-only, so we always fetch from public directory
-      const res = await fetch("/dim/dim_wasm.wasm");
-      const bytes = await res.arrayBuffer();
+      let bytes: ArrayBuffer;
+
+      // Check if we're in a test environment (Node.js) or browser
+      const isNode =
+        typeof process !== "undefined" &&
+        process.versions != null &&
+        process.versions.node != null;
+
+      if (isNode) {
+        // In test environment, read from filesystem
+        const { readFile } = await import("node:fs/promises");
+        const { join } = await import("node:path");
+        const { fileURLToPath } = await import("node:url");
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = join(__filename, "..", "..", "..", "..");
+        const wasmPath = join(__dirname, "public", "dim", "dim_wasm.wasm");
+        const buf = await readFile(wasmPath);
+        bytes = buf.buffer.slice(
+          buf.byteOffset,
+          buf.byteOffset + buf.byteLength
+        );
+      } else {
+        // In browser, fetch from public directory
+        const res = await fetch("/dim/dim_wasm.wasm");
+        bytes = await res.arrayBuffer();
+      }
       let currentMemory: WebAssembly.Memory | null = null;
       const wasiImports = {
         wasi_snapshot_preview1: {
