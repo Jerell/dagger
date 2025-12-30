@@ -81,6 +81,7 @@ function sortEdges(edges: NetworkEdge[]): NetworkEdge[] {
 
 function SpecificNetwork() {
   const { networkId } = Route.useParams();
+  const { label } = Route.useLoaderData();
   const networkQuery = useSuspenseQuery(networkQueryOptions(networkId));
   const network = networkQuery.data;
 
@@ -88,25 +89,20 @@ function SpecificNetwork() {
   const sortedEdges = network.edges ? sortEdges(network.edges) : [];
 
   return (
-    <div
-      className="flex items-center justify-center min-h-screen p-4 text-white"
-      style={{
-        backgroundColor: "#000",
-        backgroundImage:
-          "radial-gradient(ellipse 60% 60% at 0% 100%, #444 0%, #222 60%, #000 100%)",
-      }}
-    >
-      <div className="w-full max-w-4xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
-        <h1 className="text-3xl mb-6 font-bold">Network: {networkId}</h1>
-
+    <div className="flex flex-col bg-brand-grey-1">
+      <h1 className="text-3xl mb-2">{label}</h1>
+      <div className="w-full max-w-4xl p-8 bg-brand-grey-2">
         <div className="mb-6">
           <h2 className="text-2xl mb-4">Nodes ({sortedNodes.length})</h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto border-y border-brand-grey-3 relative">
             {sortedNodes.map((node: NetworkNode, index: number) => (
               <div
                 key={getNodeKey(node, index)}
-                className="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md"
+                className="border border-brand-grey-3"
               >
+                <p className="sticky top-0 bg-brand-grey-1">
+                  {node.id ?? node.type}
+                </p>
                 <pre className="text-sm text-white overflow-x-auto">
                   {JSON.stringify(sortObjectKeys(node), null, 2)}
                 </pre>

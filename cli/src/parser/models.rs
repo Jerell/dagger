@@ -36,7 +36,8 @@ impl Block {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NodeBase {
     // File-derived ID (from filename: "branch-4.toml" -> "branch-4")
-    #[serde(skip)]
+    // Skip during deserialization (not in TOML), but include during serialization
+    #[serde(skip_deserializing)]
     pub id: String,
 
     // Known fields
@@ -142,21 +143,21 @@ impl From<&Block> for BlockData {
     }
 }
 
-// Group node - just use default serialization with flattened base
+// Group node - uses default serialization with flattened base (id is now included)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GroupNode {
     #[serde(flatten)]
     pub base: NodeBase,
 }
 
-// Geographic anchor node
+// Geographic anchor node - uses default serialization with flattened base (id is now included)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GeographicAnchorNode {
     #[serde(flatten)]
     pub base: NodeBase,
 }
 
-// Geographic window node
+// Geographic window node - uses default serialization with flattened base (id is now included)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GeographicWindowNode {
     #[serde(flatten)]
