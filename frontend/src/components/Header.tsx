@@ -21,8 +21,8 @@ export default function Header() {
       <div className="flex items-center gap-px">
         <ButtonGroup>
           <Link to="/">
-            <Button variant="outline" size="icon" aria-label="Home">
-              <HomeIcon />
+            <Button variant="outline" aria-label="Home">
+              <HomeIcon /> Dagger
             </Button>
           </Link>
           <Link to="/network/$networkId" params={{ networkId: "preset1" }}>

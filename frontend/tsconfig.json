@@ -12,6 +12,11 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
 
     /* Linting */
     "skipLibCheck": true,
@@ -26,5 +31,6 @@
       "@backend/*": ["../backend/src/*"],
       "@frontend/*": ["./src/*"]
     }
-  }
+  },
+  "references": [{ "path": "../backend" }]
 }

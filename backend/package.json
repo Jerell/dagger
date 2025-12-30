@@ -19,7 +19,7 @@
   "dependencies": {
     "@hono/node-server": "^1.12.0",
     "effect": "^3.19.13",
-    "hono": "^4.5.0"
+    "hono": "^4.11.3"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

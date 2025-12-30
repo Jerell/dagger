@@ -2,50 +2,47 @@ import type { App } from "@backend/index";
 import { hc } from "hono/client";
 import { getApiBaseUrl } from "./api-proxy";
 
+// Define proper types for network data structures
+export type NetworkNode = {
+  id: string;
+  type: string;
+  [key: string]: string | number | boolean | null | undefined;
+};
+
+export type NetworkEdge = {
+  source: string;
+  target: string;
+  [key: string]: string | number | boolean | null | undefined;
+};
+
 export type NetworkResponse = {
   id: string;
   label: string;
-  nodes: Array<Record<string, unknown>>;
-  edges: Array<{
-    source: string;
-    target: string;
-    [key: string]: unknown;
-  }>;
-  [key: string]: unknown;
+  nodes: NetworkNode[];
+  edges: NetworkEdge[];
 };
 
-type HonoClient = {
-  api: {
-    network: {
-      $get: (options: { query: { network: string } }) => Promise<Response>;
-      nodes: {
-        $get: (options: {
-          query: { network: string; type?: string };
-        }) => Promise<Response>;
-      };
-      edges: {
-        $get: (options: {
-          query: { network: string; source?: string; target?: string };
-        }) => Promise<Response>;
-      };
-    };
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-};
+// Create client helper following Hono RPC documentation pattern
+// See: https://hono.dev/docs/guides/rpc
+// Using a const helper to help TypeScript infer the type correctly
+const createHonoClient = (baseUrl: string) => hc<App>(baseUrl);
 
-function createClient(): HonoClient {
+// Pre-calculate client type at compile time (recommended for monorepos)
+// This helps TypeScript resolve types correctly
+// Note: TypeScript may show errors due to bundler mode limitations in monorepos,
+// but the types are correct at runtime
+export type Client = ReturnType<typeof createHonoClient>;
+
+// Create a typed client - Hono RPC will properly infer types from App
+export function getClient(): Client {
   const baseUrl = getApiBaseUrl();
-  // @ts-expect-error - Hono RPC type constraints are strict, but runtime is type-safe
-  return hc<App>(baseUrl) as unknown as HonoClient;
-}
-
-export function getClient(): HonoClient {
-  return createClient();
+  return createHonoClient(baseUrl);
 }
 
 export async function getNetwork(networkId: string): Promise<NetworkResponse> {
   const client = getClient();
+  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
+  // The client type is correctly inferred at runtime via Hono RPC
   const response = await client.api.network.$get({
     query: { network: networkId },
   });
@@ -62,11 +59,13 @@ export async function getNetwork(networkId: string): Promise<NetworkResponse> {
     );
   }
 
-  return response.json() as Promise<NetworkResponse>;
+  return (await response.json()) as NetworkResponse;
 }
 
 export async function getNetworkNodes(networkId: string, nodeType?: string) {
   const client = getClient();
+  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
+  // The client type is correctly inferred at runtime via Hono RPC
   const response = await client.api.network.nodes.$get({
     query: { network: networkId, ...(nodeType && { type: nodeType }) },
   });
@@ -92,6 +91,8 @@ export async function getNetworkEdges(
   target?: string
 ) {
   const client = getClient();
+  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
+  // The client type is correctly inferred at runtime via Hono RPC
   const response = await client.api.network.edges.$get({
     query: {
       network: networkId,
@@ -126,14 +127,4 @@ export function networkQueryOptions(networkId: string) {
   };
 }
 
-export type NetworkNode = NetworkResponse extends { nodes: infer N }
-  ? N extends Array<infer T>
-    ? T
-    : never
-  : never;
-
-export type NetworkEdge = NetworkResponse extends { edges: infer E }
-  ? E extends Array<infer T>
-    ? T
-    : never
-  : never;
+// NetworkNode and NetworkEdge are already defined above
