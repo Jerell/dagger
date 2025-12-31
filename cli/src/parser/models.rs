@@ -143,25 +143,156 @@ impl From<&Block> for BlockData {
     }
 }
 
-// Group node - uses default serialization with flattened base (id is now included)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+// Group node - custom serialization for ReactFlow compatibility
+#[derive(Debug, Clone, Deserialize)]
 pub struct GroupNode {
     #[serde(flatten)]
     pub base: NodeBase,
 }
 
-// Geographic anchor node - uses default serialization with flattened base (id is now included)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+impl Serialize for GroupNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let field_count = 5
+            + if self.base.parent_id.is_some() { 2 } else { 0 }
+            + if self.base.width.is_some() { 1 } else { 0 }
+            + if self.base.height.is_some() { 1 } else { 0 }
+            + self.base.extra.len();
+        let mut state = serializer.serialize_struct("GroupNode", field_count)?;
+        state.serialize_field("id", &self.base.id)?;
+        state.serialize_field("type", &self.base.type_)?;
+        state.serialize_field("position", &self.base.position)?;
+        state.serialize_field(
+            "data",
+            &GroupData {
+                id: &self.base.id,
+                label: self.base.label.as_deref(),
+                extra: &self.base.extra,
+            },
+        )?;
+        if let Some(parent_id) = &self.base.parent_id {
+            state.serialize_field("parentId", parent_id)?;
+            state.serialize_field("extent", "parent")?;
+        }
+        if let Some(width) = &self.base.width {
+            state.serialize_field("width", width)?;
+        }
+        if let Some(height) = &self.base.height {
+            state.serialize_field("height", height)?;
+        }
+        state.end()
+    }
+}
+
+#[derive(Serialize)]
+struct GroupData<'a> {
+    id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<&'a str>,
+    // Include extra properties in data for ReactFlow compatibility
+    #[serde(flatten)]
+    extra: &'a HashMap<String, Value>,
+}
+
+// Geographic anchor node - custom serialization for ReactFlow compatibility
+#[derive(Debug, Clone, Deserialize)]
 pub struct GeographicAnchorNode {
     #[serde(flatten)]
     pub base: NodeBase,
 }
 
-// Geographic window node - uses default serialization with flattened base (id is now included)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+impl Serialize for GeographicAnchorNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let field_count = 5
+            + if self.base.parent_id.is_some() { 2 } else { 0 }
+            + if self.base.width.is_some() { 1 } else { 0 }
+            + if self.base.height.is_some() { 1 } else { 0 }
+            + self.base.extra.len();
+        let mut state = serializer.serialize_struct("GeographicAnchorNode", field_count)?;
+        state.serialize_field("id", &self.base.id)?;
+        state.serialize_field("type", &self.base.type_)?;
+        state.serialize_field("position", &self.base.position)?;
+        state.serialize_field(
+            "data",
+            &GeographicData {
+                id: &self.base.id,
+                label: self.base.label.as_deref(),
+                extra: &self.base.extra,
+            },
+        )?;
+        if let Some(parent_id) = &self.base.parent_id {
+            state.serialize_field("parentId", parent_id)?;
+            state.serialize_field("extent", "parent")?;
+        }
+        if let Some(width) = &self.base.width {
+            state.serialize_field("width", width)?;
+        }
+        if let Some(height) = &self.base.height {
+            state.serialize_field("height", height)?;
+        }
+        state.end()
+    }
+}
+
+// Geographic window node - custom serialization for ReactFlow compatibility
+#[derive(Debug, Clone, Deserialize)]
 pub struct GeographicWindowNode {
     #[serde(flatten)]
     pub base: NodeBase,
+}
+
+impl Serialize for GeographicWindowNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let field_count = 5
+            + if self.base.parent_id.is_some() { 2 } else { 0 }
+            + if self.base.width.is_some() { 1 } else { 0 }
+            + if self.base.height.is_some() { 1 } else { 0 }
+            + self.base.extra.len();
+        let mut state = serializer.serialize_struct("GeographicWindowNode", field_count)?;
+        state.serialize_field("id", &self.base.id)?;
+        state.serialize_field("type", &self.base.type_)?;
+        state.serialize_field("position", &self.base.position)?;
+        state.serialize_field(
+            "data",
+            &GeographicData {
+                id: &self.base.id,
+                label: self.base.label.as_deref(),
+                extra: &self.base.extra,
+            },
+        )?;
+        if let Some(parent_id) = &self.base.parent_id {
+            state.serialize_field("parentId", parent_id)?;
+            state.serialize_field("extent", "parent")?;
+        }
+        if let Some(width) = &self.base.width {
+            state.serialize_field("width", width)?;
+        }
+        if let Some(height) = &self.base.height {
+            state.serialize_field("height", height)?;
+        }
+        state.end()
+    }
+}
+
+#[derive(Serialize)]
+struct GeographicData<'a> {
+    id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<&'a str>,
+    // Include extra properties in data for ReactFlow compatibility
+    #[serde(flatten)]
+    extra: &'a HashMap<String, Value>,
 }
 
 // Node data enum for network structure
