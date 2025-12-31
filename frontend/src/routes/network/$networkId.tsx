@@ -89,21 +89,21 @@ function SpecificNetwork() {
   const sortedEdges = network.edges ? sortEdges(network.edges) : [];
 
   return (
-    <div className="flex flex-col bg-brand-grey-1">
+    <div className="flex flex-col bg-brand-white border border-brand-grey-3">
       <h1 className="text-3xl mb-2">{label}</h1>
-      <div className="w-full max-w-4xl p-8 bg-brand-grey-2">
+      <div className="w-full p-1">
         <div className="mb-6">
           <h2 className="text-2xl mb-4">Nodes ({sortedNodes.length})</h2>
           <div className="space-y-2 max-h-96 overflow-y-auto border-y border-brand-grey-3 relative">
             {sortedNodes.map((node: NetworkNode, index: number) => (
               <div
                 key={getNodeKey(node, index)}
-                className="border border-brand-grey-3"
+                className="border-x border-brand-grey-3"
               >
                 <p className="sticky top-0 bg-brand-grey-1">
                   {node.id ?? node.type}
                 </p>
-                <pre className="text-sm text-white overflow-x-auto">
+                <pre className="text-sm overflow-x-auto">
                   {JSON.stringify(sortObjectKeys(node), null, 2)}
                 </pre>
               </div>

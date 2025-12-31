@@ -13,25 +13,22 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { ButtonGroup } from "./ui/button-group";
+import { GlobalCommandDialog } from "./command-dialog";
 
 export default function Header() {
   return (
     <header className="flex items-center justify-between bg-brand-white">
       <div className="flex items-center gap-px">
-        <ButtonGroup>
-          <Link to="/">
-            <Button variant="outline" aria-label="Home">
-              <HomeIcon /> Dagger
-            </Button>
-          </Link>
-          <Link to="/network/$networkId" params={{ networkId: "preset1" }}>
-            <Button variant="outline" aria-label="Home">
-              Preset 1
-            </Button>
-          </Link>
-        </ButtonGroup>
+        <Link to="/">
+          <Button aria-label="Home">
+            <HomeIcon /> Dagger
+          </Button>
+        </Link>
+        <Link to="/network/$networkId" params={{ networkId: "preset1" }}>
+          <Button aria-label="Preset 1">Preset 1</Button>
+        </Link>
       </div>
+      <GlobalCommandDialog />
     </header>
   );
 }

@@ -17,7 +17,6 @@ import appCss from "../styles.css?url";
 import { DimProvider } from "@/contexts/dim-context";
 import DialogProvider from "@/contexts/dialog-provider";
 import KeybindProvider from "@/contexts/keybind-provider";
-import { GlobalCommandDialog } from "@/components/command-dialog";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -55,8 +54,8 @@ function RootComponent() {
         <RootDocument>
           <DialogProvider>
             <KeybindProvider>
+              <Header />
               <Outlet />
-              <GlobalCommandDialog />
             </KeybindProvider>
           </DialogProvider>
         </RootDocument>
@@ -72,8 +71,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="flex flex-col h-full w-full border border-brand-grey-q bg-brand-white p-px text-brand-blue-3">
-          <Header />
+        <div className="flex flex-col h-full w-full border border-brand-grey-3 bg-brand-white p-px text-brand-blue-3">
           {children}
         </div>
         <TanStackDevtools
