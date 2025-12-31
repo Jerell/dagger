@@ -70,7 +70,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="h-screen">
         <div className="flex flex-col h-full w-full border border-brand-grey-3 bg-brand-white p-px text-brand-blue-3">
           {children}
         </div>

@@ -17,7 +17,7 @@ import { GlobalCommandDialog } from "./command-dialog";
 
 export default function Header() {
   return (
-    <header className="flex items-center justify-between bg-brand-white">
+    <header className="flex items-center justify-between pb-px">
       <div className="flex items-center gap-px">
         <Link to="/">
           <Button aria-label="Home">

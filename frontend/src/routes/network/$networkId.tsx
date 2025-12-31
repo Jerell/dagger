@@ -5,6 +5,7 @@ import {
   type NetworkNode,
   type NetworkEdge,
 } from "@frontend/lib/api-client";
+import { FlowNetwork } from "@/components/flow/flow-network";
 
 export const Route = createFileRoute("/network/$networkId")({
   loader: async ({ context, params }) => {
@@ -89,11 +90,12 @@ function SpecificNetwork() {
   const sortedEdges = network.edges ? sortEdges(network.edges) : [];
 
   return (
-    <div className="flex flex-col bg-brand-white border border-brand-grey-3">
-      <h1 className="text-3xl mb-2">{label}</h1>
+    <div className="flex flex-col bg-brand-white border border-brand-grey-3 h-full">
+      <h1 className="text-3xl">{label}</h1>
+      <FlowNetwork />
       <div className="w-full p-1">
         <div className="mb-6">
-          <h2 className="text-2xl mb-4">Nodes ({sortedNodes.length})</h2>
+          <h2 className="text-2xl">Nodes ({sortedNodes.length})</h2>
           <div className="space-y-2 max-h-96 overflow-y-auto border-y border-brand-grey-3 relative">
             {sortedNodes.map((node: NetworkNode, index: number) => (
               <div
@@ -106,23 +108,6 @@ function SpecificNetwork() {
                 <pre className="text-sm overflow-x-auto">
                   {JSON.stringify(sortObjectKeys(node), null, 2)}
                 </pre>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="text-2xl mb-4">Edges ({sortedEdges.length})</h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {sortedEdges.map((edge: NetworkEdge, index: number) => (
-              <div
-                key={getEdgeKey(edge, index)}
-                className="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md"
-              >
-                <div className="text-white">
-                  <span className="font-semibold">{edge.source}</span> →{" "}
-                  <span className="font-semibold">{edge.target}</span>
-                </div>
               </div>
             ))}
           </div>
