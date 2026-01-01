@@ -13,43 +13,124 @@ Transform the network viewer into an interactive editor where users can:
 
 ## Architecture
 
+### Local-First Architecture (Like OpenCode)
+
+**Key Insight:** This is a local development tool, not a remote service. The server runs locally and reads from the client's file system.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         User's Local Machine                        │
+│                                                                     │
+│  ┌──────────────┐         ┌──────────────────────┐                  │
+│  │   Browser    │         │   Local Server       │                  │
+│  │  (Frontend)  │◄────────┤  (Bun + Hono)        │                  │
+│  │              │  HTTP   │  - Schema endpoints  │                  │
+│  │  ReactFlow   │         │  - Validation        │                  │
+│  │  Collections │         │  - TOML parsing      │                  │
+│  │              │         │  - Network loading   │                  │
+│  └──────┬───────┘         └───────────┬──────────┘                  │
+│         │                             │                             │
+│         │ File System Access API      │ File System                 │
+│         │ (read/write)                │ (read)                      │
+│         ▼                             ▼                             │
+│  ┌──────────────────────────────────────────────┐                   │
+│  │         User's Local File System             │                   │
+│  │  networks/preset1/                           │                   │
+│  │    ├── branch-1.toml                         │                   │
+│  │    ├── branch-15.toml  ← Created in browser  │                   │
+│  │    ├── group-1.toml                          │                   │
+│  │    └── config.toml                           │                   │
+│  └──────────────────────────────────────────────┘                   │
+│                                                                     │
+│                                                                     │
+│         ┌──────────────────────────────────────┐                    │
+│         │   External Operations Servers        │                    │
+│         │  (Separate services, not spawned)    │                    │
+│         │  - Costing server                    │                    │
+│         │  - Modelling server                  │                    │
+│         │  - Other operation servers           │                    │
+│         │                                      │                    │
+│         │  Receives: Network + Schema          │                    │
+│         │  Returns: Operation results          │                    │
+│         └──────────────────────────────────────┘                    │
+│                    ▲                                                │
+│                    │ HTTP/WebSocket                                 │
+│                    │ (Local server proxies requests)                │
+│         ┌──────────┴───────────┐                                     │
+│         │   Local Server       │                                    │
+│         │  (proxies to external│                                    │
+│         │   operations servers)│                                    │
+│         └──────────────────────┘                                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Architecture Notes:**
+
+- **Local Server:** Handles file I/O, schema/validation, network parsing (lightweight)
+- **Operations Servers:** External services that handle heavy computations (costing, modelling)
+  - **Not spawned by Tauri** - they are separate external services
+  - Local server makes HTTP requests to external operations servers
+  - Can be deployed independently, scaled separately
+- **Separation of Concerns:** File operations vs. computation operations
+- **Similar to OpenCode:** Local server communicates with external services (like AI providers)
+
 ### Data Flow
+
+**Initial Load:**
 
 ```
 ┌─────────────────┐
-│  API Response   │ (Initial load only)
-│  (NetworkNode/  │ (Unified types - same as collections)
-│   NetworkEdge)  │
+│  Local Server   │ (reads from user's file system)
+│  /api/network   │
 └────────┬────────┘
          │
-         │ direct assignment (types unified)
+         │ NetworkResponse
          ▼
 ┌─────────────────┐
-│  NetworkNode/   │ (tanstack-db collections)
-│  NetworkEdge    │ (Local State - same types as API)
+│  Collections    │ (tanstack-db, localStorage)
+│  (NetworkNode/  │
+│   NetworkEdge)  │
 └────────┬────────┘
          │
          │ ReactFlow sync
          ▼
-┌─────────────────┐
-│   ReactFlow     │ (UI interactions)
-│   (onNodesChange│
+┌──────────────────┐
+│   ReactFlow      │ (UI interactions)
+│   (onNodesChange │
 │    onEdgesChange)│
-└────────┬────────┘
+└────────┬─────────┘
          │
          │ writeNodesToCollection()
          │ writeEdgesToCollection()
          ▼
 ┌─────────────────┐
 │  Collections    │ (persisted to localStorage)
-└─────────────────┘
+└────────┬────────┘
          │
-         │ (Future: export to TOML)
+         │ User edits in browser
+         │ (creates branch-15, etc.)
          ▼
 ┌─────────────────┐
-│  TOML Files     │ (via File System Access API)
+│  File System    │ (via File System Access API)
+│  Access API     │ (write branch-15.toml)
+└────────┬────────┘
+         │
+         │ Local server can now read branch-15.toml
+         │ for schema/validation endpoints
+         ▼
+┌─────────────────┐
+│  Local Server   │ (reads updated files)
+│  /api/schema    │ (includes branch-15)
+│  /api/validate  │
 └─────────────────┘
 ```
+
+**Key Points:**
+
+1. **Local Server:** Runs on user's machine (Bun + Hono), reads from user's file system
+2. **File System Access API:** Browser can read/write to user's local files
+3. **Schema/Validation:** Local server reads from user's files, so it sees all nodes (including browser-created ones)
+4. **Two-way sync:** Browser ↔ Local Files ↔ Local Server
 
 ## Phase 1: Type Unification & Collection Integration
 
@@ -392,6 +473,8 @@ export function PresetSelector() {
 }
 ```
 
+I think a dialog will probably be better than a dropdown though.
+
 ### 3.2 State Management
 
 After loading a preset:
@@ -400,9 +483,51 @@ After loading a preset:
 - API is only used for initial load
 - All changes persist to localStorage automatically (via tanstack-db)
 
-## Phase 4: TOML Persistence (Future)
+## Phase 4: Local File System Integration
 
-### 4.1 TOML Serialization Strategy
+### 4.1 The Network Mutability Problem
+
+**Problem Statement:**
+
+- **Network is mutable in browser** (localStorage collections)
+- **User creates new nodes** (e.g., branch-15) in browser
+- **Server file system doesn't have branch-15.toml** (it's only in localStorage)
+- **Schema/validation endpoints read from server file system** → branch-15 is omitted
+- **Result:** Can't validate or get schemas for browser-created nodes
+
+**Solution: Local-First Architecture**
+
+The tool runs a **local server** (like OpenCode) that:
+
+- Reads from the **user's local file system** (not a remote server)
+- Browser writes changes to **user's local files** via File System Access API
+- Local server can then read those files for schema/validation
+- Everything stays on the user's machine
+
+### 4.2 Architecture Requirements
+
+**Local Server:**
+
+- Runs on user's machine (Bun + Hono)
+- Reads from user's file system (not a remote backend)
+- Provides schema/validation endpoints that read local files
+- Watches local files for changes
+
+**Browser Integration:**
+
+- Uses File System Access API to read/write local files
+- When user creates branch-15 in browser:
+  1. Write to localStorage (immediate)
+  2. Write branch-15.toml to user's file system (via File System Access API)
+  3. Local server can now read branch-15.toml for schema/validation
+
+**File System Access:**
+
+- User grants permission to read/write a directory
+- Browser can create/update/delete TOML files directly
+- Local server reads from same directory
+
+### 4.3 TOML Serialization Strategy
 
 **Challenge:** Convert FlowNode/FlowEdge back to TOML format
 
@@ -506,7 +631,7 @@ export async function exportNetworkToToml(
 }
 ```
 
-### 4.2 File System Access API Integration
+### 4.4 File System Access API Integration
 
 **Use Cases:**
 
@@ -576,7 +701,7 @@ export function useWatchMode() {
 - **Invalid Syntax:** Show error, don't crash, allow user to fix
 - **Missing Files:** Treat as deleted nodes/edges, remove from collections
 
-### 4.3 TOML Parsing Robustness
+### 4.5 TOML Parsing Robustness
 
 **Current State:** Backend uses Rust to parse TOML (robust)
 
@@ -597,16 +722,14 @@ Response: NetworkResponse;
 
 This ensures consistent parsing logic.
 
-## Phase 5: Error Handling & Edge Cases
+### 4.8 Error Handling & Edge Cases
 
-### 5.1 Incomplete TOML Handling
+**Incomplete TOML Handling:**
 
-**Strategy:**
-
-1. **Validation Layer:** Validate parsed TOML before updating collections
-2. **Partial Updates:** Only update valid nodes/edges
-3. **Error Reporting:** Show which files/nodes have issues
-4. **Recovery:** Allow user to fix and retry
+- **Strategy:** Validate parsed TOML before updating collections
+- **Partial Updates:** Only update valid nodes/edges
+- **Error Reporting:** Show which files/nodes have issues
+- **Recovery:** Allow user to fix and retry
 
 ```typescript
 // lib/validators/toml-validator.ts
@@ -631,7 +754,7 @@ export function validateTomlNetwork(
 }
 ```
 
-### 5.2 Collection State Recovery
+**Collection State Recovery:**
 
 **If localStorage is corrupted:**
 
@@ -651,39 +774,42 @@ export function validateTomlNetwork(
 
 ### Phase 2 (Interactivity)
 
-1. ✅ Connect ReactFlow to collections (useCollection hooks)
+1. ✅ Connect ReactFlow to collections (useLiveQuery hooks)
 2. ✅ Add `onNodesChange`, `onEdgesChange`, `onConnect` handlers
 3. ✅ Add handles to node components
 4. ✅ Test dragging, edge creation
+5. ✅ Fix parent-child node movement (sorting on read)
 
 ### Phase 3 (UX)
 
-1. ✅ Add preset selector UI
-2. ✅ Add "Start Fresh" option
-3. ✅ Show current preset/state indicator
+1. ⏳ Add preset selector UI (API endpoint exists, UI not implemented)
+2. ⏳ Add "Start Fresh" option
+3. ⏳ Show current preset/state indicator
 
-### Phase 4 (Persistence - Future)
+### Phase 4 (Local File System Integration - Critical)
 
-**Phase 4a: One-way File Watching**
+**4.1-4.2: Core File System Setup (Critical - Required for schema/validation)**
 
-1. ⏳ File System Access API integration
-2. ⏳ Watch mode toggle (disables browser edits when enabled)
-3. ⏳ Auto-update from file changes
-4. ⏳ Robust error handling
+1. ⏳ Set up File System Access API integration
+2. ⏳ Implement writeNodeToFile() - write browser changes to local files
+3. ⏳ Update local server to read from user's file system (not remote)
+4. ⏳ Sync browser changes to files immediately (or on save)
+5. ⏳ Ensure schema/validation endpoints read from local files (includes browser-created nodes)
+6. ⏳ Test: Create branch-15 in browser → verify it appears in schema endpoints
 
-**Phase 4b: Export to Files**
+**4.3-4.5: TOML Serialization & Export**
 
 1. ⏳ TOML export functionality
 2. ⏳ Filter ReactFlow UI properties utility (`filter-reactflow-props.ts`)
 3. ⏳ Convert edges to branch outgoing arrays (always include, empty array if none)
 4. ⏳ Export to watched directory or download as ZIP
 
-**Phase 4b: Export to Files**
+**4.4-4.5: File Watching & Watch Mode**
 
-1. ⏳ TOML export functionality
-2. ⏳ Filter ReactFlow UI properties utility
-3. ⏳ Convert edges to branch outgoing arrays (empty array if none)
-4. ⏳ Export to watched directory or download as ZIP
+1. ⏳ File watching (one-way: files → browser)
+2. ⏳ Watch mode toggle (disables browser edits when enabled)
+3. ⏳ Auto-update from file changes
+4. ⏳ Robust error handling
 
 ## Questions & Considerations
 
@@ -716,11 +842,66 @@ Only the browsers that support it can use the feature. We will provide regular f
 
 I don't know that it's possible for the tabs to be out of sync though.
 
+### Q8: How to handle network mutability with schema/validation?
+
+**A:** See Phase 4 above. The solution is local-first architecture:
+
+- **Local server** reads from user's file system (not remote backend)
+- **Browser writes changes** to user's files via File System Access API
+- **Local server** can then read those files for schema/validation
+- **Result:** Browser-created nodes (like branch-15) are in file system, so schema endpoints include them
+
+**Key insight:** This is a local development tool (like OpenCode), not a remote service. Everything runs on the user's machine.
+
+### Q9: How do schemas relate to networks?
+
+**A:** Networks are **independent of schemas**. The architecture is:
+
+- **Network description:** TOML files describing nodes, edges, properties (schema-agnostic)
+- **Schema registry:** Versioned schemas (v1.0, v1.0-costing, etc.) for different operations
+- **Schema application:** Schemas are applied to networks when needed:
+  - **Costing operation:** Apply costing schema to check if network has required properties
+  - **Modelling operation:** Apply modelling schema to check if network has required properties
+  - Networks don't "belong to" a schema - schemas are tools for validation/operations
+
+### Q10: How does the operations server fit into the architecture?
+
+**A:** Similar to OpenCode's provider pattern:
+
+- **Local Server:** Handles file I/O, schema/validation, network parsing (lightweight, always running)
+- **Operations Server:** Handles heavy computations (costing, modelling, evaluations)
+  - Can be a separate process/service
+  - Receives: Network data + Schema to apply
+  - Returns: Operation results
+  - Local server proxies requests to operations server
+- **Benefits:**
+  - Separation of concerns (file ops vs. computation)
+  - Operations server can be scaled/optimized independently
+  - Operations server can use different tech stack if needed
+  - Similar pattern to OpenCode's AI provider communication
+
 ## Recommended Next Steps
 
-1. **Start with Phase 1:** Unify types and test preset loading
-2. **Then Phase 2:** Get ReactFlow interactions working
-3. **Then Phase 3:** Polish UX with preset selector
-4. **Phase 4 later:** TOML persistence when needed
+**Priority Order:**
 
-This incremental approach lets you validate each piece before moving forward.
+1. **Tauri Distribution (Early Priority):** Set up Tauri distribution first
+
+   - This affects how we implement file system access (native vs browser API)
+   - Better to build with Tauri in mind from the start
+   - See [TAURI_DISTRIBUTION_PLAN.md](./TAURI_DISTRIBUTION_PLAN.md)
+   - **Note:** Operations servers are **external** - local server makes HTTP requests to them
+
+2. **Complete Phase 3:** Add preset selector UI (dialog, not dropdown)
+
+3. **Implement Phase 4 (Critical):** Local file system integration
+   - This is required for schema/validation to work with browser-created nodes
+   - Without this, browser-created nodes won't appear in schema endpoints
+   - Start with 4.1-4.2 (core file system setup), then 4.3-4.5 (export/watching)
+   - **With Tauri:** Use native file system APIs instead of File System Access API
+
+**Why Tauri First:**
+
+- Architecture decisions (native file system vs browser API) affect Phase 4 implementation
+- Better to build with distribution in mind from the start
+- File system access patterns differ between Tauri and browser-only
+- Avoids retrofitting later
