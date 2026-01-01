@@ -3,7 +3,7 @@ import type { NetworkNode, NetworkEdge } from "@/lib/api-client";
 
 // Extend NetworkNode/NetworkEdge with ReactFlow properties
 // These are UI state properties that don't go in TOML
-export type FlowNode = Omit<NetworkNode, "parentId" | "width" | "height"> &
+export type FlowNode = Omit<NetworkNode, "parentId" | "width" | "height" | "extent"> &
   Partial<
     Pick<
       Node,
@@ -17,6 +17,7 @@ export type FlowNode = Omit<NetworkNode, "parentId" | "width" | "height"> &
     parentId?: string; // Convert null to undefined
     width?: number; // Convert null to undefined
     height?: number; // Convert null to undefined
+    extent?: "parent"; // For parent-child relationships
   };
 
 export type FlowEdge = NetworkEdge & Partial<Edge>;

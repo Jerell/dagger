@@ -154,3 +154,7 @@ code {
     @apply bg-background text-foreground;
   }
 }
+
+.react-flow__panel {
+  margin: 0;
+}

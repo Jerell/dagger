@@ -12,8 +12,9 @@ import { getNetwork, type NetworkResponse } from "@/lib/api-client";
 /**
  * Sort nodes so parent nodes come before their children
  * ReactFlow requires this ordering when nodes have parentId
+ * This must be called whenever nodes are read from collections
  */
-function sortNodesWithParentsFirst(nodes: FlowNode[]): FlowNode[] {
+export function sortNodesWithParentsFirst(nodes: FlowNode[]): FlowNode[] {
   const nodeMap = new Map<string, FlowNode>();
   const sorted: FlowNode[] = [];
   const visited = new Set<string>();
@@ -142,6 +143,8 @@ export async function resetFlowToNetwork(
       width: node.width ?? undefined,
       height: node.height ?? undefined,
       parentId: node.parentId ?? undefined,
+      // Preserve extent if it exists (needed for parent-child relationships)
+      extent: node.extent === "parent" ? "parent" : undefined,
       draggable: true,
       selectable: true,
     };

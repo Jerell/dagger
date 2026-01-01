@@ -21,15 +21,17 @@ import {
   writeEdgesToCollection,
 } from "@/lib/collections/flow";
 import { BranchNode } from "./nodes/branch";
+import { LabeledGroupNode } from "./nodes/labeled-group";
 import type { FlowNode, FlowEdge } from "@/lib/collections/flow-nodes";
+import { GeographicAnchorNode } from "./nodes/geographic-anchor";
+import { GeographicWindowNode } from "./nodes/geographic-window";
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
   branch: BranchNode as NodeTypes["branch"],
-  // Add other node types here as you create them:
-  // labeledGroup: LabeledGroupNode,
-  // geographicWindow: GeographicWindowNode,
-  // geographicAnchor: GeographicAnchorNode,
+  labeledGroup: LabeledGroupNode as NodeTypes["labeledGroup"],
+  geographicAnchor: GeographicAnchorNode as NodeTypes["geographicAnchor"],
+  geographicWindow: GeographicWindowNode as NodeTypes["geographicWindow"],
 };
 
 interface FlowNetworkProps {
@@ -42,6 +44,8 @@ export function FlowNetwork({ nodes, edges }: FlowNetworkProps) {
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const updated = applyNodeChanges(changes, nodes as Node[]);
+      // ReactFlow automatically handles parent-child movement in the viewport
+      // applyNodeChanges returns all nodes with updated positions (including children)
       writeNodesToCollection(updated as FlowNode[]);
     },
     [nodes]

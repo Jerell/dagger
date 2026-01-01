@@ -1,8 +1,8 @@
 type = "geographicAnchor"
 
+width = 1000
+height = 500
+
 [position]
 x = -180
 y = -170
-
-width = 1000
-height = 500

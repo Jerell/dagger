@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { FlowNetwork } from "@/components/flow/flow-network";
@@ -5,6 +6,7 @@ import {
   loadPresetFromApi,
   nodesCollection,
   edgesCollection,
+  sortNodesWithParentsFirst,
 } from "@/lib/collections/flow";
 import { networkQueryOptions } from "@/lib/api-client";
 
@@ -31,8 +33,12 @@ export const Route = createFileRoute("/network/$networkId")({
 function SpecificNetwork() {
   const { label } = Route.useLoaderData();
 
-  const { data: nodes = [] } = useLiveQuery(nodesCollection);
+  const { data: nodesRaw = [] } = useLiveQuery(nodesCollection);
   const { data: edges = [] } = useLiveQuery(edgesCollection);
+
+  // Sort nodes so parents come before children (ReactFlow requirement)
+  // Collections don't preserve order, so we need to sort when reading
+  const nodes = useMemo(() => sortNodesWithParentsFirst(nodesRaw), [nodesRaw]);
 
   return (
     <div className="flex flex-col bg-brand-white border border-brand-grey-3 h-full">
