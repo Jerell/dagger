@@ -189,41 +189,68 @@ export function presetsQueryOptions() {
 
 ```typescript
 // components/flow/flow-network.tsx
+import { useWatchMode } from "@/lib/file-system/watch-directory";
+
 export function FlowNetwork() {
   // Read from collections (reactive)
   const nodes = useCollection(nodesCollection);
   const edges = useCollection(edgesCollection);
 
-  // Handle ReactFlow changes
+  // Watch mode state (disables editing when enabled)
+  const { watchMode, nodesDraggable, nodesConnectable, elementsSelectable } =
+    useWatchMode();
+
+  // Handle ReactFlow changes (only if not in watch mode)
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      if (watchMode.enabled) return; // Disable in watch mode
       // Apply changes to nodes array
       const updatedNodes = applyNodeChanges(changes, nodes);
       writeNodesToCollection(updatedNodes);
     },
-    [nodes]
+    [nodes, watchMode.enabled]
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
+      if (watchMode.enabled) return; // Disable in watch mode
       // Apply changes to edges array
       const updatedEdges = applyEdgeChanges(changes, edges);
       writeEdgesToCollection(updatedEdges);
     },
-    [edges]
+    [edges, watchMode.enabled]
   );
 
-  const onConnect = useCallback((connection: Connection) => {
-    // Create new edge
-    const newEdge: AppEdge = {
-      id: `${connection.source}-${connection.target}`,
-      source: connection.source!,
-      target: connection.target!,
-      type: "weightedEdge",
-      data: { weight: 1 },
-    };
-    edgesCollection.insert(newEdge);
-  }, []);
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (watchMode.enabled) return; // Disable in watch mode
+
+      // Validate: both source and target must be branches
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      if (
+        !sourceNode ||
+        !targetNode ||
+        sourceNode.type !== "branch" ||
+        targetNode.type !== "branch" ||
+        connection.source === connection.target // Must be distinct
+      ) {
+        // Reject connection
+        return;
+      }
+
+      // Create new edge with default weight of 1
+      const newEdge: FlowEdge = {
+        id: `${connection.source}-${connection.target}`,
+        source: connection.source!,
+        target: connection.target!,
+        data: { weight: 1 },
+      };
+      edgesCollection.insert(newEdge);
+    },
+    [nodes, watchMode.enabled]
+  );
 
   return (
     <ReactFlow
@@ -233,6 +260,9 @@ export function FlowNetwork() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={nodeTypes}
+      nodesDraggable={nodesDraggable}
+      nodesConnectable={nodesConnectable}
+      elementsSelectable={elementsSelectable}
       fitView
     >
       <Background />
@@ -311,6 +341,8 @@ const onConnect = useCallback(
   [nodes]
 );
 ```
+
+**Default Weight:** New edges created via `onConnect` always have `weight: 1`.
 
 **Note:**
 
@@ -391,7 +423,7 @@ After loading a preset:
 **Library:** Use `@iarna/toml` or similar for TOML serialization
 
 ```typescript
-// lib/exporters/toml-exporter.ts
+// lib/utils/filter-reactflow-props.ts
 
 // ReactFlow UI properties to exclude from TOML
 const REACTFLOW_UI_PROPERTIES = [
@@ -403,18 +435,36 @@ const REACTFLOW_UI_PROPERTIES = [
   "resizing",
   "style",
   "className",
+  "ariaRole",
+  "domAttributes",
   // Add other ReactFlow-specific properties as needed
-];
+] as const;
 
-function filterReactFlowProperties<T extends Record<string, unknown>>(
+/**
+ * Filter ReactFlow UI properties from a node, returning only NetworkNode properties
+ * This ensures TOML export doesn't include UI state
+ */
+export function filterReactFlowProperties<T extends Record<string, unknown>>(
   node: T
-): T {
+): Omit<T, (typeof REACTFLOW_UI_PROPERTIES)[number]> {
   const filtered = { ...node };
   REACTFLOW_UI_PROPERTIES.forEach((prop) => {
     delete filtered[prop];
   });
-  return filtered;
+  return filtered as Omit<T, (typeof REACTFLOW_UI_PROPERTIES)[number]>;
 }
+
+/**
+ * Convert FlowNode to NetworkNode (removes ReactFlow UI properties)
+ */
+export function toNetworkNode(node: FlowNode): NetworkNode {
+  return filterReactFlowProperties(node) as NetworkNode;
+}
+```
+
+```typescript
+// lib/exporters/toml-exporter.ts
+import { toNetworkNode } from "@/lib/utils/filter-reactflow-props";
 
 export async function exportNetworkToToml(
   nodes: FlowNode[],
@@ -434,15 +484,17 @@ export async function exportNetworkToToml(
   // Serialize each node to TOML
   nodes.forEach((node) => {
     // Filter out ReactFlow UI properties
-    const nodeForToml = filterReactFlowProperties(node);
+    const nodeForToml = toNetworkNode(node);
 
     // For branches, add outgoing array from edges
-    if (node.type === "branch") {
+    // Always include outgoing array (empty array if no edges)
+    if (nodeForToml.type === "branch") {
       const outgoing =
         edgesBySource.get(node.id)?.map((edge) => ({
           target: edge.target,
           weight: edge.data.weight,
         })) || [];
+      // Always set outgoing, even if empty array
       nodeForToml.outgoing = outgoing;
     }
 
@@ -458,14 +510,26 @@ export async function exportNetworkToToml(
 
 **Use Cases:**
 
-1. **Watch Mode:** User selects a directory, app watches TOML files for changes
-2. **Edit File:** User edits TOML files directly, app reflects changes
-3. **Edit in browser (probably harder):** User makes changes in the browser and we save that state to the TOML files we're watching
+1. **Watch Mode (Toggle):** User selects a directory, app watches TOML files for changes
+   - **When enabled:** Browser edits are **disabled** - users must edit files directly
+   - **When disabled:** Normal browser editing mode
+2. **One-way file watching (Phase 4a):** Files → Browser only
+   - User edits TOML files directly, app auto-updates
+   - Browser changes are not written back to files
+3. **Export to files (Phase 4b):** Browser → Files as separate action
+   - User clicks "Export" to write current state to watched files
+   - Or download as ZIP if not in watch mode
 
 **Implementation:**
 
 ```typescript
 // lib/file-system/watch-directory.ts
+export type WatchModeState = {
+  enabled: boolean;
+  directoryHandle: FileSystemDirectoryHandle | null;
+  isWatching: boolean;
+};
+
 export async function watchTomlDirectory(
   directoryHandle: FileSystemDirectoryHandle,
   onFilesChanged: (files: Record<string, string>) => void
@@ -481,6 +545,28 @@ export async function watchTomlDirectory(
   //    - Incomplete TOML (missing required fields) → show warnings, use defaults
   //    - Invalid TOML syntax → show error, don't crash
   //    - Missing files → treat as deleted nodes/edges, remove from collections
+}
+
+// Hook to manage watch mode and disable ReactFlow editing when enabled
+export function useWatchMode() {
+  const [watchMode, setWatchMode] = useState<WatchModeState>({
+    enabled: false,
+    directoryHandle: null,
+    isWatching: false,
+  });
+
+  // When watch mode enabled, disable ReactFlow editing
+  const nodesDraggable = !watchMode.enabled;
+  const nodesConnectable = !watchMode.enabled;
+  const elementsSelectable = !watchMode.enabled;
+
+  return {
+    watchMode,
+    setWatchMode,
+    nodesDraggable,
+    nodesConnectable,
+    elementsSelectable,
+  };
 }
 ```
 
@@ -578,10 +664,26 @@ export function validateTomlNetwork(
 
 ### Phase 4 (Persistence - Future)
 
-1. ⏳ TOML export functionality
-2. ⏳ File System Access API integration
-3. ⏳ Watch mode for file changes
+**Phase 4a: One-way File Watching**
+
+1. ⏳ File System Access API integration
+2. ⏳ Watch mode toggle (disables browser edits when enabled)
+3. ⏳ Auto-update from file changes
 4. ⏳ Robust error handling
+
+**Phase 4b: Export to Files**
+
+1. ⏳ TOML export functionality
+2. ⏳ Filter ReactFlow UI properties utility (`filter-reactflow-props.ts`)
+3. ⏳ Convert edges to branch outgoing arrays (always include, empty array if none)
+4. ⏳ Export to watched directory or download as ZIP
+
+**Phase 4b: Export to Files**
+
+1. ⏳ TOML export functionality
+2. ⏳ Filter ReactFlow UI properties utility
+3. ⏳ Convert edges to branch outgoing arrays (empty array if none)
+4. ⏳ Export to watched directory or download as ZIP
 
 ## Questions & Considerations
 
