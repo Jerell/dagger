@@ -201,4 +201,32 @@ export function networkQueryOptions(networkId: string) {
   };
 }
 
-// NetworkNode and NetworkEdge are already defined above
+export async function getAvailablePresets(): Promise<
+  Array<{ id: string; label: string }>
+> {
+  const client = getClient();
+  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
+  const response = await client.api.network.list.$get();
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      error: "Unknown error",
+      status: response.status,
+    }));
+    throw new Error(
+      error.message ||
+        error.error ||
+        `Request failed with status ${response.status}`
+    );
+  }
+
+  return (await response.json()) as Array<{ id: string; label: string }>;
+}
+
+export function presetsQueryOptions() {
+  return {
+    queryKey: ["presets"] as const,
+    queryFn: () => getAvailablePresets(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  };
+}

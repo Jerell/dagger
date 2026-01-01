@@ -8,6 +8,15 @@ import {
 export const networkRoutes = new Hono();
 
 /**
+ * Define available networks
+ * This is the source of truth for which networks are available via the API
+ */
+const AVAILABLE_NETWORKS = [
+  { id: "preset1", label: "Preset 1" },
+  // Add more networks here as they become available
+] as const;
+
+/**
  * GET /api/network
  * Get the full network structure
  *
@@ -86,4 +95,30 @@ networkRoutes.get("/edges", async (c) => {
       500
     );
   }
+});
+
+/**
+ * GET /api/network/list
+ * List all available network presets
+ * Returns the list of networks defined in AVAILABLE_NETWORKS
+ */
+networkRoutes.get("/list", async (c) => {
+  // Optionally, we can enrich the list with labels from actual network files
+  const networks = await Promise.all(
+    AVAILABLE_NETWORKS.map(async (network) => {
+      try {
+        // Try to load the network to get its actual label
+        const networkData = await loadNetwork(`networks/${network.id}`);
+        return {
+          id: network.id,
+          label: networkData.label || network.label,
+        };
+      } catch (error) {
+        // If network can't be loaded, use the configured label
+        return network;
+      }
+    })
+  );
+
+  return c.json(networks);
 });

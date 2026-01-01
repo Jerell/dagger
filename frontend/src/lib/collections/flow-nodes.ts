@@ -1,81 +1,51 @@
-import type { Edge, Node } from "@xyflow/react";
-import type { ReactNode } from "react";
+import type { Node, Edge } from "@xyflow/react";
+import type { NetworkNode, NetworkEdge } from "@/lib/api-client";
 
-export type BlockInfo = {
-  length: number;
-  kind: "source" | "sink" | "transform";
-  label: string;
-};
+// Extend NetworkNode/NetworkEdge with ReactFlow properties
+// These are UI state properties that don't go in TOML
+export type FlowNode = Omit<NetworkNode, "parentId" | "width" | "height"> &
+  Partial<
+    Pick<
+      Node,
+      "selected" | "zIndex" | "focusable" | "resizing" | "style" | "className"
+    >
+  > & {
+    // ReactFlow UI properties (optional, added at runtime)
+    draggable?: boolean;
+    selectable?: boolean;
+    // Handle null values from API (convert to undefined for ReactFlow)
+    parentId?: string; // Convert null to undefined
+    width?: number; // Convert null to undefined
+    height?: number; // Convert null to undefined
+  };
 
-export type BranchNodeData = {
-  id: string;
-  label: string;
-  blocks: BlockInfo[];
-};
+export type FlowEdge = NetworkEdge & Partial<Edge>;
 
-export type BranchNodeType = Node<BranchNodeData, "branchNode">;
-
-export type LabeledGroupNodeData = {
-  id: string;
-  label: ReactNode;
-};
-
-export type LabeledGroupNodeType = Node<
-  LabeledGroupNodeData,
-  "labeledGroupNode"
->;
-
-export type GeographicAnchorNodeData = {
-  id: string;
-  label: ReactNode;
-};
-
-export type GeographicWindowNodeData = {
-  id: string;
-  label: ReactNode;
-};
-
-export type GeographicWindowNodeType = Node<
-  GeographicWindowNodeData,
-  "geographicWindowNode"
->;
-
-export type GeographicAnchorNodeType = Node<
-  GeographicAnchorNodeData,
-  "geographicAnchorNode"
->;
-
-export type AppNode =
-  | BranchNodeType
-  | LabeledGroupNodeType
-  | GeographicAnchorNodeType
-  | GeographicWindowNodeType;
-
-export type AppEdge = Edge<
-  {
-    weight: number;
-  },
-  "weightedEdge"
->;
-
-export function isGeographicWindowNode(
-  node: AppNode
-): node is GeographicWindowNodeType {
-  return node.type === "geographicWindowNode";
-}
-
-export function isGeographicAnchorNode(
-  node: AppNode
-): node is GeographicAnchorNodeType {
-  return node.type === "geographicAnchorNode";
+// Type guards for node types
+export function isBranchNode(
+  node: FlowNode
+): node is FlowNode & { type: "branch" } {
+  return node.type === "branch";
 }
 
 export function isLabeledGroupNode(
-  node: AppNode
-): node is LabeledGroupNodeType {
-  return node.type === "labeledGroupNode";
+  node: FlowNode
+): node is FlowNode & { type: "labeledGroup" } {
+  return node.type === "labeledGroup";
 }
 
-export function isBranchNode(node: AppNode): node is BranchNodeType {
-  return node.type === "branchNode";
+export function isGeographicAnchorNode(
+  node: FlowNode
+): node is FlowNode & { type: "geographicAnchor" } {
+  return node.type === "geographicAnchor";
 }
+
+export function isGeographicWindowNode(
+  node: FlowNode
+): node is FlowNode & { type: "geographicWindow" } {
+  return node.type === "geographicWindow";
+}
+
+// Legacy type aliases for backward compatibility during migration
+export type AppNode = FlowNode;
+export type AppEdge = FlowEdge;

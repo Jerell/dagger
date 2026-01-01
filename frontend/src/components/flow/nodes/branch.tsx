@@ -1,3 +1,4 @@
+import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 import type { BranchNodeData as ApiBranchNodeData } from "@/lib/api-client";
 
@@ -12,6 +13,7 @@ export function BranchNode({ data }: NodeProps) {
 
   return (
     <div className="bg-white border border-brand-grey-3 rounded-lg shadow-sm p-3 min-w-[200px]">
+      <Handle type="target" position={Position.Left} />
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-brand-blue-1 rounded-full"></div>
@@ -33,6 +35,7 @@ export function BranchNode({ data }: NodeProps) {
           </div>
         </div>
       )}
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

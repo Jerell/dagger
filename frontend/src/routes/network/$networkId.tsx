@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { networkQueryOptions } from "@frontend/lib/api-client";
+import { useLiveQuery } from "@tanstack/react-db";
 import { FlowNetwork } from "@/components/flow/flow-network";
-import type { Node, Edge } from "@xyflow/react";
+import {
+  loadPresetFromApi,
+  nodesCollection,
+  edgesCollection,
+} from "@/lib/collections/flow";
+import { networkQueryOptions } from "@/lib/api-client";
 
 export const Route = createFileRoute("/network/$networkId")({
   loader: async ({ context, params }) => {
@@ -10,6 +14,8 @@ export const Route = createFileRoute("/network/$networkId")({
     const network = await context.queryClient.ensureQueryData(
       networkQueryOptions(networkId)
     );
+    // Load preset into collections using the already-fetched network data
+    await loadPresetFromApi(network);
     return { networkId, label: network.label };
   },
   head: ({ loaderData }) => ({
@@ -23,14 +29,10 @@ export const Route = createFileRoute("/network/$networkId")({
 });
 
 function SpecificNetwork() {
-  const { networkId } = Route.useParams();
   const { label } = Route.useLoaderData();
-  const networkQuery = useSuspenseQuery(networkQueryOptions(networkId));
-  const network = networkQuery.data;
 
-  // Cast API response to ReactFlow types (Rust already outputs ReactFlow-compatible structures)
-  const nodes = (network.nodes || []) as Node[];
-  const edges = (network.edges || []) as Edge[];
+  const { data: nodes = [] } = useLiveQuery(nodesCollection);
+  const { data: edges = [] } = useLiveQuery(edgesCollection);
 
   return (
     <div className="flex flex-col bg-brand-white border border-brand-grey-3 h-full">

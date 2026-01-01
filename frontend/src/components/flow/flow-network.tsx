@@ -1,6 +1,27 @@
-import { Background, Controls, MiniMap, ReactFlow } from "@xyflow/react";
-import type { Node, Edge, NodeTypes } from "@xyflow/react";
+"use client";
+
+import { useCallback } from "react";
+import {
+  Background,
+  Controls,
+  MiniMap,
+  ReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  type NodeChange,
+  type EdgeChange,
+  type Connection,
+  type NodeTypes,
+  type Node,
+  type Edge,
+} from "@xyflow/react";
+import {
+  writeNodesToCollection,
+  writeEdgesToCollection,
+} from "@/lib/collections/flow";
 import { BranchNode } from "./nodes/branch";
+import type { FlowNode, FlowEdge } from "@/lib/collections/flow-nodes";
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -12,14 +33,70 @@ const nodeTypes: NodeTypes = {
 };
 
 interface FlowNetworkProps {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: FlowNode[];
+  edges: FlowEdge[];
 }
 
 export function FlowNetwork({ nodes, edges }: FlowNetworkProps) {
+  // Handle ReactFlow changes
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const updated = applyNodeChanges(changes, nodes as Node[]);
+      writeNodesToCollection(updated as FlowNode[]);
+    },
+    [nodes]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const updated = applyEdgeChanges(changes, edges as Edge[]);
+      writeEdgesToCollection(updated as FlowEdge[]);
+    },
+    [edges]
+  );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      // Validate: both source and target must be branches
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      if (
+        !sourceNode ||
+        !targetNode ||
+        sourceNode.type !== "branch" ||
+        targetNode.type !== "branch" ||
+        connection.source === connection.target // Must be distinct
+      ) {
+        // Reject connection
+        return;
+      }
+
+      // Use ReactFlow's addEdge helper with our edge data structure
+      const updated = addEdge(
+        {
+          ...connection,
+          data: { weight: 1 },
+        },
+        edges as Edge[]
+      );
+
+      writeEdgesToCollection(updated as FlowEdge[]);
+    },
+    [nodes, edges]
+  );
+
   return (
     <div className="h-full w-full">
-      <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView>
+      <ReactFlow
+        nodes={nodes as Node[]}
+        edges={edges as Edge[]}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        nodeTypes={nodeTypes}
+        fitView
+      >
         <Background />
         <Controls />
         <MiniMap />

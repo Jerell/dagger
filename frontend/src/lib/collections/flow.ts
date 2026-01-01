@@ -5,13 +5,47 @@ import {
   eq,
   liveQueryCollectionOptions,
   localStorageCollectionOptions,
-} from "@tanstack/db";
-import type { AppEdge, AppNode } from "./flow-nodes";
-import { preset1 } from "./flow-network-presets/preset1";
-import { FlowPreset } from "./flow-network-presets";
+} from "@tanstack/react-db";
+import type { FlowNode, FlowEdge } from "./flow-nodes";
+import { getNetwork, type NetworkResponse } from "@/lib/api-client";
+
+/**
+ * Sort nodes so parent nodes come before their children
+ * ReactFlow requires this ordering when nodes have parentId
+ */
+function sortNodesWithParentsFirst(nodes: FlowNode[]): FlowNode[] {
+  const nodeMap = new Map<string, FlowNode>();
+  const sorted: FlowNode[] = [];
+  const visited = new Set<string>();
+
+  // Create a map for quick lookup
+  nodes.forEach((node) => nodeMap.set(node.id, node));
+
+  // Helper to add node and its ancestors
+  const addNode = (node: FlowNode) => {
+    if (visited.has(node.id)) return;
+
+    // If node has a parent, add parent first
+    if (node.parentId) {
+      const parent = nodeMap.get(node.parentId);
+      if (parent) {
+        addNode(parent);
+      }
+    }
+
+    // Add this node
+    sorted.push(node);
+    visited.add(node.id);
+  };
+
+  // Add all nodes
+  nodes.forEach((node) => addNode(node));
+
+  return sorted;
+}
 
 export const nodesCollection = createCollection(
-  localStorageCollectionOptions<AppNode>({
+  localStorageCollectionOptions<FlowNode>({
     id: "flow:nodes",
     storageKey: "flow:nodes",
     getKey: (node) => node.id,
@@ -30,7 +64,7 @@ export const findById = (nodeId: string) =>
   );
 
 export const edgesCollection = createCollection(
-  localStorageCollectionOptions<AppEdge>({
+  localStorageCollectionOptions<FlowEdge>({
     id: "flow:edges",
     storageKey: "flow:edges",
     getKey: (edge) => edge.id,
@@ -57,45 +91,15 @@ export const findEdgesByTarget = (targetId: string) =>
     })
   );
 
-export async function seedFlowCollections(
-  initialNodes: AppNode[],
-  initialEdges: AppEdge[]
-) {
-  // Ensure sync starts before we inspect size
+// Removed seedFlowCollections - no longer needed after removing hardcoded presets
+
+/**
+ * Clear all data from flow collections
+ * Uses delete mutations so subscribers update immediately
+ */
+export async function clearFlowCollections(): Promise<void> {
   await Promise.all([nodesCollection.preload(), edgesCollection.preload()]);
 
-  const isEmpty = nodesCollection.size === 0 && edgesCollection.size === 0;
-  if (!isEmpty) return;
-
-  const nodeTx = nodesCollection.insert(initialNodes);
-  const edgeTx = edgesCollection.insert(initialEdges);
-
-  await Promise.all([nodeTx.isPersisted.promise, edgeTx.isPersisted.promise]);
-}
-
-export function clearFlowCollections() {
-  nodesCollection.utils.clearStorage();
-  edgesCollection.utils.clearStorage();
-}
-
-// ---------------------------------------------------------------------------
-// Initial data and helpers
-// ---------------------------------------------------------------------------
-
-let seedPromise: Promise<void> | null = null;
-
-export function ensureFlowSeeded(): Promise<void> {
-  if (!seedPromise) {
-    seedPromise = seedFlowCollections(preset1.nodes, preset1.edges);
-  }
-  return seedPromise;
-}
-
-export async function resetFlowCollectionsToInitial(): Promise<void> {
-  // Ensure collections are syncing
-  await Promise.all([nodesCollection.preload(), edgesCollection.preload()]);
-
-  // Delete current data via mutations so subscribers update immediately
   const edgeKeys = Array.from(edgesCollection.keys()) as string[];
   if (edgeKeys.length) {
     const delTx = edgesCollection.delete(edgeKeys);
@@ -107,17 +111,16 @@ export async function resetFlowCollectionsToInitial(): Promise<void> {
     const delTx = nodesCollection.delete(nodeKeys);
     await delTx.isPersisted.promise;
   }
-
-  // Reinsert initial data
-  const insNodesTx = nodesCollection.insert(preset1.nodes);
-  const insEdgesTx = edgesCollection.insert(preset1.edges);
-  await Promise.all([
-    insNodesTx.isPersisted.promise,
-    insEdgesTx.isPersisted.promise,
-  ]);
 }
 
-export async function resetFlowToPreset(preset: FlowPreset): Promise<void> {
+/**
+ * Reset collections to a network response from the API
+ * This is a helper that can be used if you already have a NetworkResponse
+ * Otherwise, use loadPresetFromApi() which fetches and loads
+ */
+export async function resetFlowToNetwork(
+  network: NetworkResponse
+): Promise<void> {
   await Promise.all([nodesCollection.preload(), edgesCollection.preload()]);
 
   const edgeKeys = Array.from(edgesCollection.keys()) as string[];
@@ -132,19 +135,63 @@ export async function resetFlowToPreset(preset: FlowPreset): Promise<void> {
     await delTx.isPersisted.promise;
   }
 
-  const insNodesTx = nodesCollection.insert(preset.nodes);
-  const insEdgesTx = edgesCollection.insert(preset.edges);
+  // Add ReactFlow properties and validate edges (same as loadPresetFromApi)
+  const flowNodes: FlowNode[] = network.nodes.map((node) => {
+    const flowNode: FlowNode = {
+      ...node,
+      width: node.width ?? undefined,
+      height: node.height ?? undefined,
+      parentId: node.parentId ?? undefined,
+      draggable: true,
+      selectable: true,
+    };
+    return flowNode;
+  });
+
+  const validEdges = network.edges.filter((edge) => {
+    const sourceNode = flowNodes.find((n) => n.id === edge.source);
+    const targetNode = flowNodes.find((n) => n.id === edge.target);
+    return (
+      sourceNode?.type === "branch" &&
+      targetNode?.type === "branch" &&
+      edge.source !== edge.target
+    );
+  });
+
+  // Sort nodes so parent nodes come before their children (ReactFlow requirement)
+  const sortedNodes = sortNodesWithParentsFirst(flowNodes);
+
+  const insNodesTx = nodesCollection.insert(sortedNodes);
+  const insEdgesTx = edgesCollection.insert(validEdges);
   await Promise.all([
     insNodesTx.isPersisted.promise,
     insEdgesTx.isPersisted.promise,
   ]);
+}
+
+/**
+ * Load a network into collections
+ * Adds ReactFlow UI properties and validates edges
+ * @param networkOrId - NetworkResponse from API (or networkId to fetch)
+ */
+export async function loadPresetFromApi(
+  networkOrId: string | NetworkResponse
+): Promise<void> {
+  // Get network data (either use provided or fetch)
+  const network =
+    typeof networkOrId === "string"
+      ? await getNetwork(networkOrId)
+      : networkOrId;
+
+  // Use resetFlowToNetwork to handle the transformation and insertion
+  await resetFlowToNetwork(network);
 }
 
 // ---------------------------------------------------------------------------
 // Write helpers for ReactFlow integration
 // ---------------------------------------------------------------------------
 
-export function writeNodesToCollection(updated: AppNode[]): void {
+export function writeNodesToCollection(updated: FlowNode[]): void {
   const prevKeys = new Set<string>(
     Array.from(nodesCollection.keys()) as string[]
   );
@@ -167,7 +214,7 @@ export function writeNodesToCollection(updated: AppNode[]): void {
   });
 }
 
-export function writeEdgesToCollection(updated: AppEdge[]): void {
+export function writeEdgesToCollection(updated: FlowEdge[]): void {
   const prevKeys = new Set<string>(
     Array.from(edgesCollection.keys()) as string[]
   );

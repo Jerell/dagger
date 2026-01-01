@@ -3,14 +3,9 @@ import {
   liveQueryCollectionOptions,
   eq,
   or,
-} from "@tanstack/db";
+} from "@tanstack/react-db";
 import { nodesCollection } from "./flow";
-import {
-  BranchNodeType,
-  GeographicAnchorNodeType,
-  GeographicWindowNodeType,
-  LabeledGroupNodeType,
-} from "../types/flow-nodes";
+import type { FlowNode } from "./flow-nodes";
 
 export const selectedNodesCollection = createCollection(
   liveQueryCollectionOptions({
@@ -21,28 +16,32 @@ export const selectedNodesCollection = createCollection(
   })
 );
 
-export const selectedGroupsCollection = createCollection<LabeledGroupNodeType>(
+export const selectedGroupsCollection = createCollection<
+  FlowNode & { type: "labeledGroup" }
+>(
   liveQueryCollectionOptions({
     query: (q) =>
       q
         .from({ node: nodesCollection })
-        .where(({ node }) => eq(node.type, "labeledGroupNode"))
+        .where(({ node }) => eq(node.type, "labeledGroup"))
         .where(({ node }) => eq(node.selected, true)),
   })
 );
 
-export const selectedBranchesCollection = createCollection<BranchNodeType>(
+export const selectedBranchesCollection = createCollection<
+  FlowNode & { type: "branch" }
+>(
   liveQueryCollectionOptions({
     query: (q) =>
       q
         .from({ node: nodesCollection })
-        .where(({ node }) => eq(node.type, "branchNode"))
+        .where(({ node }) => eq(node.type, "branch"))
         .where(({ node }) => eq(node.selected, true)),
   })
 );
 
 export const selectedGeographyCollection = createCollection<
-  GeographicAnchorNodeType | GeographicWindowNodeType
+  FlowNode & { type: "geographicAnchor" | "geographicWindow" }
 >(
   liveQueryCollectionOptions({
     query: (q) =>
@@ -50,8 +49,8 @@ export const selectedGeographyCollection = createCollection<
         .from({ node: nodesCollection })
         .where(({ node }) =>
           or(
-            eq(node.type, "geographicAnchorNode"),
-            eq(node.type, "geographicWindowNode")
+            eq(node.type, "geographicAnchor"),
+            eq(node.type, "geographicWindow")
           )
         )
         .where(({ node }) => eq(node.selected, true)),
