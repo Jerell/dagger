@@ -66,12 +66,12 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
         <HeadContent />
       </head>
-      <body className="h-screen">
-        <div className="flex flex-col h-full w-full border border-brand-grey-3 bg-brand-white p-px text-brand-blue-3">
+      <body className="h-full">
+        <div className="flex flex-col w-full h-screen border border-brand-grey-3 bg-brand-white p-px text-brand-blue-3">
           {children}
         </div>
         <TanStackDevtools

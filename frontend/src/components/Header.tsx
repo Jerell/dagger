@@ -116,9 +116,9 @@ function BreadcrumbLinks() {
 export default function Header() {
   return (
     <header className="flex flex-col">
-      <BreadcrumbLinks />
       <div className="flex flex-row items-center justify-between pb-px">
-        <div className="flex items-center gap-px">
+        <BreadcrumbLinks />
+        {/* <div className="flex items-center gap-px">
           <Link to="/">
             <Button aria-label="Home">
               <HomeIcon /> Dagger
@@ -132,11 +132,7 @@ export default function Header() {
           <Link to="/network/$networkId" params={{ networkId: "preset1" }}>
             <Button aria-label="Preset 1">Preset 1</Button>
           </Link>
-
-          <Link to="/demo/api/names">
-            <Button aria-label="API Names">API Names</Button>
-          </Link>
-        </div>
+        </div> */}
         <GlobalCommandDialog />
       </div>
     </header>

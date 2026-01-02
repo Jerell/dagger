@@ -41,7 +41,7 @@ function SpecificNetwork() {
   const nodes = useMemo(() => sortNodesWithParentsFirst(nodesRaw), [nodesRaw]);
 
   return (
-    <div className="flex flex-col bg-brand-white border border-brand-grey-3 h-full">
+    <div className="flex-1 min-h-0 flex flex-col bg-brand-white border border-brand-grey-3">
       <div className="p-4 border-b border-brand-grey-3">
         <h1 className="text-3xl">{label}</h1>
       </div>

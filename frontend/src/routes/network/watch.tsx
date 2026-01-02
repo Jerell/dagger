@@ -57,7 +57,7 @@ function WatchPage() {
   };
 
   return (
-    <div className="flex flex-col bg-brand-white border border-brand-grey-3 h-full">
+    <div className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
       <div className="p-4 border-b border-brand-grey-3 flex items-center justify-between">
         {fileWatcher.watchMode.enabled ? (
           <>
@@ -88,7 +88,7 @@ function WatchPage() {
         )}
       </div>
       {fileWatcher.watchMode.enabled ? (
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 h-full">
           <FlowNetwork
             nodes={nodes}
             edges={edges}
@@ -118,4 +118,3 @@ function WatchPage() {
     </div>
   );
 }
-
