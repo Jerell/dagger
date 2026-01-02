@@ -122,3 +122,43 @@ networkRoutes.get("/list", async (c) => {
 
   return c.json(networks);
 });
+
+/**
+ * GET /api/network/from-path
+ * Load network from an absolute directory path
+ * 
+ * Query params:
+ * - path: Absolute directory path containing TOML files
+ */
+networkRoutes.get("/from-path", async (c) => {
+  const directoryPath = c.req.query("path");
+  
+  console.log("[from-path] Request received, path:", directoryPath);
+  
+  if (!directoryPath) {
+    return c.json(
+      {
+        error: "Missing path parameter",
+        message: "The 'path' query parameter is required",
+      },
+      400
+    );
+  }
+
+  try {
+    console.log("[from-path] Loading network from:", directoryPath);
+    // loadNetwork now supports absolute paths via resolvePath
+    const network = await loadNetwork(directoryPath);
+    console.log("[from-path] Network loaded successfully");
+    return c.json(network);
+  } catch (error) {
+    console.error("[from-path] Error loading network:", error);
+    return c.json(
+      {
+        error: "Failed to load network",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});

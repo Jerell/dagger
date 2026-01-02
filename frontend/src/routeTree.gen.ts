@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NetworkRouteRouteImport } from './routes/network/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NetworkWatchRouteImport } from './routes/network/watch'
 import { Route as NetworkNetworkIdRouteImport } from './routes/network/$networkId'
 import { Route as ApiSchemaRouteImport } from './routes/api/schema'
 import { Route as ApiQueryRouteImport } from './routes/api/query'
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const NetworkWatchRoute = NetworkWatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
+  getParentRoute: () => NetworkRouteRoute,
 } as any)
 const NetworkNetworkIdRoute = NetworkNetworkIdRouteImport.update({
   id: '/$networkId',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
   '/network/$networkId': typeof NetworkNetworkIdRoute
+  '/network/watch': typeof NetworkWatchRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
   '/network/$networkId': typeof NetworkNetworkIdRoute
+  '/network/watch': typeof NetworkWatchRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/api/query': typeof ApiQueryRoute
   '/api/schema': typeof ApiSchemaRouteWithChildren
   '/network/$networkId': typeof NetworkNetworkIdRoute
+  '/network/watch': typeof NetworkWatchRoute
   '/api/network/edges': typeof ApiNetworkEdgesRoute
   '/api/network/nodes': typeof ApiNetworkNodesRoute
   '/api/schema/$version': typeof ApiSchemaVersionRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/api/query'
     | '/api/schema'
     | '/network/$networkId'
+    | '/network/watch'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/query'
     | '/api/schema'
     | '/network/$networkId'
+    | '/network/watch'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/query'
     | '/api/schema'
     | '/network/$networkId'
+    | '/network/watch'
     | '/api/network/edges'
     | '/api/network/nodes'
     | '/api/schema/$version'
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/network/watch': {
+      id: '/network/watch'
+      path: '/watch'
+      fullPath: '/network/watch'
+      preLoaderRoute: typeof NetworkWatchRouteImport
+      parentRoute: typeof NetworkRouteRoute
     }
     '/network/$networkId': {
       id: '/network/$networkId'
@@ -470,10 +489,12 @@ declare module '@tanstack/react-router' {
 
 interface NetworkRouteRouteChildren {
   NetworkNetworkIdRoute: typeof NetworkNetworkIdRoute
+  NetworkWatchRoute: typeof NetworkWatchRoute
 }
 
 const NetworkRouteRouteChildren: NetworkRouteRouteChildren = {
   NetworkNetworkIdRoute: NetworkNetworkIdRoute,
+  NetworkWatchRoute: NetworkWatchRoute,
 }
 
 const NetworkRouteRouteWithChildren = NetworkRouteRoute._addFileChildren(

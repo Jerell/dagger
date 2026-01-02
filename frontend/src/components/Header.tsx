@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  EyeIcon,
   Home,
   HomeIcon,
   Menu,
@@ -76,7 +77,6 @@ function BreadcrumbLinks() {
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            {/* Use Link from TanStack router; replace if needed */}
             <Link to="/">Home</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
@@ -122,6 +122,11 @@ export default function Header() {
           <Link to="/">
             <Button aria-label="Home">
               <HomeIcon /> Dagger
+            </Button>
+          </Link>
+          <Link to="/network/watch">
+            <Button aria-label="Watch">
+              <EyeIcon /> Watch
             </Button>
           </Link>
           <Link to="/network/$networkId" params={{ networkId: "preset1" }}>

@@ -17,21 +17,56 @@ impl LocalServer {
     }
 
     pub fn start(&mut self, backend_path: PathBuf) -> Result<(), String> {
+        // If we already have a process, stop it first (allows restart)
         if self.process.is_some() {
-            return Err("Server already running".to_string());
+            log::info!("Stopping existing server process before restart");
+            let _ = self.stop();
         }
 
-        // Check if port is already in use (might be from previous session or hot reload)
-        // Try to bind to the port - if it fails, the port is already in use
+        // Check if port is already in use
         match TcpListener::bind(format!("127.0.0.1:{}", self.port)) {
             Ok(_) => {
                 // Port is available, we can start the server
                 // (drop the listener immediately to free the port)
             }
             Err(_) => {
-                // Port is in use - assume server is already running from previous instance
-                log::info!("Port {} is already in use. Server appears to be running already (likely from hot reload).", self.port);
-                return Ok(()); // Don't try to start, just return success
+                // Port is in use - try to kill any process using it
+                log::warn!("Port {} is in use. Attempting to free it...", self.port);
+                
+                // Try to find and kill processes using the port (macOS/Linux)
+                #[cfg(unix)]
+                {
+                    use std::process::Command;
+                    let port_arg = format!(":{}", self.port);
+                    let output = Command::new("lsof")
+                        .arg("-ti")
+                        .arg(&port_arg)
+                        .output();
+                    
+                    if let Ok(output) = output {
+                        if !output.stdout.is_empty() {
+                            let pid_str = String::from_utf8_lossy(&output.stdout);
+                            let pid = pid_str.trim();
+                            log::info!("Killing process {} using port {}", pid, self.port);
+                            let _ = Command::new("kill")
+                                .arg("-9")
+                                .arg(pid)
+                                .output();
+                            // Wait a bit for the port to be released
+                            std::thread::sleep(std::time::Duration::from_millis(500));
+                        }
+                    }
+                }
+                
+                // Try binding again
+                match TcpListener::bind(format!("127.0.0.1:{}", self.port)) {
+                    Ok(_) => {
+                        log::info!("Port {} is now available", self.port);
+                    }
+                    Err(_) => {
+                        return Err(format!("Port {} is still in use after attempting to free it. Please manually stop any process using this port.", self.port));
+                    }
+                }
             }
         }
 

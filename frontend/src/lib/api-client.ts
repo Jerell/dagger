@@ -211,6 +211,44 @@ export function networkQueryOptions(networkId: string) {
   };
 }
 
+/**
+ * Get network from an absolute directory path
+ * @param directoryPath Absolute path to directory containing TOML files
+ */
+export async function getNetworkFromPath(
+  directoryPath: string
+): Promise<NetworkResponse> {
+  try {
+    // Use direct fetch since Hono RPC doesn't handle hyphenated route names well
+    const baseUrl = getApiBaseUrl();
+    const url = new URL(`${baseUrl}/api/network/from-path`);
+    url.searchParams.set("path", directoryPath);
+    
+    const response = await fetch(url.toString());
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: "Unknown error",
+        status: response.status,
+      }));
+      throw new Error(
+        error.message ||
+          error.error ||
+          `Request failed with status ${response.status}`
+      );
+    }
+
+    return (await response.json()) as NetworkResponse;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+      throw new Error(
+        "Failed to connect to the backend server. Please ensure the server is running."
+      );
+    }
+    throw error;
+  }
+}
+
 export async function getAvailablePresets(): Promise<
   Array<{ id: string; label: string }>
 > {

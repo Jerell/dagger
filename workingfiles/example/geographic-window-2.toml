@@ -1,0 +1,8 @@
+type = "geographicWindow"
+
+width = 200
+height = 100
+
+[position]
+x = 1300
+y = 150

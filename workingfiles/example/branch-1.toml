@@ -1,0 +1,36 @@
+type = "branch"
+
+label = "Branch 1 example"
+parentId = "group-1"
+
+# efficiency = 0.7
+
+[position]
+x = 20
+y = 30
+
+[[outgoing]]
+target = "branch-2"
+weight = 1
+
+[[block]]
+quantity = 1
+type = "Source"
+pressure = "100 bar"
+
+[[block]]
+quantity = 4
+type = "Capture Unit"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+length = "1000 m"
+
+[[block]]
+type = "Compressor"
+# pressure = "120 bar"
+
+[[block]]
+type = "Pipe"
+length = "3 mi"

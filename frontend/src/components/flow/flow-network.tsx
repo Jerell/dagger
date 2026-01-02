@@ -37,9 +37,18 @@ const nodeTypes: NodeTypes = {
 interface FlowNetworkProps {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  nodesDraggable?: boolean;
+  nodesConnectable?: boolean;
+  elementsSelectable?: boolean;
 }
 
-export function FlowNetwork({ nodes, edges }: FlowNetworkProps) {
+export function FlowNetwork({
+  nodes,
+  edges,
+  nodesDraggable = true,
+  nodesConnectable = true,
+  elementsSelectable = true,
+}: FlowNetworkProps) {
   // Handle ReactFlow changes
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -99,6 +108,9 @@ export function FlowNetwork({ nodes, edges }: FlowNetworkProps) {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        nodesDraggable={nodesDraggable}
+        nodesConnectable={nodesConnectable}
+        elementsSelectable={elementsSelectable}
         fitView
       >
         <Background />

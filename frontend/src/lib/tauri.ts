@@ -73,6 +73,22 @@ export async function deleteNetworkFile(path: string): Promise<void> {
 }
 
 /**
+ * Start watching a directory for TOML file changes
+ * @param path Directory path to watch
+ * @returns Promise that resolves when watching starts
+ */
+export async function startWatchingDirectory(path: string): Promise<void> {
+  return await invoke<void>("start_watching_directory", { path });
+}
+
+/**
+ * Stop watching the current directory
+ */
+export async function stopWatchingDirectory(): Promise<void> {
+  return await invoke<void>("stop_watching_directory");
+}
+
+/**
  * Get operations server configuration
  * @returns Operations server URLs
  */

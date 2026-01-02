@@ -13,7 +13,11 @@ function getWasm() {
 }
 
 function resolvePath(relativePath: string): string {
-  // Resolve relative to process.cwd() which should be the backend directory
+  // If path is already absolute, use it as-is
+  if (path.isAbsolute(relativePath)) {
+    return relativePath;
+  }
+  // Otherwise, resolve relative to process.cwd() which should be the backend directory
   // when the server is running
   return path.resolve(process.cwd(), relativePath);
 }

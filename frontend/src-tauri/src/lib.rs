@@ -1,9 +1,12 @@
 mod commands;
 mod server;
+mod file_watcher;
 
 use commands::*;
 use server::ServerState;
+use file_watcher::FileWatcherState;
 use tauri::Manager;
+use std::sync::{Arc, Mutex};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,6 +17,11 @@ pub fn run() {
       // Initialize local server state
       let server_state = ServerState::new(server::LocalServer::new(3001));
       app.handle().manage(server_state);
+
+      // Initialize file watcher state
+      use file_watcher::FileWatcher;
+      let file_watcher_state = Arc::new(Mutex::new(FileWatcher::new()));
+      app.handle().manage(file_watcher_state);
 
       // Auto-start backend server in a background thread
       let app_handle = app.handle().clone();
@@ -71,7 +79,9 @@ pub fn run() {
       read_network_directory,
       write_network_file,
       delete_network_file,
-      get_operations_config
+      get_operations_config,
+      start_watching_directory,
+      stop_watching_directory
     ])
     .on_window_event(|_window, event| {
       if let tauri::WindowEvent::CloseRequested { .. } = event {

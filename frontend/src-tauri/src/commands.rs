@@ -1,8 +1,9 @@
 use crate::server::ServerState;
+use crate::file_watcher::FileWatcherState;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{State, Manager};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NetworkFile {
@@ -101,5 +102,25 @@ pub async fn get_operations_config() -> Result<OperationsServerConfig, String> {
             .ok()
             .or_else(|| Some("http://localhost:4001".to_string())),
     })
+}
+
+#[tauri::command]
+pub async fn start_watching_directory(
+    watcher: State<'_, FileWatcherState>,
+    path: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let mut watcher_guard = watcher.lock().unwrap();
+    watcher_guard.start_watching(path.into(), app)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn stop_watching_directory(
+    watcher: State<'_, FileWatcherState>,
+) -> Result<(), String> {
+    let mut watcher_guard = watcher.lock().unwrap();
+    watcher_guard.stop_watching();
+    Ok(())
 }
 
