@@ -36,10 +36,20 @@ pub fn run() {
         // Start the server using the app handle
         if let Some(server_state) = app_handle.try_state::<ServerState>() {
           let mut server = server_state.0.lock().unwrap();
-          if let Err(e) = server.start(backend_path) {
-            log::error!("Failed to auto-start backend server: {}", e);
-          } else {
-            log::info!("Backend server started on port 3001");
+          match server.start(backend_path) {
+            Ok(()) => {
+              // Server process spawned - actual startup will be logged by Bun
+              // If Bun fails to bind to the port, the error will appear in stderr
+              log::info!("Attempting to start backend server on port 3001...");
+            }
+            Err(e) => {
+              // If it's just that the port is in use, that's fine (server already running)
+              if e.contains("already running") || e.contains("already in use") {
+                log::info!("Backend server already running on port 3001");
+              } else {
+                log::error!("Failed to auto-start backend server: {}", e);
+              }
+            }
           }
         } else {
           log::error!("Failed to access server state for auto-start");
