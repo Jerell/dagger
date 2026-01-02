@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 
 import { useState } from "react";
 import {
@@ -14,21 +14,126 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { GlobalCommandDialog } from "./command-dialog";
+import {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./ui/breadcrumb";
+import React from "react";
+
+type BreadcrumbItemObject = { label: string; href: string; isPage: boolean };
+type BreadcrumbItemType = BreadcrumbItemObject | "ellipsis";
+
+function BreadcrumbLinks() {
+  const location = useLocation();
+  const pathname = location.pathname;
+  const pathSegments = pathname.split("/").filter(Boolean);
+
+  // Build cumulative path segments for correct hrefs
+  const cumulativePaths = pathSegments.map(
+    (_segment, idx) => "/" + pathSegments.slice(0, idx + 1).join("/")
+  );
+
+  // If the path is long enough for ellipsis, show only first, ellipsis, last two
+  // (e.g. ["a", "b", "c", "d", "e"] => a, ..., d, e)
+  let items: BreadcrumbItemType[];
+  if (pathSegments.length > 4) {
+    items = [
+      {
+        label: pathSegments[0],
+        href: cumulativePaths[0],
+        isPage: false,
+      },
+      "ellipsis",
+      {
+        label: pathSegments[pathSegments.length - 2],
+        href: cumulativePaths[pathSegments.length - 2],
+        isPage: false,
+      },
+      {
+        label: pathSegments[pathSegments.length - 1],
+        href: cumulativePaths[pathSegments.length - 1],
+        isPage: true,
+      },
+    ];
+  } else {
+    items = pathSegments.map(
+      (segment, idx): BreadcrumbItemObject => ({
+        label: segment,
+        href: cumulativePaths[idx],
+        isPage: idx === pathSegments.length - 1,
+      })
+    );
+  }
+
+  // Always prefix with Home
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            {/* Use Link from TanStack router; replace if needed */}
+            <Link to="/">Home</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {pathSegments.length > 0 && <BreadcrumbSeparator />}
+        {items.map((item, idx) => {
+          if (item === "ellipsis") {
+            return (
+              <React.Fragment key={`ellipsis-${idx}`}>
+                <BreadcrumbItem>
+                  <BreadcrumbEllipsis />
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+              </React.Fragment>
+            );
+          } else {
+            return (
+              <React.Fragment key={item.href}>
+                <BreadcrumbItem>
+                  {item.isPage ? (
+                    <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link to={item.href}>{item.label}</Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+                {idx !== items.length - 1 && <BreadcrumbSeparator />}
+              </React.Fragment>
+            );
+          }
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
 
 export default function Header() {
   return (
-    <header className="flex items-center justify-between pb-px">
-      <div className="flex items-center gap-px">
-        <Link to="/">
-          <Button aria-label="Home">
-            <HomeIcon /> Dagger
-          </Button>
-        </Link>
-        <Link to="/network/$networkId" params={{ networkId: "preset1" }}>
-          <Button aria-label="Preset 1">Preset 1</Button>
-        </Link>
+    <header className="flex flex-col">
+      <BreadcrumbLinks />
+      <div className="flex flex-row items-center justify-between pb-px">
+        <div className="flex items-center gap-px">
+          <Link to="/">
+            <Button aria-label="Home">
+              <HomeIcon /> Dagger
+            </Button>
+          </Link>
+          <Link to="/network/$networkId" params={{ networkId: "preset1" }}>
+            <Button aria-label="Preset 1">Preset 1</Button>
+          </Link>
+
+          <Link to="/demo/api/names">
+            <Button aria-label="API Names">API Names</Button>
+          </Link>
+        </div>
+        <GlobalCommandDialog />
       </div>
-      <GlobalCommandDialog />
     </header>
   );
 }

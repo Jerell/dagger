@@ -4,34 +4,31 @@
 default:
   @just --list
 
+# Quick reference:
+#   just dev          - Start Tauri app (recommended for development)
+#   just dev-backend  - Start backend server standalone
+#   just dev-frontend - Start frontend dev server standalone (browser)
+
 # Development
-# Start all services with docker compose
+# Start Tauri app (includes frontend dev server and backend via Tauri)
 dev:
-  docker compose -f local/docker-compose.yml up --build
+  @just kill-dev || true
+  cd {{justfile_directory()}}/frontend && bun tauri dev
 
-# Start all services in detached mode
-dev-d:
-  docker compose -f local/docker-compose.yml up --build -d
+# Kill any stale dev processes (vite, tauri)
+kill-dev:
+  @echo "Killing stale dev processes..."
+  -pkill -f "vite dev" || true
+  -pkill -f "tauri dev" || true
+  @echo "Done"
 
-# Stop all services
-down:
-  docker compose -f local/docker-compose.yml down
-
-# Stop all services and remove volumes
-down-v:
-  docker compose -f local/docker-compose.yml down -v
-
-# View logs
-logs:
-  docker compose -f local/docker-compose.yml logs -f
-
-# Rebuild without cache
-rebuild:
-  docker compose -f local/docker-compose.yml build --no-cache
-
-# Local development (without docker)
+# Start backend server standalone (for testing API directly)
 dev-backend:
-  cd {{justfile_directory()}}/backend && npm run dev
+  cd {{justfile_directory()}}/backend && bun run dev
+
+# Start frontend dev server standalone (for browser testing)
+dev-frontend:
+  cd {{justfile_directory()}}/frontend && bun run dev
 
 # Build commands
 build-wasm:
@@ -44,7 +41,7 @@ build-wasm-release:
 
 build-backend:
   # Build TypeScript backend
-  cd {{justfile_directory()}}/backend && npm run build
+  cd {{justfile_directory()}}/backend && bun run build
 
 # Test commands
 test:
@@ -71,22 +68,6 @@ test-all:
   # Run all tests (Rust)
   cd {{justfile_directory()}}/cli && cargo test --lib
 
-# CLI commands
-cli-export NETWORK="network/preset1":
-  # Export network to JSON
-  cd {{justfile_directory()}}/cli && cargo run -- export {{NETWORK}}
-
-cli-query QUERY NETWORK="network/preset1":
-  # Query the network
-  cd {{justfile_directory()}}/cli && cargo run -- query "{{QUERY}}" {{NETWORK}}
-
-cli-validate NETWORK="network/preset1" VERSION="1.0" SCHEMAS="schemas":
-  # Validate network against schemas
-  cd {{justfile_directory()}}/cli && cargo run -- validate --version {{VERSION}} {{NETWORK}} --schemas-dir {{SCHEMAS}}
-
-cli-list NETWORK="network/preset1":
-  # List all nodes in network
-  cd {{justfile_directory()}}/cli && cargo run -- list {{NETWORK}}
 
 # Linting and formatting
 lint:
@@ -124,18 +105,28 @@ clean-all:
 setup:
   # Initial project setup
   cd {{justfile_directory()}}/cli && cargo build
-  cd {{justfile_directory()}}/backend && npm install
-  cd {{justfile_directory()}}/schemas && npm install
+  cd {{justfile_directory()}}/backend && bun install
+  cd {{justfile_directory()}}/frontend && bun install
+  cd {{justfile_directory()}}/schemas && bun install
   just setup-networks
   just setup-dim
+  just setup-tauri
 
 setup-backend:
   # Setup backend dependencies
-  cd {{justfile_directory()}}/backend && npm install
+  cd {{justfile_directory()}}/backend && bun install
+
+setup-frontend:
+  # Setup frontend dependencies (including Tauri)
+  cd {{justfile_directory()}}/frontend && bun install
+
+setup-tauri:
+  # Setup Tauri Rust dependencies
+  cd {{justfile_directory()}}/frontend/src-tauri && cargo build
 
 setup-schemas:
   # Setup schema generation dependencies
-  cd {{justfile_directory()}}/schemas && npm install
+  cd {{justfile_directory()}}/schemas && bun install
 
 setup-networks:
   # Copy networks from project root to backend/networks
@@ -151,12 +142,12 @@ setup-dim:
 
 # Full development workflow
 dev-full:
-  # Build WASM, copy dim files, and start all services
+  # Build WASM, copy dim files, and start Tauri app
   @echo "Building WASM module..."
   just build-wasm
   @echo "Setting up dim WASM files..."
   just setup-dim
-  @echo "Starting all services..."
+  @echo "Starting Tauri app..."
   just dev
 
 # Check everything
