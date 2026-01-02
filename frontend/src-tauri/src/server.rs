@@ -26,8 +26,9 @@ impl LocalServer {
            .arg("src/index.ts")
            .current_dir(&backend_path)
            .env("PORT", self.port.to_string())
-           .stdout(std::process::Stdio::piped())
-           .stderr(std::process::Stdio::piped());
+           // Inherit stdout/stderr so logs are visible in terminal
+           .stdout(std::process::Stdio::inherit())
+           .stderr(std::process::Stdio::inherit());
 
         let child = cmd.spawn()
             .map_err(|e| format!("Failed to start server: {}", e))?;
@@ -44,17 +45,6 @@ impl LocalServer {
         Ok(())
     }
 
-    pub fn is_running(&self) -> bool {
-        // Note: try_wait() doesn't require mutable access, but we check if process exists
-        self.process.is_some() && 
-        self.process.as_ref()
-            .and_then(|_p| {
-                // We can't call try_wait on an immutable reference
-                // Instead, just check if the process exists
-                Some(true)
-            })
-            .unwrap_or(false)
-    }
 }
 
 impl Drop for LocalServer {

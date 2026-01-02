@@ -12,7 +12,39 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .setup(|app| {
       // Initialize local server state
-      app.handle().manage(ServerState::new(server::LocalServer::new(3001)));
+      let server_state = ServerState::new(server::LocalServer::new(3001));
+      app.handle().manage(server_state);
+
+      // Auto-start backend server in a background thread
+      let app_handle = app.handle().clone();
+      std::thread::spawn(move || {
+        // Get the backend path (relative to project root)
+        let backend_path = std::env::current_dir()
+          .ok()
+          .and_then(|mut p| {
+            // Navigate to backend directory from frontend/src-tauri
+            p.pop(); // frontend/src-tauri -> frontend
+            p.pop(); // frontend -> project root
+            p.push("backend");
+            Some(p)
+          })
+          .unwrap_or_else(|| std::path::PathBuf::from("../backend"));
+
+        // Wait a bit for Tauri to fully initialize
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+
+        // Start the server using the app handle
+        if let Some(server_state) = app_handle.try_state::<ServerState>() {
+          let mut server = server_state.0.lock().unwrap();
+          if let Err(e) = server.start(backend_path) {
+            log::error!("Failed to auto-start backend server: {}", e);
+          } else {
+            log::info!("Backend server started on port 3001");
+          }
+        } else {
+          log::error!("Failed to access server state for auto-start");
+        }
+      });
 
       if cfg!(debug_assertions) {
         app.handle().plugin(

@@ -115,25 +115,35 @@ export function getClient(): Client {
 
 export async function getNetwork(networkId: string): Promise<NetworkResponse> {
   const client = getClient();
-  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
-  // The client type is correctly inferred at runtime via Hono RPC
-  const response = await client.api.network.$get({
-    query: { network: networkId },
-  });
+  try {
+    // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
+    // The client type is correctly inferred at runtime via Hono RPC
+    const response = await client.api.network.$get({
+      query: { network: networkId },
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: "Unknown error",
-      status: response.status,
-    }));
-    throw new Error(
-      error.message ||
-        error.error ||
-        `Request failed with status ${response.status}`
-    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: "Unknown error",
+        status: response.status,
+      }));
+      throw new Error(
+        error.message ||
+          error.error ||
+          `Request failed with status ${response.status}`
+      );
+    }
+
+    return (await response.json()) as NetworkResponse;
+  } catch (error) {
+    // Check if it's a network/connection error
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error(
+        "Backend server is not running. Please ensure the backend server is started."
+      );
+    }
+    throw error;
   }
-
-  return (await response.json()) as NetworkResponse;
 }
 
 export async function getNetworkNodes(networkId: string, nodeType?: string) {
