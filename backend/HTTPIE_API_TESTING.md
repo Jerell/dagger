@@ -10,13 +10,32 @@ This guide provides HTTPie commands for testing all Dagger API endpoints.
 
 ## Base URL
 
-All examples assume the server is running on `localhost:3000`.
+All examples assume the server is running on `localhost:3001` (when running via Tauri) or `localhost:3000` (when running standalone).
+
+## Network Parameter
+
+The `network` parameter is **unified** across all endpoints. It accepts either:
+
+- **Preset name**: A string like `"preset1"` that resolves to `backend/networks/preset1`
+- **Absolute path**: A full filesystem path like `"/Users/jerell/Repos/dagger/workingfiles/example"`
+
+This means you can use the same endpoints for both preset networks and watched directories:
+
+```bash
+# Using a preset
+http GET localhost:3001/api/network network==preset1
+
+# Using an absolute path (for watched directories)
+http GET localhost:3001/api/network network=="/Users/jerell/Repos/dagger/workingfiles/example"
+```
+
+All endpoints (`/api/network`, `/api/query`, `/api/schema/*`) support this unified approach.
 
 ## Health Check
 
 ```bash
 # Basic health check
-http GET localhost:3000/health
+http GET localhost:3001/health
 ```
 
 **Expected Response:**
@@ -35,42 +54,53 @@ http GET localhost:3000/health
 Query a specific node:
 
 ```bash
-http GET localhost:3000/api/query q==branch-4 network==preset1
+http GET localhost:3001/api/query q==branch-4 network==preset1
 ```
+
+### Query from Absolute Path
+
+Query a network from an absolute directory path (useful for watched directories):
+
+```bash
+# Query using absolute path as the network parameter
+http GET localhost:3001/api/query q==branch-4 network=="/Users/jerell/Repos/dagger/workingfiles/example"
+```
+
+**Note:** The `network` parameter accepts either a preset name (e.g., "preset1") or an absolute path. All endpoints work the same way.
 
 Query with nested path:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks" network==preset1
 ```
 
 Query with array index:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks/0" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/0" network==preset1
 ```
 
 Query with array range:
 
 ```bash
 # Get blocks from index 1 to 2 (inclusive)
-http GET localhost:3000/api/query q=="branch-4/blocks/1:2" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/1:2" network==preset1
 
 # Get blocks from start to index 2 (inclusive)
-http GET localhost:3000/api/query q=="branch-4/blocks/:2" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/:2" network==preset1
 
 # Get blocks from index 1 to end
-http GET localhost:3000/api/query q=="branch-4/blocks/1:" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/1:" network==preset1
 ```
 
 **Order matters when combining ranges with filters:**
 
 ```bash
 # Filter first, then range: filters all blocks, then takes range from filtered result
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/1:2" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]/1:2" network==preset1
 
 # Range first, then filter: takes range first, then filters those results
-http GET localhost:3000/api/query q=="branch-4/blocks/1:2[type=Pipe]" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/1:2[type=Pipe]" network==preset1
 ```
 
 ### Filtered Queries
@@ -78,13 +108,13 @@ http GET localhost:3000/api/query q=="branch-4/blocks/1:2[type=Pipe]" network==p
 Filter blocks by type:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]" network==preset1
 ```
 
 Filter blocks by multiple conditions:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe][quantity=1]" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe][quantity=1]" network==preset1
 ```
 
 ### Scope Resolution Queries
@@ -92,13 +122,13 @@ http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe][quantity=1]" ne
 Query with scope resolution:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
 ```
 
 Query with all scope levels:
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/0/ambientTemperature?scope=block,branch,group,global" network==preset1
 ```
 
 ### Unit Preferences Queries
@@ -107,27 +137,27 @@ Query with unit preferences (using config defaults):
 
 ```bash
 # Get pipe length in preferred units from config.toml
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
 ```
 
 Query with unit override via query parameter:
 
 ```bash
 # Override to display length in meters
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length?units=length:m" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]/length?units=length:m" network==preset1
 
 # Override multiple properties
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:cm" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:cm" network==preset1
 
 # Override pressure for compressor blocks
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
 ```
 
 **Note:** Unit preferences can be combined with scope resolution:
 
 ```bash
 # Combine scope resolution with unit preferences
-http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global&units=pressure:bar" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global&units=pressure:bar" network==preset1
 ```
 
 ### Network-Level Queries
@@ -135,31 +165,31 @@ http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,bra
 Query all nodes:
 
 ```bash
-http GET localhost:3000/api/query q==nodes network==preset1
+http GET localhost:3001/api/query q==nodes network==preset1
 ```
 
 Query nodes filtered by type:
 
 ```bash
-http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
+http GET localhost:3001/api/query q=="nodes[type=branch]" network==preset1
 ```
 
 Query all edges:
 
 ```bash
-http GET localhost:3000/api/query q==edges network==preset1
+http GET localhost:3001/api/query q==edges network==preset1
 ```
 
 Query edges filtered by source:
 
 ```bash
-http GET localhost:3000/api/query q=="edges[source=branch-1]" network==preset1
+http GET localhost:3001/api/query q=="edges[source=branch-1]" network==preset1
 ```
 
 Query edges filtered by target:
 
 ```bash
-http GET localhost:3000/api/query q=="edges[target=branch-2]" network==preset1
+http GET localhost:3001/api/query q=="edges[target=branch-2]" network==preset1
 ```
 
 ## Network API
@@ -167,8 +197,14 @@ http GET localhost:3000/api/query q=="edges[target=branch-2]" network==preset1
 ### Get Full Network
 
 ```bash
-http GET localhost:3000/api/network network==preset1
+# Using a preset name
+http GET localhost:3001/api/network network==preset1
+
+# Using an absolute path (for watched directories)
+http GET localhost:3001/api/network network=="/Users/jerell/Repos/dagger/workingfiles/example"
 ```
+
+**Note:** The `network` parameter accepts either a preset name or an absolute path. All network endpoints work the same way.
 
 **Response includes:**
 
@@ -179,7 +215,11 @@ http GET localhost:3000/api/network network==preset1
 ### Get All Nodes
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1
+# Using a preset name
+http GET localhost:3001/api/network/nodes network==preset1
+
+# Using an absolute path
+http GET localhost:3001/api/network/nodes network=="/Users/jerell/Repos/dagger/workingfiles/example"
 ```
 
 ### Get Nodes by Type
@@ -187,49 +227,53 @@ http GET localhost:3000/api/network/nodes network==preset1
 Filter by branch nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==branch
+http GET localhost:3001/api/network/nodes network==preset1 type==branch
 ```
 
 Filter by group nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==labeledGroup
+http GET localhost:3001/api/network/nodes network==preset1 type==labeledGroup
 ```
 
 Filter by geographic anchor nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==geographicAnchor
+http GET localhost:3001/api/network/nodes network==preset1 type==geographicAnchor
 ```
 
 Filter by geographic window nodes:
 
 ```bash
-http GET localhost:3000/api/network/nodes network==preset1 type==geographicWindow
+http GET localhost:3001/api/network/nodes network==preset1 type==geographicWindow
 ```
 
 ### Get All Edges
 
 ```bash
-http GET localhost:3000/api/network/edges network==preset1
+# Using a preset name
+http GET localhost:3001/api/network/edges network==preset1
+
+# Using an absolute path
+http GET localhost:3001/api/network/edges network=="/Users/jerell/Repos/dagger/workingfiles/example"
 ```
 
 ### Get Edges by Source
 
 ```bash
-http GET localhost:3000/api/network/edges network==preset1 source==branch-1
+http GET localhost:3001/api/network/edges network==preset1 source==branch-1
 ```
 
 ### Get Edges by Target
 
 ```bash
-http GET localhost:3000/api/network/edges network==preset1 target==branch-2
+http GET localhost:3001/api/network/edges network==preset1 target==branch-2
 ```
 
 ### Get Edges by Source and Target
 
 ```bash
-http GET localhost:3000/api/network/edges network==preset1 source==branch-1 target==branch-2
+http GET localhost:3001/api/network/edges network==preset1 source==branch-1 target==branch-2
 ```
 
 ## Schema API
@@ -237,7 +281,7 @@ http GET localhost:3000/api/network/edges network==preset1 source==branch-1 targ
 ### Get All Schema Versions
 
 ```bash
-http GET localhost:3000/api/schema
+http GET localhost:3001/api/schema
 ```
 
 **Expected Response:**
@@ -249,7 +293,7 @@ http GET localhost:3000/api/schema
 ### Get Schemas for a Version
 
 ```bash
-http GET localhost:3000/api/schema/v1.0
+http GET localhost:3001/api/schema/v1.0
 ```
 
 ### Get Network Schemas
@@ -257,7 +301,7 @@ http GET localhost:3000/api/schema/v1.0
 Get schema properties for all blocks in a network. Returns the same flattened format as `/api/schema/properties` but for every block across all branches:
 
 ```bash
-http GET localhost:3000/api/schema/network network==preset1 version==v1.0
+http GET localhost:3001/api/schema/network network==preset1 version==v1.0
 ```
 
 **Expected Response:**
@@ -319,13 +363,13 @@ Get schema properties for blocks matching a query path. Returns flattened paths 
 
 ```bash
 # Get schema properties for a specific block
-http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks/2" version==v1.0
+http GET localhost:3001/api/schema/properties network==preset1 q=="branch-4/blocks/2" version==v1.0
 
 # Get schema properties for all blocks in a branch
-http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks" version==v1.0
+http GET localhost:3001/api/schema/properties network==preset1 q=="branch-4/blocks" version==v1.0
 
 # Get schema properties for filtered blocks
-http GET localhost:3000/api/schema/properties network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
+http GET localhost:3001/api/schema/properties network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
 ```
 
 **Expected Response:**
@@ -412,13 +456,13 @@ Validate blocks matching a query path. Returns validation results for each prope
 
 ```bash
 # Validate a specific block
-http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks/2" version==v1.0
+http GET localhost:3001/api/schema/validate network==preset1 q=="branch-4/blocks/2" version==v1.0
 
 # Validate all blocks in a branch
-http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks" version==v1.0
+http GET localhost:3001/api/schema/validate network==preset1 q=="branch-4/blocks" version==v1.0
 
 # Validate filtered blocks
-http GET localhost:3000/api/schema/validate network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
+http GET localhost:3001/api/schema/validate network==preset1 q=="branch-4/blocks[type=Pipe]" version==v1.0
 ```
 
 **Expected Response:**
@@ -465,7 +509,7 @@ This endpoint:
 Validate all blocks in a network. Returns validation results for each property in every block:
 
 ```bash
-http GET localhost:3000/api/schema/network/validate network==preset1 version==v1.0
+http GET localhost:3001/api/schema/network/validate network==preset1 version==v1.0
 ```
 
 **Expected Response:**
@@ -518,7 +562,7 @@ This endpoint:
 Validate a single block against a schema (without network context):
 
 ```bash
-http POST localhost:3000/api/schema/validate \
+http POST localhost:3001/api/schema/validate \
   version==v1.0 \
   blockType==Compressor \
   block:='{"type":"Compressor","pressure":15.5}'
@@ -527,7 +571,7 @@ http POST localhost:3000/api/schema/validate \
 Validate with missing required field:
 
 ```bash
-http POST localhost:3000/api/schema/validate \
+http POST localhost:3001/api/schema/validate \
   version==v1.0 \
   blockType==Compressor \
   block:='{"type":"Compressor"}'
@@ -555,13 +599,13 @@ HTTPie automatically pretty-prints JSON responses. For more control:
 
 ```bash
 # Use jq for advanced formatting
-http GET localhost:3000/api/network network==preset1 | jq '.nodes[0]'
+http GET localhost:3001/api/network network==preset1 | jq '.nodes[0]'
 ```
 
 ### Save Responses to File
 
 ```bash
-http GET localhost:3000/api/network network==preset1 > network.json
+http GET localhost:3001/api/network network==preset1 > network.json
 ```
 
 ### Verbose Output
@@ -569,26 +613,26 @@ http GET localhost:3000/api/network network==preset1 > network.json
 See request and response headers:
 
 ```bash
-http -v GET localhost:3000/api/query q==branch-4 network==preset1
+http -v GET localhost:3001/api/query q==branch-4 network==preset1
 ```
 
 ### Include Custom Headers
 
 ```bash
-http GET localhost:3000/api/network network==preset1 \
+http GET localhost:3001/api/network network==preset1 \
   X-Custom-Header:value
 ```
 
 ### Follow Redirects
 
 ```bash
-http --follow GET localhost:3000/api/network network==preset1
+http --follow GET localhost:3001/api/network network==preset1
 ```
 
 ### Timeout Settings
 
 ```bash
-http --timeout=30 GET localhost:3000/api/network network==preset1
+http --timeout=30 GET localhost:3001/api/network network==preset1
 ```
 
 ## Common Query Patterns
@@ -596,44 +640,44 @@ http --timeout=30 GET localhost:3000/api/network network==preset1
 ### Get All Blocks in a Branch
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks" network==preset1
 ```
 
 ### Get Specific Block Property
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/data/blocks/0/type" network==preset1
+http GET localhost:3001/api/query q=="branch-4/data/blocks/0/type" network==preset1
 ```
 
 ### Get All Branch Nodes
 
 ```bash
-http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
+http GET localhost:3001/api/query q=="nodes[type=branch]" network==preset1
 ```
 
 ### Get Edges from a Specific Source
 
 ```bash
-http GET localhost:3000/api/query q=="edges[source=branch-1]" network==preset1
+http GET localhost:3001/api/query q=="edges[source=branch-1]" network==preset1
 ```
 
 ### Get Node with Scope Resolution
 
 ```bash
-http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
 ```
 
 ### Get Block Properties with Unit Preferences
 
 ```bash
 # Get pipe length in preferred units (from config.toml)
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]/length" network==preset1
 
 # Override to display in specific units
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:m" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Pipe]?units=length:km,diameter:m" network==preset1
 
 # Get compressor pressure in bar
-http GET localhost:3000/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
+http GET localhost:3001/api/query q=="branch-4/blocks[type=Compressor]?units=pressure:bar" network==preset1
 ```
 
 ## Error Handling
@@ -641,7 +685,7 @@ http GET localhost:3000/api/query q=="branch-4/blocks[type=Compressor]?units=pre
 ### Invalid Query Path
 
 ```bash
-http GET localhost:3000/api/query q=="invalid-path" network==preset1
+http GET localhost:3001/api/query q=="invalid-path" network==preset1
 ```
 
 **Expected Response:**
@@ -656,7 +700,7 @@ http GET localhost:3000/api/query q=="invalid-path" network==preset1
 ### Missing Network
 
 ```bash
-http GET localhost:3000/api/query q==branch-4 network==nonexistent
+http GET localhost:3001/api/query q==branch-4 network==nonexistent
 ```
 
 **Expected Response:**
@@ -671,7 +715,7 @@ http GET localhost:3000/api/query q==branch-4 network==nonexistent
 ### Invalid Network Parameter
 
 ```bash
-http GET localhost:3000/api/network
+http GET localhost:3001/api/network
 ```
 
 **Expected Response:**
@@ -693,32 +737,32 @@ http GET localhost:3000/api/network
 2. **Verify health:**
 
    ```bash
-   http GET localhost:3000/health
+   http GET localhost:3001/health
    ```
 
 3. **Test basic queries:**
 
    ```bash
-   http GET localhost:3000/api/query q==branch-4 network==preset1
+   http GET localhost:3001/api/query q==branch-4 network==preset1
    ```
 
 4. **Test network endpoints:**
 
    ```bash
-   http GET localhost:3000/api/network network==preset1
-   http GET localhost:3000/api/network/nodes network==preset1
+   http GET localhost:3001/api/network network==preset1
+   http GET localhost:3001/api/network/nodes network==preset1
    ```
 
 5. **Test filtered queries:**
 
    ```bash
-   http GET localhost:3000/api/query q=="nodes[type=branch]" network==preset1
+   http GET localhost:3001/api/query q=="nodes[type=branch]" network==preset1
    ```
 
 6. **Test scope resolution:**
 
    ```bash
-   http GET localhost:3000/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
+   http GET localhost:3001/api/query q=="branch-4/blocks/0/pressure?scope=block,branch,global" network==preset1
    ```
 
 ## Notes

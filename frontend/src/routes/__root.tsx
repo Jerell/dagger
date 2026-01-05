@@ -69,6 +69,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" className="h-full">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof global === 'undefined') {
+                var global = globalThis;
+              }
+            `,
+          }}
+        />
       </head>
       <body className="h-full">
         <div className="flex flex-col w-full h-screen border border-brand-grey-3 bg-brand-white p-px text-brand-blue-3">

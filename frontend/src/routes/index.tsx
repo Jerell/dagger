@@ -83,40 +83,40 @@ function App() {
             A branch may connect to zero, one, or many other branches. These
             connections form the edges of the directed graph. Connections are
             specified in the branch file like this:
-            <div className="flex flex-col bg-brand-grey-1 p-1 text-brand-blue-4">
-              <code>[[outgoing]]</code>
-              <code>target = "branch-2"</code>
-              <code>weight = 1</code>
-            </div>
-            <p>
-              The weight is used to determine the flow ratio into the
-              destination branch. In the visual editor, you can create these
-              connections by dragging from one branch node to another.
-            </p>
+          </p>
+          <div className="flex flex-col bg-brand-grey-1 p-1 text-brand-blue-4">
+            <code>[[outgoing]]</code>
+            <code>target = "branch-2"</code>
+            <code>weight = 1</code>
+          </div>
+          <p>
+            The weight is used to determine the flow ratio into the destination
+            branch. In the visual editor, you can create these connections by
+            dragging from one branch node to another.
           </p>
 
           <h3 className="text-lg font-bold">Block</h3>
           <p>
             Blocks are the components of the network. They are defined in the
             branch file like this:{" "}
-            <div className="flex flex-col bg-brand-grey-1 p-1 text-brand-blue-4">
-              <code>[[block]]</code>
-              <code>type = "Compressor"</code>
-              <code>pressure = "100 bar"</code>
-              <code>flow = "100 m³/s"</code>
-              <code>efficiency = 0.7</code>
-              <code>power = "100 kW"</code>
-            </div>
-            <p>
-              There is no restriction on the properties that can be defined in a
-              block. Different operations may require different properties to be
-              defined, and this is enforced by the schema registry at a later
-              stage.
-            </p>
-            <p>
-              Units are flexible. You can write any combination of SI, Imperial,
-              and CGS units in your expressions.
-            </p>
+          </p>
+          <div className="flex flex-col bg-brand-grey-1 p-1 text-brand-blue-4">
+            <code>[[block]]</code>
+            <code>type = "Compressor"</code>
+            <code>pressure = "100 bar"</code>
+            <code>flow = "100 m³/s"</code>
+            <code>efficiency = 0.7</code>
+            <code>power = "100 kW"</code>
+          </div>
+          <p>
+            There is no restriction on the properties that can be defined in a
+            block. Different operations may require different properties to be
+            defined, and this is enforced by the schema registry at a later
+            stage.
+          </p>
+          <p>
+            Units are flexible. You can write any combination of SI, Imperial,
+            and CGS units in your expressions.
           </p>
         </div>
 

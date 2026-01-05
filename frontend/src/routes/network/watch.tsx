@@ -10,8 +10,10 @@ import { useFileWatcher } from "@/lib/hooks/use-file-watcher";
 import { openDialog } from "@/contexts/dialog-provider";
 import { WatchDirectoryDialog } from "@/components/dialogs/watch-directory-dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, FolderOpen } from "lucide-react";
-import { useMemo } from "react";
+import { Eye, EyeOff, FolderOpen, Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
+import { pickNetworkDirectory } from "@/lib/tauri";
 
 export const Route = createFileRoute("/network/watch")({
   component: WatchPage,
@@ -19,6 +21,7 @@ export const Route = createFileRoute("/network/watch")({
 
 function WatchPage() {
   const fileWatcher = useFileWatcher();
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: nodesRaw = [] } = useLiveQuery(nodesCollection);
   const { data: edges = [] } = useLiveQuery(edgesCollection);
@@ -56,6 +59,42 @@ function WatchPage() {
     }
   };
 
+  const handleExport = async () => {
+    if (nodes.length === 0) {
+      // TODO: Show toast - no nodes to export
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      let exportPath: string;
+
+      if (
+        fileWatcher.watchMode.enabled &&
+        fileWatcher.watchMode.directoryPath
+      ) {
+        // Export to watched directory
+        exportPath = fileWatcher.watchMode.directoryPath;
+      } else {
+        // Let user select directory
+        const selectedPath = await pickNetworkDirectory();
+        if (!selectedPath) {
+          return; // User cancelled
+        }
+        exportPath = selectedPath;
+      }
+
+      await exportNetworkToToml(nodes, edges, exportPath);
+      // TODO: Show success toast
+      console.log("Network exported successfully to:", exportPath);
+    } catch (error) {
+      console.error("Failed to export network:", error);
+      // TODO: Show error toast
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
       <div className="p-4 border-b border-brand-grey-3 flex items-center justify-between">
@@ -67,10 +106,21 @@ function WatchPage() {
                 {fileWatcher.watchMode.directoryPath}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleDisableWatch}>
-              <EyeOff className="mr-2 h-4 w-4" />
-              Stop Watching
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting || nodes.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isExporting ? "Exporting..." : "Export"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDisableWatch}>
+                <EyeOff className="mr-2 h-4 w-4" />
+                Stop Watching
+              </Button>
+            </div>
           </>
         ) : (
           <>
@@ -80,10 +130,21 @@ function WatchPage() {
                 Select a directory to watch for TOML file changes
               </p>
             </div>
-            <Button onClick={handleOpenWatchDialog}>
-              <FolderOpen className="mr-2 h-4 w-4" />
-              Select Directory
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting || nodes.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isExporting ? "Exporting..." : "Export"}
+              </Button>
+              <Button onClick={handleOpenWatchDialog}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Select Directory
+              </Button>
+            </div>
           </>
         )}
       </div>

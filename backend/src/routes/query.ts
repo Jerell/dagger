@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { queryNetwork } from "../services/query";
+import { resolveNetworkPath } from "../utils/network-path";
 
 export const queryRoutes = new Hono();
 
@@ -9,14 +10,14 @@ export const queryRoutes = new Hono();
  *
  * Query params:
  * - q: The query path (e.g., "branch-4/data/blocks[type=Pipe]")
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - version: Schema version for metadata lookup (default: "v1.0")
  */
 queryRoutes.get("/", async (c) => {
   const query = c.req.query("q");
-  const networkName = c.req.query("network") || "preset1";
+  const networkIdentifier = c.req.query("network");
   const schemaVersion = c.req.query("version");
-  const networkPath = `networks/${networkName}`;
+  const networkPath = resolveNetworkPath(networkIdentifier);
 
   if (!query) {
     return c.json({ error: "Missing required query parameter: q" }, 400);

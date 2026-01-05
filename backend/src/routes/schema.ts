@@ -10,6 +10,7 @@ import {
   getNetworkSchemas,
   getBlockSchemaProperties,
 } from "../services/effectSchemaProperties";
+import { resolveNetworkPath } from "../utils/network-path";
 
 export const schemaRoutes = new Hono();
 
@@ -38,12 +39,12 @@ schemaRoutes.get("/", async (c) => {
  * Returns the same flattened format as /api/schema/properties but for all blocks
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/network", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const version = c.req.query("version");
 
   if (!version) {
@@ -70,12 +71,12 @@ schemaRoutes.get("/network", async (c) => {
  * Returns the same flattened format as /api/schema/properties but for all blocks
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/network/properties", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const version = c.req.query("version");
 
   if (!version) {
@@ -102,12 +103,12 @@ schemaRoutes.get("/network/properties", async (c) => {
  * Returns the same flattened format as /api/schema/network but includes validation for each block
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/network/validate", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const version = c.req.query("version");
 
   if (!version) {
@@ -145,13 +146,13 @@ schemaRoutes.get("/network/validate", async (c) => {
  * Get schema properties for blocks matching a query path
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - q: Query path (e.g., "branch-4/blocks/2" or "branch-4/blocks")
  * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/properties", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const query = c.req.query("q");
   const version = c.req.query("version");
 
@@ -186,13 +187,13 @@ schemaRoutes.get("/properties", async (c) => {
  * Validate blocks matching a query path and return both properties and validation results
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - q: Query path (e.g., "branch-4/blocks/2" or "branch-4/blocks")
  * - version: Schema set (required, e.g., "v1.0" or "v1.0-costing")
  */
 schemaRoutes.get("/validate", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const query = c.req.query("q");
   const version = c.req.query("version");
 

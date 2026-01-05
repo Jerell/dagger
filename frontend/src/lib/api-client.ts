@@ -212,41 +212,14 @@ export function networkQueryOptions(networkId: string) {
 }
 
 /**
- * Get network from an absolute directory path
- * @param directoryPath Absolute path to directory containing TOML files
+ * Get network from an absolute directory path or preset name
+ * @param networkIdentifier Either a preset name (e.g., "preset1") or an absolute path to directory containing TOML files
  */
 export async function getNetworkFromPath(
-  directoryPath: string
+  networkIdentifier: string
 ): Promise<NetworkResponse> {
-  try {
-    // Use direct fetch since Hono RPC doesn't handle hyphenated route names well
-    const baseUrl = getApiBaseUrl();
-    const url = new URL(`${baseUrl}/api/network/from-path`);
-    url.searchParams.set("path", directoryPath);
-    
-    const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        error: "Unknown error",
-        status: response.status,
-      }));
-      throw new Error(
-        error.message ||
-          error.error ||
-          `Request failed with status ${response.status}`
-      );
-    }
-
-    return (await response.json()) as NetworkResponse;
-  } catch (error) {
-    if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-      throw new Error(
-        "Failed to connect to the backend server. Please ensure the server is running."
-      );
-    }
-    throw error;
-  }
+  // The unified API now accepts absolute paths via the network parameter
+  return getNetwork(networkIdentifier);
 }
 
 export async function getAvailablePresets(): Promise<

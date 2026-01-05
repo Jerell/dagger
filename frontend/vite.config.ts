@@ -18,6 +18,9 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  define: {
+    global: "globalThis",
+  },
   test: {
     environment: "node",
     globals: true,

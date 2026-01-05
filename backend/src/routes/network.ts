@@ -4,6 +4,7 @@ import {
   getNetworkNodes,
   getNetworkEdges,
 } from "../services/network";
+import { resolveNetworkPath } from "../utils/network-path";
 
 export const networkRoutes = new Hono();
 
@@ -21,11 +22,11 @@ const AVAILABLE_NETWORKS = [
  * Get the full network structure
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  */
 networkRoutes.get("/", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
 
   try {
     const network = await loadNetwork(networkPath);
@@ -46,12 +47,14 @@ networkRoutes.get("/", async (c) => {
  * Get all nodes in the network
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - type: Filter by node type (optional)
  */
 networkRoutes.get("/nodes", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  console.log("[network/nodes] Raw network identifier:", JSON.stringify(networkIdentifier));
+  const networkPath = resolveNetworkPath(networkIdentifier);
+  console.log("[network/nodes] Resolved path:", networkPath);
   const nodeType = c.req.query("type");
 
   try {
@@ -73,13 +76,13 @@ networkRoutes.get("/nodes", async (c) => {
  * Get all edges in the network
  *
  * Query params:
- * - network: Network name (default: "preset1") - looks in backend/networks/
+ * - network: Network identifier - either a preset name (e.g., "preset1") or an absolute path
  * - source: Filter by source node ID (optional)
  * - target: Filter by target node ID (optional)
  */
 networkRoutes.get("/edges", async (c) => {
-  const networkName = c.req.query("network") || "preset1";
-  const networkPath = `networks/${networkName}`;
+  const networkIdentifier = c.req.query("network");
+  const networkPath = resolveNetworkPath(networkIdentifier);
   const source = c.req.query("source");
   const target = c.req.query("target");
 
@@ -123,42 +126,3 @@ networkRoutes.get("/list", async (c) => {
   return c.json(networks);
 });
 
-/**
- * GET /api/network/from-path
- * Load network from an absolute directory path
- * 
- * Query params:
- * - path: Absolute directory path containing TOML files
- */
-networkRoutes.get("/from-path", async (c) => {
-  const directoryPath = c.req.query("path");
-  
-  console.log("[from-path] Request received, path:", directoryPath);
-  
-  if (!directoryPath) {
-    return c.json(
-      {
-        error: "Missing path parameter",
-        message: "The 'path' query parameter is required",
-      },
-      400
-    );
-  }
-
-  try {
-    console.log("[from-path] Loading network from:", directoryPath);
-    // loadNetwork now supports absolute paths via resolvePath
-    const network = await loadNetwork(directoryPath);
-    console.log("[from-path] Network loaded successfully");
-    return c.json(network);
-  } catch (error) {
-    console.error("[from-path] Error loading network:", error);
-    return c.json(
-      {
-        error: "Failed to load network",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      500
-    );
-  }
-});
