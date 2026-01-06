@@ -205,8 +205,8 @@ schemaRoutes.get("/validate", async (c) => {
     return c.json({ error: "Missing required query parameter: version" }, 400);
   }
 
-  // Extract unit preferences from query string
-  // Use raw query string to handle colons and special characters correctly
+  // Extract unit preferences from HTTP query string
+  // (validateQueryBlocks will also extract from the query path itself, matching queryNetwork behavior)
   const queryString = c.req.url.split("?")[1] || "";
   const { parseUnitOverrides } = await import("../services/query");
   const queryOverrides = queryString

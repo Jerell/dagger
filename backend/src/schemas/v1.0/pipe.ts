@@ -13,15 +13,13 @@ export const PipeSchema = Schema.Struct({
   ),
 
   // Optional properties
-  diameter: Schema.optional(
-    Schema.Number.pipe(
-      Schema.greaterThan(0),
-      Schema.annotations({
-        dimension: "length",
-        defaultUnit: "m",
-        title: "Diameter",
-      })
-    )
+  diameter: Schema.Number.pipe(
+    Schema.greaterThan(0),
+    Schema.annotations({
+      dimension: "length",
+      defaultUnit: "m",
+      title: "Diameter",
+    })
   ),
   uValue: Schema.optional(
     Schema.Number.pipe(

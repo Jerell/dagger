@@ -12,9 +12,13 @@ weight = 1
 
 [[block]]
 quantity = 1
-type = "Pipe"
+type = "Port"
 
 [[block]]
 quantity = 1
 type = "Pipe"
+diameter = "0.75 m"
 
+[[block]]
+quantity = 1
+type = "Ship"

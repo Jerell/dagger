@@ -73,10 +73,11 @@ impl LocalServer {
         // Small delay to ensure port is fully released
         std::thread::sleep(std::time::Duration::from_millis(100));
 
-        // Spawn Bun process running local server
+        // Spawn Bun process running local server with hot reload
+        // Use the "dev" script which runs "tsx watch" for hot reload in development
         let mut cmd = Command::new("bun");
         cmd.arg("run")
-           .arg("src/index.ts")
+           .arg("dev")
            .current_dir(&backend_path)
            .env("PORT", self.port.to_string())
            // Inherit stdout/stderr so logs are visible in terminal

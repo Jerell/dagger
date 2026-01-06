@@ -163,20 +163,31 @@ export async function validateBlockDirect(
  * Helper to extract block path from query string
  * e.g., "branch-1/blocks/0" -> "branch-1/blocks/0"
  */
+/**
+ * Strip query string (everything after ?) from a path
+ */
+function stripQueryString(path: string): string {
+  const queryIndex = path.indexOf("?");
+  return queryIndex >= 0 ? path.substring(0, queryIndex) : path;
+}
+
 function extractBlockPathFromQuery(query: string, blockIndex?: number): string {
+  // Strip query string from query before constructing paths
+  const cleanQuery = stripQueryString(query);
+
   // If query already points to a specific block, use it
-  if (query.includes("/blocks/") && !query.endsWith("/blocks")) {
-    return query;
+  if (cleanQuery.includes("/blocks/") && !cleanQuery.endsWith("/blocks")) {
+    return cleanQuery;
   }
   // Otherwise, construct path (simplified - would need better parsing)
-  const parts = query.split("/");
+  const parts = cleanQuery.split("/");
   if (parts.length >= 2 && parts[1] === "blocks") {
     if (blockIndex !== undefined) {
       return `${parts[0]}/blocks/${blockIndex}`;
     }
-    return query;
+    return cleanQuery;
   }
-  return query;
+  return cleanQuery;
 }
 
 /**
@@ -202,14 +213,20 @@ export async function validateQueryBlocks(
     propertyDimensions,
   } = parseUnitPreferences(configContent);
 
+  // Merge HTTP query string overrides with any overrides from query path
+  // (Query path can also have units like "branch-1/blocks?units=length:km")
+  const { parseUnitOverrides } = await import("./query");
+  const pathOverrides = parseUnitOverrides(query);
+  const mergedOverrides = { ...pathOverrides, ...queryOverrides };
+
   // Merge query overrides into dimensions
   const mergedDimensions = { ...configDimensions };
-  for (const [key, unit] of Object.entries(queryOverrides)) {
+  for (const [key, unit] of Object.entries(mergedOverrides)) {
     mergedDimensions[key] = unit;
   }
 
   const unitPreferences: UnitPreferences = {
-    queryOverrides,
+    queryOverrides: mergedOverrides,
     blockTypes,
     dimensions: mergedDimensions,
     propertyDimensions,
@@ -217,11 +234,14 @@ export async function validateQueryBlocks(
 
   const wasm = getWasm();
 
+  // Extract original query path (remove unit parameters)
+  const baseQuery = query.split("?")[0].split("&")[0];
+
   // Execute query to get blocks
   const queryResult = wasm.query_from_files(
     filesJson,
     configContent || undefined,
-    query
+    baseQuery
   );
   const blocks = JSON.parse(queryResult);
 
@@ -238,17 +258,18 @@ export async function validateQueryBlocks(
 
     // Try to extract block path from query or construct it
     // For queries like "branch-1/blocks", we need to query each block individually
+    // Use baseQuery (already stripped of query string) for path construction
     let blockPath: string;
-    if (query.includes("/blocks/")) {
+    if (baseQuery.includes("/blocks/")) {
       // Query already points to specific block(s)
-      blockPath = extractBlockPathFromQuery(query, i);
+      blockPath = extractBlockPathFromQuery(baseQuery, i);
     } else {
       // Query for blocks, need to find each block's path
       // Query for the block's type to find its path
       try {
-        const blockQuery = query.endsWith("/blocks")
-          ? `${query}/${i}`
-          : `${query}/blocks/${i}`;
+        const blockQuery = baseQuery.endsWith("/blocks")
+          ? `${baseQuery}/${i}`
+          : `${baseQuery}/blocks/${i}`;
         const blockPathResult = wasm.query_from_files(
           filesJson,
           configContent || undefined,
@@ -258,10 +279,10 @@ export async function validateQueryBlocks(
         if (pathBlock && pathBlock.type === block.type) {
           blockPath = blockQuery;
         } else {
-          blockPath = extractBlockPathFromQuery(query, i);
+          blockPath = extractBlockPathFromQuery(baseQuery, i);
         }
       } catch {
-        blockPath = extractBlockPathFromQuery(query, i);
+        blockPath = extractBlockPathFromQuery(baseQuery, i);
       }
     }
 
