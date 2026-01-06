@@ -48,6 +48,13 @@ export type GeographicNodeData = {
   [key: string]: string | number | boolean | null | undefined;
 };
 
+export type ImageNodeData = {
+  id: string;
+  label?: string | null;
+  // Path to the image file, relative to the network directory
+  path: string;
+};
+
 // Branch node - has custom serialization with data property
 export type BranchNode = BaseNodeProperties & {
   type: "branch";
@@ -71,12 +78,19 @@ export type GeographicWindowNode = BaseNodeProperties & {
   data: GeographicNodeData;
 };
 
+// Image node - displays an image/SVG in the flow
+export type ImageNode = BaseNodeProperties & {
+  type: "image";
+  data: ImageNodeData;
+};
+
 // Union type for all node types
 export type NetworkNode =
   | BranchNode
   | GroupNode
   | GeographicAnchorNode
-  | GeographicWindowNode;
+  | GeographicWindowNode
+  | ImageNode;
 
 export type EdgeData = {
   weight: number;

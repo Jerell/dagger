@@ -25,6 +25,7 @@ import { LabeledGroupNode } from "./nodes/labeled-group";
 import type { FlowNode, FlowEdge } from "@/lib/collections/flow-nodes";
 import { GeographicAnchorNode } from "./nodes/geographic-anchor";
 import { GeographicWindowNode } from "./nodes/geographic-window";
+import { ImageNode } from "./nodes/image";
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -32,6 +33,7 @@ const nodeTypes: NodeTypes = {
   labeledGroup: LabeledGroupNode as NodeTypes["labeledGroup"],
   geographicAnchor: GeographicAnchorNode as NodeTypes["geographicAnchor"],
   geographicWindow: GeographicWindowNode as NodeTypes["geographicWindow"],
+  image: ImageNode as NodeTypes["image"],
 };
 
 interface FlowNetworkProps {

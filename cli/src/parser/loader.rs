@@ -152,6 +152,11 @@ fn load_node_from_content(
             window.base.id = id.to_string();
             NodeData::GeographicWindow(window)
         }
+        "image" => {
+            let mut image: ImageNode = toml::from_str(content)?;
+            image.base.id = id.to_string();
+            NodeData::Image(image)
+        }
         _ => {
             return Err(format!("Unknown node type: {}", type_str).into());
         }
@@ -208,6 +213,9 @@ fn process_units_in_node(
         }
         NodeData::GeographicWindow(window) => {
             window.base.extra = processor.process_hashmap(&window.base.extra)?;
+        }
+        NodeData::Image(image) => {
+            image.base.extra = processor.process_hashmap(&image.base.extra)?;
         }
     }
 

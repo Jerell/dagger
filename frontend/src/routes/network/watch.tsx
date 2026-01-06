@@ -10,10 +10,11 @@ import { useFileWatcher } from "@/lib/hooks/use-file-watcher";
 import { openDialog } from "@/contexts/dialog-provider";
 import { WatchDirectoryDialog } from "@/components/dialogs/watch-directory-dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, FolderOpen, Download } from "lucide-react";
+import { EyeOff, FolderOpen, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
 import { pickNetworkDirectory } from "@/lib/tauri";
+import { NetworkProvider } from "@/contexts/network-context";
 
 export const Route = createFileRoute("/network/watch")({
   component: WatchPage,
@@ -148,15 +149,17 @@ function WatchPage() {
           </>
         )}
       </div>
-      {fileWatcher.watchMode.enabled ? (
+      {fileWatcher.watchMode.enabled && fileWatcher.watchMode.directoryPath ? (
         <div className="flex-1 min-h-0 h-full">
-          <FlowNetwork
-            nodes={nodes}
-            edges={edges}
-            nodesDraggable={fileWatcher.nodesDraggable}
-            nodesConnectable={fileWatcher.nodesConnectable}
-            elementsSelectable={fileWatcher.elementsSelectable}
-          />
+          <NetworkProvider networkId={fileWatcher.watchMode.directoryPath}>
+            <FlowNetwork
+              nodes={nodes}
+              edges={edges}
+              nodesDraggable={fileWatcher.nodesDraggable}
+              nodesConnectable={fileWatcher.nodesConnectable}
+              elementsSelectable={fileWatcher.elementsSelectable}
+            />
+          </NetworkProvider>
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">

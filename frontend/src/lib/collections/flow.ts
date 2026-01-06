@@ -145,7 +145,8 @@ export async function resetFlowToNetwork(
       parentId: node.parentId ?? undefined,
       // Preserve extent if it exists (needed for parent-child relationships)
       extent: node.extent === "parent" ? "parent" : undefined,
-      draggable: true,
+      // Image nodes are not draggable (they're static reference images)
+      draggable: node.type !== "image",
       selectable: true,
     };
     return flowNode;

@@ -295,6 +295,61 @@ struct GeographicData<'a> {
     extra: &'a HashMap<String, Value>,
 }
 
+// Image node - displays an image/SVG in the flow
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImageNode {
+    #[serde(flatten)]
+    pub base: NodeBase,
+
+    /// Path to the image file, relative to the network directory
+    pub path: String,
+}
+
+impl Serialize for ImageNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let field_count = 5
+            + if self.base.parent_id.is_some() { 2 } else { 0 }
+            + if self.base.width.is_some() { 1 } else { 0 }
+            + if self.base.height.is_some() { 1 } else { 0 };
+        let mut state = serializer.serialize_struct("ImageNode", field_count)?;
+        state.serialize_field("id", &self.base.id)?;
+        state.serialize_field("type", &self.base.type_)?;
+        state.serialize_field("position", &self.base.position)?;
+        state.serialize_field(
+            "data",
+            &ImageData {
+                id: &self.base.id,
+                label: self.base.label.as_deref(),
+                path: &self.path,
+            },
+        )?;
+        if let Some(parent_id) = &self.base.parent_id {
+            state.serialize_field("parentId", parent_id)?;
+            state.serialize_field("extent", "parent")?;
+        }
+        if let Some(width) = &self.base.width {
+            state.serialize_field("width", width)?;
+        }
+        if let Some(height) = &self.base.height {
+            state.serialize_field("height", height)?;
+        }
+        state.end()
+    }
+}
+
+#[derive(Serialize)]
+struct ImageData<'a> {
+    id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<&'a str>,
+    /// Path to the image file, relative to the network directory
+    path: &'a str,
+}
+
 // Node data enum for network structure
 // Serialized as a flat structure (not wrapped in type-keyed object)
 #[derive(Debug, Clone)]
@@ -303,6 +358,7 @@ pub enum NodeData {
     Group(GroupNode),
     GeographicAnchor(GeographicAnchorNode),
     GeographicWindow(GeographicWindowNode),
+    Image(ImageNode),
 }
 
 impl Serialize for NodeData {
@@ -315,6 +371,7 @@ impl Serialize for NodeData {
             NodeData::Group(node) => node.serialize(serializer),
             NodeData::GeographicAnchor(node) => node.serialize(serializer),
             NodeData::GeographicWindow(node) => node.serialize(serializer),
+            NodeData::Image(node) => node.serialize(serializer),
         }
     }
 }
@@ -326,6 +383,7 @@ impl NodeData {
             NodeData::Group(n) => &n.base.id,
             NodeData::GeographicAnchor(n) => &n.base.id,
             NodeData::GeographicWindow(n) => &n.base.id,
+            NodeData::Image(n) => &n.base.id,
         }
     }
 
@@ -335,6 +393,7 @@ impl NodeData {
             NodeData::Group(n) => &n.base,
             NodeData::GeographicAnchor(n) => &n.base,
             NodeData::GeographicWindow(n) => &n.base,
+            NodeData::Image(n) => &n.base,
         }
     }
 }

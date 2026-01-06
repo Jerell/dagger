@@ -424,6 +424,25 @@ impl<'a> QueryExecutor<'a> {
                 );
                 Ok(JsonValue::Object(node_obj))
             }
+            NodeData::Image(image) => {
+                let mut node_obj = serde_json::Map::new();
+                node_obj.insert("id".to_string(), JsonValue::String(image.base.id.clone()));
+                node_obj.insert(
+                    "type".to_string(),
+                    JsonValue::String(image.base.type_.clone()),
+                );
+                if let Some(label) = &image.base.label {
+                    node_obj.insert("label".to_string(), JsonValue::String(label.clone()));
+                }
+                node_obj.insert(
+                    "position".to_string(),
+                    serde_json::to_value(&image.base.position).map_err(|e| {
+                        QueryError::InvalidType(format!("Failed to serialize position: {}", e))
+                    })?,
+                );
+                node_obj.insert("path".to_string(), JsonValue::String(image.path.clone()));
+                Ok(JsonValue::Object(node_obj))
+            }
         }
     }
 

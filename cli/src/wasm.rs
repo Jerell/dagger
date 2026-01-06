@@ -128,6 +128,7 @@ impl DaggerWasm {
                         parser::models::NodeData::GeographicWindow(w) => {
                             filter_type == &w.base.type_
                         }
+                        parser::models::NodeData::Image(i) => filter_type == &i.base.type_,
                     }
                 } else {
                     true

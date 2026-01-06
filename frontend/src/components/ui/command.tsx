@@ -174,7 +174,7 @@ function CommandShortcut({
 export function CmdOrCtrl() {
   const isMac =
     typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+    /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
   return isMac ? "⌘" : "Ctrl + ";
 }
 

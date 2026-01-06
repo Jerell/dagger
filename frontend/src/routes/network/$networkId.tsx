@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
 import { pickNetworkDirectory } from "@/lib/tauri";
+import { NetworkProvider } from "@/contexts/network-context";
 
 export const Route = createFileRoute("/network/$networkId")({
   loader: async ({ context, params }) => {
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/network/$networkId")({
 });
 
 function SpecificNetwork() {
-  const { label } = Route.useLoaderData();
+  const { networkId, label } = Route.useLoaderData();
   const [isExporting, setIsExporting] = useState(false);
 
   const { data: nodesRaw = [] } = useLiveQuery(nodesCollection);
@@ -85,7 +86,9 @@ function SpecificNetwork() {
         </Button>
       </div>
       <div className="flex-1 min-h-0">
-        <FlowNetwork nodes={nodes} edges={edges} />
+        <NetworkProvider networkId={networkId}>
+          <FlowNetwork nodes={nodes} edges={edges} />
+        </NetworkProvider>
       </div>
     </div>
   );

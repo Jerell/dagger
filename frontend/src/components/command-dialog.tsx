@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, File, FilePlus, Settings, User } from "lucide-react";
+import { CreditCard, FilePlus, Settings, User } from "lucide-react";
 
 import {
   CommandDialog,
@@ -18,7 +18,6 @@ import {
   useCommands,
 } from "@/contexts/keybind-provider";
 import type { DialogAPI } from "@/contexts/keybind-provider";
-import { openDialog } from "@/contexts/dialog-provider";
 
 export function GlobalCommandDialog() {
   const {

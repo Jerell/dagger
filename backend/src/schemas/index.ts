@@ -22,4 +22,4 @@ export const schemaRegistry = {
 
 // Type helpers
 export type SchemaSet = keyof typeof schemaRegistry;
-export type BlockType = "Pipe" | "Compressor"; // Expand as needed
+export type BlockType = "Pipe" | "Compressor" | "Ship"; // Expand as needed
