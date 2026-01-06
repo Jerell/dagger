@@ -52,7 +52,10 @@ networkRoutes.get("/", async (c) => {
  */
 networkRoutes.get("/nodes", async (c) => {
   const networkIdentifier = c.req.query("network");
-  console.log("[network/nodes] Raw network identifier:", JSON.stringify(networkIdentifier));
+  console.log(
+    "[network/nodes] Raw network identifier:",
+    JSON.stringify(networkIdentifier)
+  );
   const networkPath = resolveNetworkPath(networkIdentifier);
   console.log("[network/nodes] Resolved path:", networkPath);
   const nodeType = c.req.query("type");
@@ -125,4 +128,3 @@ networkRoutes.get("/list", async (c) => {
 
   return c.json(networks);
 });
-

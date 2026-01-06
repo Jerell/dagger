@@ -48,4 +48,3 @@ export function toNetworkNode(node: FlowNode): NetworkNode {
 
   return networkNode as NetworkNode;
 }
-
