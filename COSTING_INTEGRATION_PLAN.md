@@ -535,33 +535,44 @@ The existing schema system (`effectSchemas.ts`, `effectValidation.ts`) is design
 - Defaults already exist in `defaults.ts` and are sensible for most cases
 - Simpler UX: users provide overrides only when needed
 
-### Block Schemas (Effect Schema)
+### Block Schemas (Generic, Operation-Agnostic)
 
-Block schemas use Effect Schema with dimension annotations for automatic unit conversion via `dim`.
+Block schemas are **generic** and describe WHAT the network element is, not which costing module to use. The costing adapter maps block properties to specific cost library modules.
 
-```typescript
-// backend/src/schemas/v1.0-costing/capture-unit.ts
+**Key Design Decision:** Dagger block types are operation-agnostic. The same `Pipe` block works for costing, modelling, and other operations.
 
-import { Schema } from "effect";
+| Dagger Block Type | Block Properties → Cost Library Module |
+| ----------------- | -------------------------------------- |
+| `Pipe`            | phase=gas → GasPipeline, phase=dense → DensePhasePipeline |
+| `Compressor`      | pressure_range=lp → LpCompression, hp → HpCompression |
+| `Storage`         | pressure_class=ep/mp/lp → InterimStorage subtypes |
+| `InjectionWell`   | location=onshore/offshore → Onshore/OffshoreInjectionWell |
 
-export const CaptureUnitSchema = Schema.Struct({
-  type: Schema.Literal("CaptureUnit"),
-  subtype: Schema.Literal("Amine", "InorganicSolvents", "Membrane", "Cryogenic"),
-  quantity: Schema.optional(Schema.Number),
-  
-  // Required for costing - dimension annotation enables auto-conversion via dim
-  mass_flow: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "mass_flow_rate",
-      defaultUnit: "kg/h",  // Costing server expects kg/h
-      title: "Mass flow rate",
-    })
-  ),
-});
+```toml
+# Example: Generic Pipe block
+[[block]]
+type = "Pipe"
+phase = "dense"           # → DensePhasePipeline
+location = "offshore"     # → Offshore (Subsea)
+size = "medium"           # → Medium
+length = "50 km"          # Scaling factor
 ```
 
-**Unit Conversion:** The `dim` library auto-converts any compatible unit to the `defaultUnit` specified in annotations. For example, `mass_flow = "100 t/h"` → `100000 kg/h`.
+```typescript
+// The adapter uses mapBlockToModule() to convert
+import { mapBlockToModule } from "./services/costing/block-to-module-mapper";
+
+const mapping = mapBlockToModule({ type: "Pipe", phase: "dense", location: "offshore", size: "medium" });
+// → { moduleType: "DensePhasePipeline", subtype: "Offshore (Subsea) - Medium" }
+```
+
+**Generic block types (18 total):**
+- `Pipe`, `Compressor`, `Pump`, `Emitter`, `CaptureUnit`
+- `Dehydration`, `Refrigeration`, `Metering`, `Storage`
+- `Shipping`, `LandTransport`, `LoadingOffloading`, `HeatingAndPumping`, `PipeMerge`
+- `InjectionWell`, `InjectionTopsides`, `OffshorePlatform`, `UtilisationEndpoint`
+
+**Unit Conversion:** The `dim` library auto-converts any compatible unit to the `defaultUnit` specified in annotations. For example, `length = "50 km"` stays as km for the costing server.
 
 ### Asset Properties (Request-Time Inputs)
 
@@ -690,12 +701,12 @@ function OperationCard({ operation, networkId }) {
 - [x] Create types for cost library structures
 - [x] Add tests (23 passing)
 
-### Phase 2: Block Schemas
+### Phase 2: Block Schemas ✅ COMPLETE
 
-- [ ] Define costing block schemas for supported module types (CaptureUnit, Compressor, Pipe, etc.)
-- [ ] Add dimension annotations for unit conversion via dim
-- [ ] Register schemas in schema registry under `v1.0-costing`
-- [ ] Create request type for costing estimate with optional asset overrides
+- [x] Define costing block schemas for all 27 supported module types
+- [x] Add dimension annotations for unit conversion via dim
+- [x] Register schemas in schema registry under `v1.0-costing`
+- [x] Create request type (`CostingEstimateRequest`) with optional asset overrides
 
 ### Phase 3: Defaults & Validation
 
@@ -815,6 +826,7 @@ We have e2e tests in the existing costing tool that we can replicate. Same netwo
 - ✅ **Excel export** - use ExcelJS pattern from existing costing tool
 - ✅ **Module lookup from cost library** - Parse cost library JSON to build type→module mapping dynamically
 - ✅ **Block schemas only** - Schema system validates block properties; asset properties are request-time inputs with defaults
+- ✅ **Operation-agnostic block types** - Generic types (Pipe, Compressor, etc.) with properties; adapter maps to cost library modules
 
 ---
 
@@ -847,24 +859,28 @@ backend/
 │   │   └── operations.ts              # Operation endpoints
 │   ├── services/
 │   │   ├── costing/
-│   │   │   ├── adapter.ts             # Transform network ↔ costing format
-│   │   │   ├── defaults.ts            # Default values for asset properties
-│   │   │   ├── module-lookup.ts       # Block type → module ID lookup
-│   │   │   ├── type-normalization.ts  # Normalize block type names
-│   │   │   ├── result-transformer.ts  # Transform response → NetworkCostingResult
-│   │   │   └── excel-export.ts        # Excel workbook generation
-│   │   └── operation-registry.ts      # Available operations & readiness checks
+│   │   │   ├── types.ts                    # Cost library & request/response types
+│   │   │   ├── defaults.ts                 # Default values for asset properties ✅
+│   │   │   ├── module-lookup.ts            # Cost library → module lookup ✅
+│   │   │   ├── type-normalization.ts       # Normalize block type names ✅
+│   │   │   ├── block-to-module-mapper.ts   # Map generic blocks → cost library modules ✅
+│   │   │   ├── request-types.ts            # Request/response types ✅
+│   │   │   ├── adapter.ts                  # Transform network ↔ costing format
+│   │   │   ├── result-transformer.ts       # Transform response → NetworkCostingResult
+│   │   │   └── excel-export.ts             # Excel workbook generation
+│   │   └── operation-registry.ts           # Available operations & readiness checks
 │   └── schemas/
-│       └── v1.0-costing/
-│           ├── group.ts               # Asset/group costing properties
-│           ├── timeline.ts            # Timeline schema
-│           ├── factors.ts             # CapexLangFactors, FixedOpexFactors
-│           ├── blocks/
-│           │   ├── capture-unit.ts
-│           │   ├── emitter.ts
-│           │   ├── compressor.ts
-│           │   ├── pipe.ts
-│           │   └── ...
+│       └── v1.0-costing/                   # Generic, operation-agnostic schemas ✅
+│           ├── pipe.ts                     # Pipe (→ GasPipeline or DensePhasePipeline)
+│           ├── compressor.ts               # Compressor (→ Lp/Hp/BoosterCompression)
+│           ├── pump.ts                     # Pump (→ BoosterPump)
+│           ├── emitter.ts                  # Emitter
+│           ├── capture-unit.ts             # CaptureUnit
+│           ├── conditioning.ts             # Dehydration, Refrigeration, Metering
+│           ├── storage.ts                  # Storage (→ InterimStorage)
+│           ├── transport.ts                # Shipping, LandTransport, LoadingOffloading, etc.
+│           ├── injection.ts                # InjectionWell, InjectionTopsides
+│           ├── offshore.ts                 # OffshorePlatform
 │           └── index.ts
 
 frontend/

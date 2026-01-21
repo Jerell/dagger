@@ -39,3 +39,25 @@ export {
   isUsingDefaultLangFactors,
   isUsingDefaultOpexFactors,
 } from "./defaults";
+
+// Request/Response types
+export {
+  type CostingEstimateRequest,
+  type CostingEstimateResponse,
+  type AssetPropertyOverrides,
+  type ResolvedAssetProperties,
+  type AssetCostResult,
+  type BlockCostResult,
+  type LifetimeCosts,
+  type LangFactoredCosts,
+  type FixedOpexCosts,
+  type VariableOpexCosts,
+  resolveAssetProperties,
+} from "./request-types";
+
+// Block to module mapper
+export {
+  mapBlockToModule,
+  type ModuleMapping,
+  type Block,
+} from "./block-to-module-mapper";
