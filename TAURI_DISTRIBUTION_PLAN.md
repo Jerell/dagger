@@ -44,7 +44,10 @@ dagger-tauri/
 - Validation endpoints
 - TOML parsing
 - Network loading
-- **Proxies requests to external operations servers** (HTTP/WebSocket)
+- **Adapter/gateway to external operations servers** (HTTP/WebSocket)
+  - Transforms our network format → operations server format
+  - Calls external operations servers
+  - Transforms response → our network format
 - Operations servers are external services, not spawned processes
 
 **Operations Server (External):**
@@ -53,9 +56,9 @@ dagger-tauri/
 - Costing operations
 - Modelling operations
 - Other evaluations
-- Local server makes HTTP requests to external operations servers
-- Receives: Network + Schema
-- Returns: Operation results
+- Has its own data format (different from our network format)
+- Receives: Data in operations server's expected format
+- Returns: Results in operations server's format
 
 **Frontend (React):**
 
@@ -398,9 +401,11 @@ async fn get_operations_config() -> Result<OperationsServerConfig, String> {
 }
 ```
 
-#### 4.2 Local Server Proxies to External Operations
+#### 4.2 Local Server as Adapter/Gateway to Operations Servers
 
-**The local server (Bun + Hono) handles communication with external operations servers:**
+**The local server (Bun + Hono) acts as an adapter between our network format and external operations servers:**
+
+> **Important:** This is NOT a simple proxy. The local server transforms requests and responses between our internal network format and whatever format each operations server expects. This keeps the operations servers' data models from leaking into our domain.
 
 **backend/src/routes/operations.ts:**
 
@@ -409,28 +414,43 @@ import { Hono } from "hono";
 
 export const operationsRoutes = new Hono();
 
-// Proxy costing operation to external server
+// Adapter for costing operation
 operationsRoutes.post("/costing", async (c) => {
   const costingServerUrl =
     process.env.COSTING_SERVER_URL || "http://localhost:4000";
   const { network, schema } = await c.req.json();
 
-  // Forward request to external costing server
-  const response = await fetch(`${costingServerUrl}/costing`, {
+  // 1. Transform our network format → costing server format
+  const costingRequest = transformNetworkToCostingFormat(network, schema);
+
+  // 2. Call external costing server
+  const response = await fetch(`${costingServerUrl}/calculate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ network, schema }),
+    body: JSON.stringify(costingRequest),
   });
 
   if (!response.ok) {
     return c.json({ error: "Costing operation failed" }, 500);
   }
 
-  const result = await response.json();
+  // 3. Transform costing response → our network format
+  const costingResult = await response.json();
+  const result = transformCostingResultToNetwork(costingResult, network);
+  
   return c.json(result);
 });
 
-// Similar for modelling and other operations
+// Helper functions handle the transformation logic
+function transformNetworkToCostingFormat(network, schema) {
+  // Extract relevant data from our network format
+  // Reshape into whatever the costing server expects
+}
+
+function transformCostingResultToNetwork(costingResult, originalNetwork) {
+  // Take the costing server's response format
+  // Map results back onto our network nodes/edges
+}
 ```
 
 ### Phase 5: Frontend Integration
@@ -696,10 +716,10 @@ export async function checkForUpdates() {
 - [x] Update frontend to use Tauri API (`lib/tauri.ts`)
 - [x] Native file watching via `notify` crate (`file_watcher.rs`)
 
-### Phase 4: Operations Server ✅ COMPLETE
+### Phase 4: Operations Server (Partially Complete)
 
 - [x] Configure external operations server URLs (`get_operations_config`)
-- [ ] Update local server to proxy requests to external servers
+- [ ] Implement adapter/gateway routes in local server (transform network ↔ operations format)
 - [ ] Test communication with external operations servers
 - [ ] Handle errors when operations servers are unavailable
 
@@ -775,7 +795,7 @@ export async function checkForUpdates() {
 
 - For development, operations servers can run locally
 - Configured via environment variables or config file
-- Local server proxies to localhost URLs
+- Local server adapts requests to localhost URLs
 
 **Option C: Cloud Services**
 
@@ -783,7 +803,7 @@ export async function checkForUpdates() {
 - Local server configured with cloud URLs
 - Better for production use
 
-**Recommendation:** Operations servers are external services. The Tauri app only needs to know their URLs (via config or environment variables). The local server handles all communication with them.
+**Recommendation:** Operations servers are external services with their own data formats. The Tauri app only needs to know their URLs (via config or environment variables). The local server acts as an adapter, transforming between our network format and each operations server's expected format.
 
 ### File System Permissions
 
@@ -798,9 +818,9 @@ Tauri provides native file system access, but we should:
 
 1. **Start with Phase 1-2:** Get basic Tauri app running with local server
 2. **Then Phase 3:** Implement file system operations
-3. **Then Phase 4:** Configure external operations server URLs and proxy setup
+3. **Then Phase 4:** Configure external operations server URLs and implement adapter routes
 4. **Finally Phase 7-8:** Build and distribute
 
-**Note:** Operations servers are external services - Phase 4 is about configuring URLs and setting up the local server to proxy requests to them, not spawning them.
+**Note:** Operations servers are external services with their own data formats - Phase 4 is about configuring URLs and implementing adapter routes that transform between our network format and each operations server's format.
 
 This incremental approach allows testing each component before moving to the next.

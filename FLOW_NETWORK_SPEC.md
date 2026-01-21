@@ -71,7 +71,7 @@ Transform the network viewer into an interactive editor where users can:
 │                    │ (Local server proxies requests)                │
 │         ┌──────────┴───────────┐                                    │
 │         │   Local Server       │                                    │
-│         │  (proxies to external│                                    │
+│         │  (adapter/gateway to │                                    │
 │         │   operations servers)│                                    │
 │         └──────────────────────┘                                    │
 └─────────────────────────────────────────────────────────────────────┘
@@ -83,8 +83,9 @@ Transform the network viewer into an interactive editor where users can:
 - **Local Server:** Spawned by Tauri, handles schema/validation, network parsing (Bun + Hono)
 - **Operations Servers:** External services that handle heavy computations (costing, modelling)
   - **Not spawned by Tauri** - they are separate external services
-  - Local server makes HTTP requests to external operations servers
-  - Can be deployed independently, scaled separately
+  - Have their **own data formats** (different from our network format)
+  - Local server acts as **adapter/gateway** - transforms requests/responses between formats
+  - Can be deployed independently, scaled separately, use different tech stacks
 - **Separation of Concerns:** File operations (Tauri) vs. schema/validation (Local Server) vs. computation (Operations Servers)
 - **No Browser APIs:** Uses Tauri native file system instead of File System Access API
 
@@ -888,19 +889,27 @@ I don't know that it's possible for the tabs to be out of sync though.
 
 ### Q10: How does the operations server fit into the architecture?
 
-**A:** Similar to OpenCode's provider pattern:
+**A:** The local server acts as an **adapter/gateway** (not a simple proxy) to external operations servers:
 
-- **Local Server:** Handles file I/O, schema/validation, network parsing (lightweight, always running)
+- **Local Server:** Handles file I/O, schema/validation, network parsing, AND format translation
 - **Operations Server:** Handles heavy computations (costing, modelling, evaluations)
   - Can be a separate process/service
-  - Receives: Network data + Schema to apply
-  - Returns: Operation results
-  - Local server proxies requests to operations server
+  - Has its **own data format** (different from our network format)
+  - Receives: Data in the operations server's expected format
+  - Returns: Results in the operations server's format
+- **Local Server Adapter Responsibilities:**
+  1. Receive request with Network + Schema (our format)
+  2. Transform → operations server's expected format
+  3. Call operations server
+  4. Transform response → our network format
+  5. Return results to frontend
 - **Benefits:**
+  - **Anti-corruption layer:** Operations server formats don't leak into our domain
   - Separation of concerns (file ops vs. computation)
   - Operations server can be scaled/optimized independently
-  - Operations server can use different tech stack if needed
-  - Similar pattern to OpenCode's AI provider communication
+  - Operations server can use different tech stack/data model
+  - Can swap out operations servers without changing frontend
+  - Different from frontend→backend proxy (which is pass-through, same format)
 
 ## Recommended Next Steps
 
