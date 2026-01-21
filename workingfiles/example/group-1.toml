@@ -8,5 +8,5 @@ efficiency = 0.75
 pressure = "100 bar" # ignored
 
 [position]
-x = 0
+x = -150
 y = -250
