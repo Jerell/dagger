@@ -1,6 +1,6 @@
 # Costing Server Integration Plan
 
-> **Status:** Planning
+> **Status:** In Progress (Phase 1 Complete)
 > **Created:** January 2026
 > **Costing Server:** `http://localhost:8080` (when running locally)
 
@@ -10,29 +10,29 @@ This document outlines the integration between Dagger and an external costing se
 
 ## Concept Mapping
 
-| Dagger Concept | Costing Server Concept | Notes |
-|----------------|----------------------|-------|
-| **Network** | **Cluster** | The whole network; contains multiple assets |
-| **Group** | **Asset** (named) | A named set of branches with shared timeline/factors |
-| **Branch** (ungrouped) | **Asset** (unnamed) | Standalone branch becomes its own asset with defaults |
-| **Block** | **Module / CostItem** | Atomic component. Maps to cost library module |
-| **Block type** | **definition.type** | e.g., `type = "CaptureUnit"` in both (with normalization) |
+| Dagger Concept         | Costing Server Concept | Notes                                                     |
+| ---------------------- | ---------------------- | --------------------------------------------------------- |
+| **Network**            | **Cluster**            | The whole network; contains multiple assets               |
+| **Group**              | **Asset** (named)      | A named set of branches with shared timeline/factors      |
+| **Branch** (ungrouped) | **Asset** (unnamed)    | Standalone branch becomes its own asset with defaults     |
+| **Block**              | **Module / CostItem**  | Atomic component. Maps to cost library module             |
+| **Block type**         | **definition.type**    | e.g., `type = "CaptureUnit"` in both (with normalization) |
 
 ### Key Insights
 
-1. Groups → Named Assets
+#### Groups → Named Assets
 
 - Groups with a `costing` section become named assets
 - All blocks from branches within the group are collected into one asset
 - Asset-level properties (timeline, factors) come from the group
 
-2. Ungrouped Branches → Unnamed Assets
+#### Ungrouped Branches → Unnamed Assets
 
 - Branches not in a group become standalone assets
 - Use default timeline/factors (shown in results as "using defaults")
 - Each ungrouped branch = one asset
 
-3. Block Type Mapping
+#### Block Type Mapping
 
 **UX Decision:** Dagger uses **human-readable format** for block types (natural language with spaces). The adapter normalizes internally to match cost library format.
 
@@ -126,12 +126,14 @@ pub struct Timeline {
 ### Cost Library Modules
 
 The cost library defines available modules with their:
+
 - **id**: Module reference (e.g., "M0201")
 - **definition**: Type info (e.g., `{ type: "CaptureUnit", capture_unit_type: "Amine" }`)
 - **subtype**: Human-readable subtype
 - **cost_items**: Cost data with scaling factors
 
 Example module from `V1.1_working/cost-library.json`:
+
 ```json
 {
   "id": "M0201",
@@ -203,6 +205,7 @@ export const DEFAULT_OPEX_FACTORS: FixedOpexFactors = {
 ```
 
 **Usage:**
+
 - Named assets (groups with `costing` section): Use group properties, fall back to defaults for missing fields
 - Unnamed assets (ungrouped branches): Use all defaults, flag as "using defaults" in results
 
@@ -263,18 +266,19 @@ mass_flow = "342000 kg/h"  # Will be converted to f64 in kg/h
 
 We need a mapping from Dagger block types to costing module IDs:
 
-| Block Type | Block Subtype | Module ID | Required Parameters |
-|------------|--------------|-----------|---------------------|
-| `CaptureUnit` | `Amine` | `M0201` | `mass_flow` (kg/h) |
-| `CaptureUnit` | `InorganicSolvents` | `M0202` | `mass_flow` (kg/h) |
-| `Emitter` | `Cement` | `M0101` | `mass_flowrate` (kg/h) |
-| `Emitter` | `Steel` | `M0102` | `mass_flowrate` (kg/h) |
-| ... | ... | ... | ... |
+| Block Type    | Block Subtype       | Module ID | Required Parameters    |
+| ------------- | ------------------- | --------- | ---------------------- |
+| `CaptureUnit` | `Amine`             | `M0201`   | `mass_flow` (kg/h)     |
+| `CaptureUnit` | `InorganicSolvents` | `M0202`   | `mass_flow` (kg/h)     |
+| `Emitter`     | `Cement`            | `M0101`   | `mass_flowrate` (kg/h) |
+| `Emitter`     | `Steel`             | `M0102`   | `mass_flowrate` (kg/h) |
+| ...           | ...                 | ...       | ...                    |
 
-This mapping can be:
-1. **Generated from cost library** - parse the library and build the mapping
-2. **Defined in a schema file** - explicit mapping maintained by us
-3. **Hybrid** - schema defines what we support, validated against library
+**Decision:** ✅ **Generated from cost library** - The `module-lookup.ts` service parses the cost library JSON at runtime and builds an index. This means:
+
+- No manual mapping maintenance required
+- Automatically supports all modules in the cost library
+- Block type + subtype → module ID lookup via `findModuleByType()`
 
 ---
 
@@ -496,7 +500,6 @@ export async function createCostingWorkbook(
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 }
-```
 ```
 
 ---
@@ -794,22 +797,25 @@ function OperationCard({ operation, networkId }) {
 
 We have e2e tests in the existing costing tool that we can replicate. Same network → same results.
 
-**Unit Tests (Bun)**
-- [ ] Type normalization (`"Capture Unit"` → `"CaptureUnit"`)
-- [ ] Module lookup (block type + subtype → module ID)
+#### Unit Tests (Bun)
+
+- [x] Type normalization (`"Capture Unit"` → `"CaptureUnit"`)
+- [x] Module lookup (block type + subtype → module ID)
 - [ ] Unit conversion via dim
 - [ ] Network → CostEstimateRequest transformation
 - [ ] CostEstimateResponse → NetworkCostingResult transformation
 - [ ] Defaults fallback logic
 
-**Integration Tests (Bun)**
+#### Integration Tests (Bun)
+
 - [ ] Create sample network matching existing costing tool test
 - [ ] Verify adapter produces same results as existing tool
 - [ ] Test named assets (groups with costing properties)
 - [ ] Test unnamed assets (ungrouped branches with defaults)
 - [ ] Test currency conversion
 
-**E2E Tests (Playwright, optional)**
+#### E2E Tests (Playwright, optional)
+
 - [ ] Full flow: network → validate → estimate → display results
 
 ### Phase 11: Polish
@@ -848,12 +854,13 @@ We have e2e tests in the existing costing tool that we can replicate. Same netwo
 - ✅ **Show defaults** - indicate when default values are used
 - ✅ **Table + Network views** - tables first, network overlay later
 - ✅ **Excel export** - use ExcelJS pattern from existing costing tool
+- ✅ **Module lookup from cost library** - Parse cost library JSON to build type→module mapping dynamically
 
 ---
 
 ## File Structure
 
-```
+```text
 backend/
 ├── reference/
 │   └── costing/
@@ -1074,36 +1081,32 @@ describe("Costing Adapter", () => {
 
 ## Next Steps
 
-All major decisions are confirmed. Ready to implement!
+Phase 1 is complete. Ready to continue with Phase 2!
 
-### Recommended Order
+### Completed
 
-1. **Phase 1: Cost Library Integration**
-   - Parse the cost library JSON to understand available modules
-   - Create type normalization dictionary
-   - Build module lookup service
-   
-2. **Phase 2: Schema Definition**
+1. **Phase 1: Cost Library Integration** ✅
+   - Type normalization function (`"Capture Unit"` → `"CaptureUnit"`)
+   - Module lookup service (block type + subtype → module ID)
+   - TypeScript types for cost library, request, and response structures
+   - Default values for asset parameters
+   - 23 passing tests
+
+### Up Next
+
+1. **Phase 2: Schema Definition**
    - Define Effect schemas for costing groups and blocks
    - Add dimension annotations for dim unit conversion
-   
-3. **Phase 3: Create Sample Network**
-   - Create a test network (`preset-costing/`) with:
-     - A group with full `[costing]` section (named asset)
-     - An ungrouped branch (unnamed asset, uses defaults)
-     - Blocks with costing-relevant properties
-   
-4. **Phase 4-5: Adapter & API**
+
+2. **Phase 3: Defaults & Validation**
+   - Validation service to check network readiness
+   - Track which assets/fields are using defaults
+
+3. **Phase 4-5: Adapter & API**
    - Build the transformation logic
    - Create API endpoints
-   - Test against the costing server
-   
-5. **Phase 7-8: Frontend**
+   - Test against the costing server (running at `http://localhost:8080`)
+
+4. **Phase 7-8: Frontend**
    - Results display (tables)
    - Readiness UI
-
-### Questions for Implementation
-
-1. **Which modules first?** Recommend starting with 2-3 module types (e.g., CaptureUnit, Pipe, Compressor)
-2. **Costing server URL** - Is it running locally? What port?
-3. **Sample data** - Do you have example networks from the existing costing tool we can reference?
