@@ -213,54 +213,36 @@ export const DEFAULT_OPEX_FACTORS: FixedOpexFactors = {
 
 ## Dagger Schema Requirements
 
-To make a costing request, we need properties at different scope levels:
+To make a costing request, we need properties at two levels:
 
-### Group-Level Properties (Asset Properties)
+### Asset-Level Properties (Request-Time Inputs)
 
-These properties are defined on the **Group** and apply to the whole asset:
+These are operational parameters provided at request time via UI input fields. Defaults are used when not specified:
 
-```toml
-# group-capture-plant.toml
-type = "labeledGroup"
-label = "Capture Plant"
+- **Timeline** - construction start/finish, operation start/finish, decommissioning start/finish
+- **Labour average salary** - with currency
+- **FTE personnel** - number of full-time employees
+- **Asset uptime** - ratio (0-1)
+- **Discount rate** - ratio (0-1)
+- **CAPEX Lang factors** - optional overrides
+- **OPEX factors** - optional overrides
 
-# Asset properties for costing
-[costing]
-timeline.construction_start = 2025
-timeline.construction_finish = 2027
-timeline.operation_start = 2028
-timeline.operation_finish = 2053
-timeline.decommissioning_start = 2054
-timeline.decommissioning_finish = 2056
+The frontend shows these as input fields with defaults pre-filled. Users can override as needed for specific runs.
 
-labour_average_salary = "75000 USD"
-fte_personnel = 50
-asset_uptime = 0.9
-discount_rate = 0.08
+### Block-Level Properties (Schema-Validated)
 
-# Optional: Override default factors
-# capex_lang_factors.contingency = 0.15
-# opex_factors.maintenance = 0.06
-```
-
-### Block-Level Properties (Cost Item Properties)
-
-These properties are defined on **Blocks** within branches:
+These are defined in TOML blocks and validated using Effect Schema with dimension annotations:
 
 ```toml
 # branch-1.toml
-type = "branch"
-label = "Main Capture"
-parentId = "group-capture-plant"
-
 [[block]]
 type = "CaptureUnit"
 subtype = "Amine"
 quantity = 1
-
-# Parameters for cost scaling
-mass_flow = "342000 kg/h"  # Will be converted to f64 in kg/h
+mass_flow = "342000 kg/h"  # dim converts to kg/h for costing server
 ```
+
+The schema system validates these properties and `dim` handles unit conversion automatically.
 
 ### Block Type → Module ID Mapping
 
@@ -534,81 +516,34 @@ POST /api/operations/costing/validate
   }
 ```
 
-### Schema for Costing Operation
+### Schema Design Decision
 
-We use **Effect Schema** (not Zod) to match the existing codebase patterns. Schemas include dimension annotations for automatic unit conversion via `dim`.
+**Block properties vs Asset properties:**
+
+The existing schema system (`effectSchemas.ts`, `effectValidation.ts`) is designed for **block validation only**. It validates properties within blocks and supports dimension annotations for unit conversion.
+
+**Decision:** ✅ Keep schema system for blocks only. Asset-level properties are request-time inputs.
+
+| Property Type | Where Defined | How Validated |
+| ------------- | ------------- | ------------- |
+| Block properties (mass_flow, etc.) | TOML block definitions | Effect Schema with dim annotations |
+| Asset properties (timeline, factors) | Request-time input fields | TypeScript types + defaults |
+
+**Why this approach:**
+- Current schema system would require significant changes to support non-block elements
+- Asset properties (timeline, factors) are operational parameters that may change between runs
+- Defaults already exist in `defaults.ts` and are sensible for most cases
+- Simpler UX: users provide overrides only when needed
+
+### Block Schemas (Effect Schema)
+
+Block schemas use Effect Schema with dimension annotations for automatic unit conversion via `dim`.
 
 ```typescript
-// backend/src/schemas/v1.0-costing/
+// backend/src/schemas/v1.0-costing/capture-unit.ts
 
 import { Schema } from "effect";
 
-// Timeline schema
-export const TimelineSchema = Schema.Struct({
-  construction_start: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Construction start year" })
-  ),
-  construction_finish: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Construction finish year" })
-  ),
-  operation_start: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Operation start year" })
-  ),
-  operation_finish: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Operation finish year" })
-  ),
-  decommissioning_start: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Decommissioning start year" })
-  ),
-  decommissioning_finish: Schema.Number.pipe(
-    Schema.int(),
-    Schema.annotations({ title: "Decommissioning finish year" })
-  ),
-});
-
-// Group schema for asset properties
-export const CostingGroupSchema = Schema.Struct({
-  costing: Schema.Struct({
-    timeline: TimelineSchema,
-    
-    labour_average_salary: Schema.Number.pipe(
-      Schema.greaterThan(0),
-      Schema.annotations({
-        dimension: "currency",
-        defaultUnit: "USD",
-        title: "Labour average salary",
-      })
-    ),
-    
-    fte_personnel: Schema.Number.pipe(
-      Schema.greaterThan(0),
-      Schema.annotations({ title: "FTE Personnel" })
-    ),
-    
-    asset_uptime: Schema.Number.pipe(
-      Schema.greaterThanOrEqualTo(0),
-      Schema.lessThanOrEqualTo(1),
-      Schema.annotations({ title: "Asset uptime (0-1)" })
-    ),
-    
-    discount_rate: Schema.Number.pipe(
-      Schema.greaterThanOrEqualTo(0),
-      Schema.lessThanOrEqualTo(1),
-      Schema.annotations({ title: "Discount rate (0-1)" })
-    ),
-    
-    // Optional factor overrides
-    capex_lang_factors: Schema.optional(CapexLangFactorsSchema),
-    opex_factors: Schema.optional(FixedOpexFactorsSchema),
-  }),
-});
-
-// Block schema example - CaptureUnit
 export const CaptureUnitSchema = Schema.Struct({
   type: Schema.Literal("CaptureUnit"),
   subtype: Schema.Literal("Amine", "InorganicSolvents", "Membrane", "Cryogenic"),
@@ -626,7 +561,33 @@ export const CaptureUnitSchema = Schema.Struct({
 });
 ```
 
-**Unit Conversion:** The `dim` library will auto-convert any compatible unit to the `defaultUnit` specified in annotations. For example, if a user specifies `mass_flow = "100 t/h"`, dim converts it to `100000 kg/h` before sending to the costing server.
+**Unit Conversion:** The `dim` library auto-converts any compatible unit to the `defaultUnit` specified in annotations. For example, `mass_flow = "100 t/h"` → `100000 kg/h`.
+
+### Asset Properties (Request-Time Inputs)
+
+Asset-level properties are provided at request time with UI input fields. Defaults from `defaults.ts` are used when not specified.
+
+```typescript
+// Request body for costing estimate
+type CostingEstimateRequest = {
+  networkPath: string;
+  libraryId: string;
+  targetCurrency?: string;
+  
+  // Optional asset-level overrides (defaults used if not provided)
+  assetDefaults?: {
+    timeline?: Partial<Timeline>;
+    labour_average_salary?: number;
+    fte_personnel?: number;
+    asset_uptime?: number;
+    discount_rate?: number;
+    capex_lang_factors?: Partial<CapexLangFactors>;
+    opex_factors?: Partial<FixedOpexFactors>;
+  };
+};
+```
+
+The frontend will show input fields for these with the defaults pre-filled, allowing users to override as needed.
 
 ---
 
@@ -729,21 +690,19 @@ function OperationCard({ operation, networkId }) {
 - [x] Create types for cost library structures
 - [x] Add tests (23 passing)
 
-### Phase 2: Schema Definition
+### Phase 2: Block Schemas
 
-- [ ] Define costing group schema (asset properties) using Effect Schema
-- [ ] Define costing block schemas for each supported module type
-- [ ] Create timeline schema
-- [ ] Create factors schemas
+- [ ] Define costing block schemas for supported module types (CaptureUnit, Compressor, Pipe, etc.)
 - [ ] Add dimension annotations for unit conversion via dim
 - [ ] Register schemas in schema registry under `v1.0-costing`
+- [ ] Create request type for costing estimate with optional asset overrides
 
 ### Phase 3: Defaults & Validation
 
-- [ ] Create defaults file (`costing-defaults.ts`)
+- [x] Create defaults file (`defaults.ts`) ✅ Already exists
 - [ ] Implement default value fallback for unnamed assets
 - [ ] Track which assets/fields are using defaults
-- [ ] Create validation service to check network readiness
+- [ ] Create validation service to check network readiness (block properties only)
 
 ### Phase 4: Adapter Implementation
 
@@ -855,6 +814,7 @@ We have e2e tests in the existing costing tool that we can replicate. Same netwo
 - ✅ **Table + Network views** - tables first, network overlay later
 - ✅ **Excel export** - use ExcelJS pattern from existing costing tool
 - ✅ **Module lookup from cost library** - Parse cost library JSON to build type→module mapping dynamically
+- ✅ **Block schemas only** - Schema system validates block properties; asset properties are request-time inputs with defaults
 
 ---
 
@@ -1094,12 +1054,13 @@ Phase 1 is complete. Ready to continue with Phase 2!
 
 ### Up Next
 
-1. **Phase 2: Schema Definition**
-   - Define Effect schemas for costing groups and blocks
+1. **Phase 2: Block Schemas**
+   - Define Effect schemas for costing block types (CaptureUnit, Compressor, Pipe, etc.)
    - Add dimension annotations for dim unit conversion
+   - Create request type with optional asset property overrides
 
 2. **Phase 3: Defaults & Validation**
-   - Validation service to check network readiness
+   - Validation service to check network readiness (block properties)
    - Track which assets/fields are using defaults
 
 3. **Phase 4-5: Adapter & API**
@@ -1109,4 +1070,5 @@ Phase 1 is complete. Ready to continue with Phase 2!
 
 4. **Phase 7-8: Frontend**
    - Results display (tables)
+   - Asset property input fields with defaults
    - Readiness UI
