@@ -393,7 +393,7 @@ async fn get_operations_config() -> Result<OperationsServerConfig, String> {
     Ok(OperationsServerConfig {
         costing_url: std::env::var("COSTING_SERVER_URL")
             .ok()
-            .or_else(|| Some("http://localhost:4000".to_string())),
+            .or_else(|| Some("http://localhost:8080".to_string())),
         modelling_url: std::env::var("MODELLING_SERVER_URL")
             .ok()
             .or_else(|| Some("http://localhost:4001".to_string())),
@@ -417,7 +417,7 @@ export const operationsRoutes = new Hono();
 // Adapter for costing operation
 operationsRoutes.post("/costing", async (c) => {
   const costingServerUrl =
-    process.env.COSTING_SERVER_URL || "http://localhost:4000";
+    process.env.COSTING_SERVER_URL || "http://localhost:8080";
   const { network, schema } = await c.req.json();
 
   // 1. Transform our network format → costing server format

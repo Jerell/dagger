@@ -97,7 +97,7 @@ pub async fn get_operations_config() -> Result<OperationsServerConfig, String> {
     Ok(OperationsServerConfig {
         costing_url: std::env::var("COSTING_SERVER_URL")
             .ok()
-            .or_else(|| Some("http://localhost:4000".to_string())),
+            .or_else(|| Some("http://localhost:8080".to_string())),
         modelling_url: std::env::var("MODELLING_SERVER_URL")
             .ok()
             .or_else(|| Some("http://localhost:4001".to_string())),

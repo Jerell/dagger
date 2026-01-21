@@ -2,6 +2,7 @@
 
 > **Status:** Planning
 > **Created:** January 2026
+> **Costing Server:** `http://localhost:8080` (when running locally)
 
 ## Overview
 
@@ -851,13 +852,24 @@ We have e2e tests in the existing costing tool that we can replicate. Same netwo
 backend/
 ├── reference/
 │   └── costing/
-│       └── data/
-│           ├── V1.1_working/
-│           │   └── cost-library.json
-│           ├── V1.3/
-│           │   └── cost-library.json
-│           └── V2.0/
-│               └── cost-library.json
+│       ├── data/                    # Cost library data files
+│       │   ├── V1.1_working/
+│       │   │   └── cost-library.json
+│       │   ├── V1.3/
+│       │   │   └── cost-library.json
+│       │   └── V2.0/
+│       │       └── cost-library.json
+│       ├── end-to-end-tests/        # Reference e2e tests from costing tool
+│       │   ├── costing.spec.ts      # Main costing test with expected results
+│       │   ├── lib/
+│       │   │   ├── buildBranch.ts
+│       │   │   └── assert*.ts
+│       │   └── ...
+│       └── src/                     # Reference costing server source
+│           ├── lib.rs               # API endpoints
+│           └── route/
+│               └── cost/
+│                   └── estimate/    # Request/response types
 ├── src/
 │   ├── routes/
 │   │   └── operations.ts              # Operation endpoints
