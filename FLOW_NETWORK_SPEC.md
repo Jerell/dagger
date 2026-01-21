@@ -1,5 +1,7 @@
 # Flow Network Interactive Editor - Specification & Implementation Plan
 
+> **Implementation Status (Updated January 2026):** Phases 1-2 are complete. Phase 3 (UX) is partially done. Phase 4 (Local File System) is complete using Tauri native file system instead of the originally planned File System Access API.
+
 ## Overview
 
 Transform the network viewer into an interactive editor where users can:
@@ -8,40 +10,51 @@ Transform the network viewer into an interactive editor where users can:
 - Create edges by dragging from node handles
 - Load from API presets (overwrites local state)
 - Work with local state (tanstack-db collections) after initial load
-- Eventually persist changes back to TOML files
-- Optionally use File System Access API for direct file watching/editing
+- Persist changes back to TOML files via Tauri
+- Watch directories for file changes using Tauri's native file watcher
 
 ## Architecture
 
-### Local-First Architecture (Like OpenCode)
+### Local-First Architecture (Tauri Desktop App)
 
-**Key Insight:** This is a local development tool, not a remote service. The server runs locally and reads from the client's file system.
+**Key Insight:** This is a local development tool distributed as a Tauri desktop app. The app spawns a local Bun server and uses native file system access.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         User's Local Machine                        │
 │                                                                     │
-│  ┌──────────────┐         ┌──────────────────────┐                  │
-│  │   Browser    │         │   Local Server       │                  │
-│  │  (Frontend)  │◄────────┤  (Bun + Hono)        │                  │
-│  │              │  HTTP   │  - Schema endpoints  │                  │
-│  │  ReactFlow   │         │  - Validation        │                  │
-│  │  Collections │         │  - TOML parsing      │                  │
-│  │              │         │  - Network loading   │                  │
-│  └──────┬───────┘         └───────────┬──────────┘                  │
-│         │                             │                             │
-│         │ File System Access API      │ File System                 │
-│         │ (read/write)                │ (read)                      │
-│         ▼                             ▼                             │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │                    Tauri Desktop App                       │     │
+│  │  ┌──────────────┐         ┌──────────────────────┐         │     │
+│  │  │   WebView    │         │   Local Server       │         │     │
+│  │  │  (Frontend)  │◄────────┤  (Bun + Hono)        │         │     │
+│  │  │              │  HTTP   │  - Schema endpoints  │         │     │
+│  │  │  ReactFlow   │         │  - Validation        │         │     │
+│  │  │  Collections │         │  - TOML parsing      │         │     │
+│  │  │              │         │  - Network loading   │         │     │
+│  │  └──────┬───────┘         └───────────┬──────────┘         │     │
+│  │         │                             │                    │     │
+│  │         │ Tauri Commands              │ File System        │     │
+│  │         │ (invoke)                    │ (read)             │     │
+│  │         ▼                             ▼                    │     │
+│  │  ┌──────────────────────────────────────────────────────┐  │     │
+│  │  │  Tauri Backend (Rust)                                │  │     │
+│  │  │  - Native file system access                         │  │     │
+│  │  │  - File watcher (notify crate)                       │  │     │
+│  │  │  - Server lifecycle management                       │  │     │
+│  │  └──────────────────────────────────────────────────────┘  │     │
+│  └────────────────────────────────────────────────────────────┘     │
+│                              │                                      │
+│                              │ Native File System                   │
+│                              ▼                                      │
 │  ┌──────────────────────────────────────────────┐                   │
 │  │         User's Local File System             │                   │
 │  │  networks/preset1/                           │                   │
 │  │    ├── branch-1.toml                         │                   │
-│  │    ├── branch-15.toml  ← Created in browser  │                   │
+│  │    ├── branch-15.toml  ← Created in app      │                   │
 │  │    ├── group-1.toml                          │                   │
 │  │    └── config.toml                           │                   │
 │  └──────────────────────────────────────────────┘                   │
-│                                                                     │
 │                                                                     │
 │         ┌──────────────────────────────────────┐                    │
 │         │   External Operations Servers        │                    │
@@ -56,7 +69,7 @@ Transform the network viewer into an interactive editor where users can:
 │                    ▲                                                │
 │                    │ HTTP/WebSocket                                 │
 │                    │ (Local server proxies requests)                │
-│         ┌──────────┴───────────┐                                     │
+│         ┌──────────┴───────────┐                                    │
 │         │   Local Server       │                                    │
 │         │  (proxies to external│                                    │
 │         │   operations servers)│                                    │
@@ -66,17 +79,18 @@ Transform the network viewer into an interactive editor where users can:
 
 **Architecture Notes:**
 
-- **Local Server:** Handles file I/O, schema/validation, network parsing (lightweight)
+- **Tauri Backend:** Handles native file system access, file watching, and server lifecycle
+- **Local Server:** Spawned by Tauri, handles schema/validation, network parsing (Bun + Hono)
 - **Operations Servers:** External services that handle heavy computations (costing, modelling)
   - **Not spawned by Tauri** - they are separate external services
   - Local server makes HTTP requests to external operations servers
   - Can be deployed independently, scaled separately
-- **Separation of Concerns:** File operations vs. computation operations
-- **Similar to OpenCode:** Local server communicates with external services (like AI providers)
+- **Separation of Concerns:** File operations (Tauri) vs. schema/validation (Local Server) vs. computation (Operations Servers)
+- **No Browser APIs:** Uses Tauri native file system instead of File System Access API
 
 ### Data Flow
 
-**Initial Load:**
+**Initial Load (via API preset or watched directory):**
 
 ```
 ┌─────────────────┐
@@ -107,30 +121,30 @@ Transform the network viewer into an interactive editor where users can:
 │  Collections    │ (persisted to localStorage)
 └────────┬────────┘
          │
-         │ User edits in browser
-         │ (creates branch-15, etc.)
+         │ User exports or edits files directly
          ▼
 ┌─────────────────┐
-│  File System    │ (via File System Access API)
-│  Access API     │ (write branch-15.toml)
+│  Tauri Backend  │ (via invoke commands)
+│  - write_network_file()
+│  - File watcher detects changes
 └────────┬────────┘
          │
-         │ Local server can now read branch-15.toml
+         │ Local server can read updated files
          │ for schema/validation endpoints
          ▼
 ┌─────────────────┐
 │  Local Server   │ (reads updated files)
-│  /api/schema    │ (includes branch-15)
+│  /api/schema    │ (includes all nodes)
 │  /api/validate  │
 └─────────────────┘
 ```
 
 **Key Points:**
 
-1. **Local Server:** Runs on user's machine (Bun + Hono), reads from user's file system
-2. **File System Access API:** Browser can read/write to user's local files
-3. **Schema/Validation:** Local server reads from user's files, so it sees all nodes (including browser-created ones)
-4. **Two-way sync:** Browser ↔ Local Files ↔ Local Server
+1. **Local Server:** Spawned by Tauri on app startup (Bun + Hono), reads from user's file system
+2. **Tauri Backend:** Native file system access via Rust, file watching via `notify` crate
+3. **Schema/Validation:** Local server reads from user's files, so it sees all nodes
+4. **Watch Mode:** Tauri watches directory for changes, auto-reloads network in UI
 
 ## Phase 1: Type Unification & Collection Integration
 
@@ -483,7 +497,9 @@ After loading a preset:
 - API is only used for initial load
 - All changes persist to localStorage automatically (via tanstack-db)
 
-## Phase 4: Local File System Integration
+## Phase 4: Local File System Integration ✅ COMPLETE
+
+> **Status:** Implemented using Tauri native file system instead of File System Access API.
 
 ### 4.1 The Network Mutability Problem
 
@@ -495,37 +511,43 @@ After loading a preset:
 - **Schema/validation endpoints read from server file system** → branch-15 is omitted
 - **Result:** Can't validate or get schemas for browser-created nodes
 
-**Solution: Local-First Architecture**
+**Solution: Tauri Desktop App**
 
-The tool runs a **local server** (like OpenCode) that:
+The tool is distributed as a **Tauri desktop app** that:
 
-- Reads from the **user's local file system** (not a remote server)
-- Browser writes changes to **user's local files** via File System Access API
-- Local server can then read those files for schema/validation
-- Everything stays on the user's machine
+- Has **native file system access** via Rust backend
+- Spawns a **local Bun server** for schema/validation
+- Provides **file watching** via the `notify` crate
+- Everything runs on the user's machine
 
-### 4.2 Architecture Requirements
+### 4.2 Architecture Implementation
 
-**Local Server:**
+**Tauri Backend (`frontend/src-tauri/`):**
+
+- Native file system access (`commands.rs`)
+- File watcher using `notify` crate (`file_watcher.rs`)
+- Server lifecycle management (`server.rs`, `lib.rs`)
+- Auto-starts Bun backend on app launch
+
+**Local Server (spawned by Tauri):**
 
 - Runs on user's machine (Bun + Hono)
-- Reads from user's file system (not a remote backend)
+- Reads from user's file system
 - Provides schema/validation endpoints that read local files
-- Watches local files for changes
 
-**Browser Integration:**
+**Frontend Integration:**
 
-- Uses File System Access API to read/write local files
-- When user creates branch-15 in browser:
+- Uses Tauri invoke commands (`lib/tauri.ts`)
+- When user creates branch-15 in app:
   1. Write to localStorage (immediate)
-  2. Write branch-15.toml to user's file system (via File System Access API)
+  2. Export to file system via `write_network_file` command
   3. Local server can now read branch-15.toml for schema/validation
 
 **File System Access:**
 
-- User grants permission to read/write a directory
-- Browser can create/update/delete TOML files directly
-- Local server reads from same directory
+- User selects directory via native file picker (`tauri-plugin-dialog`)
+- App can create/update/delete TOML files via Tauri commands
+- File watcher detects external changes and updates UI
 
 ### 4.3 TOML Serialization Strategy
 
@@ -631,66 +653,68 @@ export async function exportNetworkToToml(
 }
 ```
 
-### 4.4 File System Access API Integration
+### 4.4 Tauri File Watcher Integration ✅ COMPLETE
 
 **Use Cases:**
 
 1. **Watch Mode (Toggle):** User selects a directory, app watches TOML files for changes
-   - **When enabled:** Browser edits are **disabled** - users must edit files directly
-   - **When disabled:** Normal browser editing mode
-2. **One-way file watching (Phase 4a):** Files → Browser only
+   - **When enabled:** UI edits are **disabled** - users must edit files directly
+   - **When disabled:** Normal app editing mode
+2. **One-way file watching:** Files → UI only
    - User edits TOML files directly, app auto-updates
-   - Browser changes are not written back to files
-3. **Export to files (Phase 4b):** Browser → Files as separate action
-   - User clicks "Export" to write current state to watched files
-   - Or download as ZIP if not in watch mode
+   - UI changes are not written back to files automatically
+3. **Export to files:** UI → Files as separate action
+   - User clicks "Export" to write current state to directory
 
-**Implementation:**
+**Implementation (Actual Code):**
 
-```typescript
-// lib/file-system/watch-directory.ts
-export type WatchModeState = {
-  enabled: boolean;
-  directoryHandle: FileSystemDirectoryHandle | null;
-  isWatching: boolean;
-};
-
-export async function watchTomlDirectory(
-  directoryHandle: FileSystemDirectoryHandle,
-  onFilesChanged: (files: Record<string, string>) => void
-) {
-  // Use File System Access API to watch for changes
-  // Auto-update when files change (no manual refresh needed)
-  // Implementation approach:
-  // 1. Use FileSystemHandle.watch() or polling
-  // 2. On file change, read all TOML files
-  // 3. Send to backend for parsing: POST /api/network/parse-toml
-  // 4. Update collections with parsed network
-  // 5. Handle errors gracefully:
-  //    - Incomplete TOML (missing required fields) → show warnings, use defaults
-  //    - Invalid TOML syntax → show error, don't crash
-  //    - Missing files → treat as deleted nodes/edges, remove from collections
+```rust
+// frontend/src-tauri/src/file_watcher.rs
+pub struct FileWatcher {
+    watcher: Option<RecommendedWatcher>,
+    path: Option<PathBuf>,
+    app_handle: Option<tauri::AppHandle>,
 }
 
-// Hook to manage watch mode and disable ReactFlow editing when enabled
-export function useWatchMode() {
+impl FileWatcher {
+    pub fn start_watching(
+        &mut self,
+        path: PathBuf,
+        app_handle: tauri::AppHandle,
+    ) -> Result<(), String> {
+        // Uses notify crate for cross-platform file watching
+        // Emits "file-changed" event to frontend when TOML files change
+    }
+}
+```
+
+```typescript
+// frontend/src/lib/hooks/use-file-watcher.ts
+export function useFileWatcher() {
   const [watchMode, setWatchMode] = useState<WatchModeState>({
     enabled: false,
-    directoryHandle: null,
+    directoryPath: null,
     isWatching: false,
   });
 
-  // When watch mode enabled, disable ReactFlow editing
-  const nodesDraggable = !watchMode.enabled;
-  const nodesConnectable = !watchMode.enabled;
-  const elementsSelectable = !watchMode.enabled;
+  // Listen for file change events from Tauri
+  useEffect(() => {
+    const unlisten = listen<string[]>("file-changed", async (event) => {
+      // Reload network from the watched directory
+      const network = await getNetworkFromPath(watchMode.directoryPath!);
+      await resetFlowToNetwork(network);
+    });
+    // ...
+  }, [watchMode.enabled, watchMode.directoryPath]);
 
+  // When watch mode enabled, disable ReactFlow editing
   return {
     watchMode,
-    setWatchMode,
-    nodesDraggable,
-    nodesConnectable,
-    elementsSelectable,
+    enableWatchMode,
+    disableWatchMode,
+    nodesDraggable: !watchMode.enabled,
+    nodesConnectable: !watchMode.enabled,
+    elementsSelectable: !watchMode.enabled,
   };
 }
 ```
@@ -764,7 +788,7 @@ export function validateTomlNetwork(
 
 ## Implementation Order
 
-### Phase 1 (Foundation)
+### Phase 1 (Foundation) ✅ COMPLETE
 
 1. ✅ Unify types: Update `flow-nodes.ts` to use `NetworkNode`/`NetworkEdge` from `api-client.ts`
 2. ✅ Standardize node types: Use `"branch"` (not `"branchNode"`) throughout
@@ -772,7 +796,7 @@ export function validateTomlNetwork(
 4. ✅ Update `loadPresetFromApi` to add ReactFlow properties and validate edges
 5. ✅ Test preset loading overwrites collections
 
-### Phase 2 (Interactivity)
+### Phase 2 (Interactivity) ✅ COMPLETE
 
 1. ✅ Connect ReactFlow to collections (useLiveQuery hooks)
 2. ✅ Add `onNodesChange`, `onEdgesChange`, `onConnect` handlers
@@ -780,36 +804,36 @@ export function validateTomlNetwork(
 4. ✅ Test dragging, edge creation
 5. ✅ Fix parent-child node movement (sorting on read)
 
-### Phase 3 (UX)
+### Phase 3 (UX) - Partially Complete
 
-1. ⏳ Add preset selector UI (API endpoint exists, UI not implemented)
-2. ⏳ Add "Start Fresh" option
-3. ⏳ Show current preset/state indicator
+1. ✅ Watch mode UI (`/network/watch` route with directory selector)
+2. ⏳ Add preset selector UI for API presets (API endpoint exists, UI not implemented)
+3. ⏳ Add "Start Fresh" option
+4. ⏳ Show current preset/state indicator
 
-### Phase 4 (Local File System Integration - Critical)
+### Phase 4 (Local File System Integration) ✅ COMPLETE (via Tauri)
 
-**4.1-4.2: Core File System Setup (Critical - Required for schema/validation)**
+**4.1-4.2: Core File System Setup**
 
-1. ⏳ Set up File System Access API integration
-2. ⏳ Implement writeNodeToFile() - write browser changes to local files
-3. ⏳ Update local server to read from user's file system (not remote)
-4. ⏳ Sync browser changes to files immediately (or on save)
-5. ⏳ Ensure schema/validation endpoints read from local files (includes browser-created nodes)
-6. ⏳ Test: Create branch-15 in browser → verify it appears in schema endpoints
+1. ✅ Set up Tauri native file system integration
+2. ✅ Implement `write_network_file` command - write app changes to local files
+3. ✅ Local server reads from user's file system (spawned by Tauri)
+4. ✅ Export functionality writes to files on demand
+5. ✅ Schema/validation endpoints read from local files
 
 **4.3-4.5: TOML Serialization & Export**
 
-1. ⏳ TOML export functionality
-2. ⏳ Filter ReactFlow UI properties utility (`filter-reactflow-props.ts`)
-3. ⏳ Convert edges to branch outgoing arrays (always include, empty array if none)
-4. ⏳ Export to watched directory or download as ZIP
+1. ✅ TOML export functionality (`toml-exporter.ts`)
+2. ✅ Filter ReactFlow UI properties utility (`filter-reactflow-props.ts`)
+3. ✅ Convert edges to branch outgoing arrays
+4. ✅ Export to watched directory or selected directory
 
 **4.4-4.5: File Watching & Watch Mode**
 
-1. ⏳ File watching (one-way: files → browser)
-2. ⏳ Watch mode toggle (disables browser edits when enabled)
-3. ⏳ Auto-update from file changes
-4. ⏳ Robust error handling
+1. ✅ File watching via `notify` crate (`file_watcher.rs`)
+2. ✅ Watch mode toggle disables UI edits when enabled (`use-file-watcher.ts`)
+3. ✅ Auto-update from file changes
+4. ⏳ Robust error handling (basic error logging, no toast notifications yet)
 
 ## Questions & Considerations
 
@@ -822,11 +846,9 @@ export function validateTomlNetwork(
 - **Set default edge properties:** `weight: 1` (or prompt user for weight)
 - **Validate on load:** When loading from API/files, filter out invalid edges
 
-### Q5: File System Access API browser support?
+### Q5: ~~File System Access API browser support?~~ (Resolved)
 
-**A:** Chrome/Edge only. Need fallback:
-
-Only the browsers that support it can use the feature. We will provide regular file based import/export too.
+**A:** No longer relevant. The app is distributed as a **Tauri desktop application** with native file system access. No browser API limitations apply.
 
 ### Q6: Should we sync collections with API in real-time?
 
@@ -882,26 +904,24 @@ I don't know that it's possible for the tabs to be out of sync though.
 
 ## Recommended Next Steps
 
-**Priority Order:**
+**Current Status (January 2026):**
+- ✅ Tauri app is working with native file system
+- ✅ File watching implemented
+- ✅ TOML export working
 
-1. **Tauri Distribution (Early Priority):** Set up Tauri distribution first
+**Remaining Work:**
 
-   - This affects how we implement file system access (native vs browser API)
-   - Better to build with Tauri in mind from the start
-   - See [TAURI_DISTRIBUTION_PLAN.md](./TAURI_DISTRIBUTION_PLAN.md)
-   - **Note:** Operations servers are **external** - local server makes HTTP requests to them
+1. **Complete Phase 3 UX:**
+   - Add preset selector UI for loading API presets (dialog)
+   - Add "Start Fresh" option
+   - Add notifications for errors/success
 
-2. **Complete Phase 3:** Add preset selector UI (dialog, not dropdown)
+2. **Polish Error Handling:**
+   - Add notifications throughout the app
+   - Better error messages for file system operations
+   - Handle edge cases in TOML parsing
 
-3. **Implement Phase 4 (Critical):** Local file system integration
-   - This is required for schema/validation to work with browser-created nodes
-   - Without this, browser-created nodes won't appear in schema endpoints
-   - Start with 4.1-4.2 (core file system setup), then 4.3-4.5 (export/watching)
-   - **With Tauri:** Use native file system APIs instead of File System Access API
-
-**Why Tauri First:**
-
-- Architecture decisions (native file system vs browser API) affect Phase 4 implementation
-- Better to build with distribution in mind from the start
-- File system access patterns differ between Tauri and browser-only
-- Avoids retrofitting later
+3. **Building & Distribution (See TAURI_DISTRIBUTION_PLAN.md):**
+   - Configure bundle resources
+   - Test builds for each platform
+   - Consider bundling Bun runtime for easier distribution

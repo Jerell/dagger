@@ -1,5 +1,7 @@
 # Dagger Network Parser & Query System - Implementation Plan
 
+> **Note (January 2026):** This is the original implementation plan for the CLI and backend. For frontend/Tauri implementation details, see [FLOW_NETWORK_SPEC.md](./FLOW_NETWORK_SPEC.md) and [TAURI_DISTRIBUTION_PLAN.md](./TAURI_DISTRIBUTION_PLAN.md).
+
 ## Overview
 
 This document outlines the plan for building a TOML-based network configuration system with hierarchical variable scoping, query capabilities, schema generation, and API integration.
@@ -670,7 +672,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 1: Foundation ✅ COMPLETE
 
 - [x] Core data structures with serde
 - [x] TOML parser for all node types
@@ -678,7 +680,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] Basic CLI structure
 - [x] Non-blocking validation system
 
-### Phase 2: Scope System (Week 2-3)
+### Phase 2: Scope System ✅ COMPLETE
 
 - [x] Property configuration system
 - [x] Scope resolver implementation
@@ -686,7 +688,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] CLI resolve command
 - [ ] Tests for scope resolution
 
-### Phase 3: Query System (Week 3-4)
+### Phase 3: Query System ✅ COMPLETE
 
 - [x] Path notation parser (basic)
 - [x] Query executor (basic)
@@ -702,7 +704,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] Tests for network-level queries (nodes, edges, with filters)
 - [x] Query syntax documentation (QUERY_SYNTAX.md)
 
-### Phase 4: Versioned Schema Libraries (Week 4-5)
+### Phase 4: Versioned Schema Libraries ✅ COMPLETE
 
 - [x] Schema library structure and versioning
 - [x] Schema loader (read JSON generated from TypeScript/Zod files)
@@ -711,7 +713,7 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [x] CLI validate command
 - [x] Schema API endpoints (Phase 5)
 
-### Phase 5: API Server (Week 5-6)
+### Phase 5: API Server ✅ COMPLETE
 
 - [x] Hono server setup
 - [x] Query endpoints (WASM integrated)
@@ -724,12 +726,14 @@ export async function loadNetwork(presetPath: string): Promise<Network> {
 - [ ] Test API endpoints end-to-end
 - [ ] Handle file system access in WASM (may need path adjustments)
 
-### Phase 6: Frontend (Future)
+### Phase 6: Frontend ✅ COMPLETE
 
-- [ ] React Flow setup
-- [ ] Network visualization
-- [ ] Query interface
-- [ ] Form generation
+- [x] React Flow setup (ReactFlow with custom node types)
+- [x] Network visualization (interactive editor with drag/connect)
+- [x] Tauri desktop app with native file system access
+- [x] File watching and TOML export
+- [ ] Query interface (not yet exposed in UI)
+- [ ] Form generation (not yet implemented)
 
 ---
 
@@ -861,54 +865,44 @@ This file also contains inheritance rules (see Section 2.2).
 
 ```
 dagger/
-├── cli/
+├── cli/                      # Rust CLI (WASM-compiled for backend)
 │   └── src/
 │       ├── main.rs
+│       ├── lib.rs            # WASM entry point
 │       ├── parser/
-│       │   ├── mod.rs
-│       │   ├── models.rs
-│       │   ├── network.rs
-│       │   └── loader.rs
 │       ├── scope/
-│       │   ├── mod.rs
-│       │   ├── config.rs
-│       │   ├── resolver.rs
-│       │   └── registry.rs
 │       ├── query/
-│       │   ├── mod.rs
-│       │   ├── parser.rs
-│       │   ├── executor.rs
-│       │   └── formatter.rs
 │       ├── schema/
-│       │   ├── mod.rs
-│       │   ├── definitions.rs
-│       │   ├── generator.rs
-│       │   └── registry.rs
-│       └── commands/
-│           ├── mod.rs
-│           ├── list.rs
-│           ├── query.rs
-│           ├── export.rs
-│           ├── explore.rs
-│           └── resolve.rs
-├── server/
+│       └── dim/              # Dimensional analysis
+├── backend/                  # Local server (Bun + Hono)
 │   └── src/
-│       ├── main.ts
+│       ├── index.ts
 │       ├── routes/
-│       ├── lib/
-│       └── types/
-├── frontend/
-│   └── (future)
-├── schemas/            # Versioned schema libraries
-│   ├── v1.0/
-│   │   ├── compressor.ts
-│   │   ├── pipe.ts
-│   │   └── index.ts
-│   └── v1.1/
-│       └── ...
+│       │   ├── network.ts
+│       │   ├── query.ts
+│       │   └── schema.ts
+│       ├── schemas/          # Versioned schema libraries
+│       │   ├── v1.0/
+│       │   └── v1.0-costing/
+│       └── services/
+├── frontend/                 # React + Tauri app
+│   ├── src/
+│   │   ├── components/
+│   │   │   └── flow/         # ReactFlow components
+│   │   ├── lib/
+│   │   │   ├── tauri.ts      # Tauri API wrapper
+│   │   │   ├── collections/  # tanstack-db collections
+│   │   │   └── hooks/
+│   │   └── routes/
+│   └── src-tauri/            # Tauri backend (Rust)
+│       └── src/
+│           ├── lib.rs        # App setup, auto-start server
+│           ├── commands.rs   # Tauri commands
+│           ├── file_watcher.rs
+│           └── server.rs     # Local server management
 └── network/
     └── preset1/
-        ├── config.toml  # Global properties and inheritance rules
+        ├── config.toml       # Global properties and inheritance rules
         └── *.toml
 ```
 

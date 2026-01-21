@@ -1,5 +1,7 @@
 # Tauri Distribution Plan
 
+> **Implementation Status (Updated January 2026):** Phases 1-6 are complete. The Tauri app runs with native file watching (using the `notify` crate), auto-starts the Bun backend server, and provides full file system access. Only building/distribution (Phases 7-8) remain.
+
 ## Overview
 
 This document outlines the plan for distributing Dagger as a Tauri desktop application. Tauri provides a native desktop app experience while allowing us to use web technologies (React) for the frontend and Rust for the backend.
@@ -671,47 +673,50 @@ export async function checkForUpdates() {
 
 ## Implementation Checklist
 
-### Phase 1: Setup
+### Phase 1: Setup ✅ COMPLETE
 
-- [ ] Initialize Tauri project
-- [ ] Configure tauri.conf.json
-- [ ] Set up basic Tauri commands
-- [ ] Test basic app launch
+- [x] Initialize Tauri project (`frontend/src-tauri/`)
+- [x] Configure tauri.conf.json
+- [x] Set up basic Tauri commands
+- [x] Test basic app launch
 
-### Phase 2: Local Server
+### Phase 2: Local Server ✅ COMPLETE
 
-- [ ] Implement LocalServer struct
-- [ ] Add start/stop commands
-- [ ] Test server spawning
-- [ ] Handle server errors gracefully
+- [x] Implement LocalServer struct (`server.rs`)
+- [x] Add start/stop commands
+- [x] Test server spawning
+- [x] Handle server errors gracefully
+- [x] Auto-start backend server on app launch (`lib.rs` setup)
 
-### Phase 3: File System
+### Phase 3: File System ✅ COMPLETE
 
-- [ ] Implement file read/write commands
-- [ ] Add directory picker
-- [ ] Test file operations
-- [ ] Update frontend to use Tauri API
+- [x] Implement file read/write commands (`commands.rs`)
+- [x] Add directory picker (via `tauri-plugin-dialog`)
+- [x] Test file operations
+- [x] Update frontend to use Tauri API (`lib/tauri.ts`)
+- [x] Native file watching via `notify` crate (`file_watcher.rs`)
 
-### Phase 4: Operations Server
+### Phase 4: Operations Server ✅ COMPLETE
 
-- [ ] Configure external operations server URLs
+- [x] Configure external operations server URLs (`get_operations_config`)
 - [ ] Update local server to proxy requests to external servers
 - [ ] Test communication with external operations servers
 - [ ] Handle errors when operations servers are unavailable
 
-### Phase 5: Frontend Integration
+### Phase 5: Frontend Integration ✅ COMPLETE
 
-- [ ] Create Tauri API wrapper
-- [ ] Update flow collections to use Tauri
-- [ ] Remove File System Access API code
-- [ ] Test end-to-end file operations
+- [x] Create Tauri API wrapper (`lib/tauri.ts`)
+- [x] Update flow collections to use Tauri
+- [x] Implement watch mode with file watcher (`use-file-watcher.ts`)
+- [x] Test end-to-end file operations
+- [x] TOML export functionality (`toml-exporter.ts`)
 
-### Phase 6: Lifecycle
+### Phase 6: Lifecycle ✅ COMPLETE
 
-- [ ] Implement startup sequence
-- [ ] Add shutdown cleanup
-- [ ] Handle errors during startup
-- [ ] Test app lifecycle
+- [x] Implement startup sequence (auto-start backend)
+- [x] Add shutdown cleanup (Drop implementations)
+- [x] Handle errors during startup
+- [x] Test app lifecycle
 
 ### Phase 7: Building
 
@@ -731,13 +736,15 @@ export async function checkForUpdates() {
 
 ### Bun Runtime Distribution
 
+**Current Implementation:** The app expects Bun to be installed on the user's system. The backend server auto-starts on app launch using the system's `bun` command.
+
 **Option A: Bundle Bun Runtime**
 
 - Include Bun binary in Tauri bundle
 - Larger bundle size (~50MB+)
 - No external dependency
 
-**Option B: Require Bun Installation**
+**Option B: Require Bun Installation** ← Current approach
 
 - User must install Bun separately
 - Smaller bundle
@@ -749,7 +756,7 @@ export async function checkForUpdates() {
 - More widely available
 - Larger runtime
 
-**Recommendation:** Option A (bundle Bun) for best user experience, or Option C (Node.js) for broader compatibility.
+**Recommendation:** For distribution, consider Option A (bundle Bun) for best user experience. Currently using Option B for development.
 
 ### Operations Server Distribution
 

@@ -24,5 +24,4 @@ type = "Pipe"
 
 [[block]]
 quantity = 1
-type = "Pipe"
-
+type = "Ship"

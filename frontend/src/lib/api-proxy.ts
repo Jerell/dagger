@@ -1,3 +1,5 @@
+const DEFAULT_BACKEND_URL = "http://localhost:3001";
+
 export function getBackendUrl(): string {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -5,10 +7,10 @@ export function getBackendUrl(): string {
   if (typeof process !== "undefined" && process.env.VITE_API_URL) {
     return process.env.VITE_API_URL;
   }
-  if (typeof process !== "undefined") {
-    return process.env.BACKEND_URL || "http://backend:3001";
+  if (typeof process !== "undefined" && process.env.BACKEND_URL) {
+    return process.env.BACKEND_URL;
   }
-  return "";
+  return DEFAULT_BACKEND_URL;
 }
 
 export function getApiBaseUrl(): string {
@@ -18,11 +20,10 @@ export function getApiBaseUrl(): string {
   if (typeof process !== "undefined" && process.env.VITE_API_URL) {
     return process.env.VITE_API_URL;
   }
-  const isBrowser = typeof window !== "undefined";
-  if (isBrowser) {
-    return "http://localhost:3001";
+  if (typeof process !== "undefined" && process.env.BACKEND_URL) {
+    return process.env.BACKEND_URL;
   }
-  return process.env.BACKEND_URL || "http://backend:3001";
+  return DEFAULT_BACKEND_URL;
 }
 
 export async function proxyToBackend(
