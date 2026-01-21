@@ -61,11 +61,7 @@ export {
 } from "./request-types";
 
 // Block to module mapper
-export {
-  mapBlockToModule,
-  type ModuleMapping,
-  type Block,
-} from "./block-to-module-mapper";
+export { mapBlockToModule, type ModuleMapping } from "./block-to-module-mapper";
 
 // Adapter
 export {

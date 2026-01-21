@@ -733,6 +733,9 @@ function OperationCard({ operation, networkId }) {
 - [x] Reference network: Full chain (10 modules)
 - [x] Tests skip gracefully when costing server unavailable
 - [x] Add `test:costing:integration` script
+- [x] **Path-based TOML file loading** - tests load from `workingfiles/costing-reference/`
+- [x] **Unit string parsing via dim** - handles "100 kg/h", "100 m^3/h", "100 MW"
+- [x] **Results match reference e2e test** - €8,501,698,415.04 direct equipment cost
 
 ### Phase 5: API Endpoints ✅ COMPLETE
 
@@ -783,18 +786,19 @@ We have e2e tests in the existing costing tool that we can replicate. Same netwo
 
 - [x] Type normalization (`"Capture Unit"` → `"CaptureUnit"`)
 - [x] Module lookup (block type + subtype → module ID)
-- [ ] Unit conversion via dim
-- [ ] Network → CostEstimateRequest transformation
-- [ ] CostEstimateResponse → NetworkCostingResult transformation
-- [ ] Defaults fallback logic
+- [x] Unit conversion via dim (including volumetric flow `m^3/h`)
+- [x] Network → CostEstimateRequest transformation
+- [x] CostEstimateResponse → NetworkCostingResult transformation
+- [x] Defaults fallback logic
 
-#### Integration Tests (Bun)
+#### Integration Tests (Bun) ✅ COMPLETE
 
-- [ ] Create sample network matching existing costing tool test
-- [ ] Verify adapter produces same results as existing tool
-- [ ] Test named assets (groups with costing properties)
-- [ ] Test unnamed assets (ungrouped branches with defaults)
-- [ ] Test currency conversion
+- [x] Create sample network matching existing costing tool test (`workingfiles/costing-reference/`)
+- [x] Verify adapter produces same results as existing tool (€8,501,698,415.04)
+- [x] Test named assets (groups with costing properties)
+- [x] Test unnamed assets (ungrouped branches with defaults)
+- [x] Test path-based TOML loading with unit strings
+- [x] Test inline data with unit strings
 
 #### E2E Tests (Playwright, optional)
 
