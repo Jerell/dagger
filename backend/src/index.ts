@@ -4,8 +4,16 @@ import { cors } from "hono/cors";
 import { queryRoutes } from "./routes/query";
 import { networkRoutes } from "./routes/network";
 import { schemaRoutes } from "./routes/schema";
+import { costingRoutes } from "./routes/costing";
+import dim from "./services/dim";
 
 const app = new Hono();
+
+// Initialize dim at startup
+dim.init().catch((err) => {
+  console.error("Failed to initialize dim:", err);
+  process.exit(1);
+});
 
 // CORS middleware
 app.use("/*", cors());
@@ -19,6 +27,7 @@ app.get("/health", (c) => {
 app.route("/api/query", queryRoutes);
 app.route("/api/network", networkRoutes);
 app.route("/api/schema", schemaRoutes);
+app.route("/api/operations/costing", costingRoutes);
 
 // Export app type for type inference in frontend
 export type App = typeof app;

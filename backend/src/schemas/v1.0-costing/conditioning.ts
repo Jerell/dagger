@@ -41,6 +41,11 @@ export type Dehydration = Schema.Schema.Type<typeof DehydrationSchema>;
 
 /**
  * Refrigeration schema for cooling CO2.
+ * 
+ * Cost library modules:
+ * - EP/MP/LP - Water Cooling + trim refrig (Item 022 + Item 009)
+ * - EP/MP/LP - Air Cooling + trim refrig (Item 008 + Item 009)
+ * - EP/MP/LP - Refrigerant - Ammonia (Item 009)
  */
 export const RefrigerationSchema = Schema.Struct({
   type: Schema.Literal("Refrigeration"),
@@ -62,23 +67,31 @@ export const RefrigerationSchema = Schema.Struct({
   
   quantity: Schema.optional(Schema.Number),
 
-  // Scaling factors
-  heat_duty: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "power",
-      defaultUnit: "MW",
-      title: "Heat duty",
-    })
-  ),
-
-  cooling_duty: Schema.optional(
-    Schema.Number.pipe(
-      Schema.greaterThan(0),
+  // === Scaling factors ===
+  
+  /** Heat duty - scales Item 022 (heat exchanger) */
+  heat_duty: Schema.optional(
+    Schema.String.pipe(
       Schema.annotations({
         dimension: "power",
         defaultUnit: "MW",
-        title: "Cooling duty",
+        title: "Heat duty",
+        costParameter: "Heat duty",
+      })
+    )
+  ),
+
+  // === Variable OPEX parameters ===
+  
+  /** Cooling water flow for water cooling method (Item 022) */
+  cooling_water: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "volumetric_flow_rate",
+        defaultUnit: "m3/h",
+        title: "Cooling water flow",
+        description: "Cooling water flow rate (10°C temp rise)",
+        costParameter: "Cooling water (10degC temp rise)",
       })
     )
   ),

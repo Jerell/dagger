@@ -4,6 +4,8 @@ import { Schema } from "effect";
  * CaptureUnit schema for CO2 capture.
  * 
  * The capture_technology maps directly to cost library subtypes.
+ * 
+ * All dimensional values should be strings with units, e.g., "100 t/h"
  */
 export const CaptureUnitSchema = Schema.Struct({
   type: Schema.Literal("CaptureUnit"),
@@ -25,13 +27,15 @@ export const CaptureUnitSchema = Schema.Struct({
   quantity: Schema.optional(Schema.Number),
 
   // Scaling factor
-  mass_flow: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "mass_flow_rate",
-      defaultUnit: "kg/h",
-      title: "Mass flow",
-    })
+  mass_flow: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "mass_flow_rate",
+        defaultUnit: "t/h",
+        title: "Mass flow",
+        costParameter: "Mass flow",
+      })
+    )
   ),
 });
 

@@ -145,11 +145,24 @@ function extractModuleInfo(module: CostLibraryModule): ModuleInfo {
 // Module Lookup Service
 // ============================================================================
 
+export type CostItemInfo = {
+  id: string;
+  info?: {
+    item_type?: string;
+    short_name?: string;
+    description?: string;
+  };
+  scaling_factors: Array<{ name: string; units: string; source_value: number }>;
+  variable_opex_contributions: Array<{ name: string; units: string; scaled_by?: number }>;
+};
+
 export class ModuleLookupService {
   private index: ModuleIndex;
+  private library: CostLibrary;
 
   constructor(library: CostLibrary) {
     this.index = buildModuleIndex(library);
+    this.library = library;
   }
 
   /**
@@ -231,6 +244,28 @@ export class ModuleLookupService {
       return [];
     }
     return Array.from(subtypeMap.values());
+  }
+
+  /**
+   * Get full cost item info from a module.
+   * 
+   * @param moduleId Module ID (e.g., "M0302")
+   * @param costItemId Cost item ID (e.g., "Item 007")
+   * @returns Full cost item info with scaling factors and OPEX contributions
+   */
+  getCostItem(moduleId: string, costItemId: string): CostItemInfo | undefined {
+    const module = this.library.modules.find(m => m.id === moduleId);
+    if (!module) return undefined;
+
+    const costItem = module.cost_items?.find(item => item.id === costItemId);
+    if (!costItem) return undefined;
+
+    return {
+      id: costItem.id,
+      info: costItem.info,
+      scaling_factors: costItem.scaling_factors ?? [],
+      variable_opex_contributions: costItem.variable_opex_contributions ?? [],
+    };
   }
 }
 

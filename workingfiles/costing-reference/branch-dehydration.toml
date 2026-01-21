@@ -1,0 +1,16 @@
+# Dehydration - Molecular Sieve
+type = "branch"
+label = "Dehydration"
+
+[position]
+x = 400
+y = 300
+
+[[outgoing]]
+target = "branch-hp-compression"
+weight = 1
+
+[[block]]
+type = "Dehydration"
+dehydration_type = "molecular_sieve"
+mass_flow_co2 = "100 MTPA"

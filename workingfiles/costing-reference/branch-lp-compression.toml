@@ -1,0 +1,25 @@
+# LP Compression (1 to 40 bar) - Electric Drive
+type = "branch"
+label = "LP Compression"
+
+[position]
+x = 300
+y = 300
+
+[[outgoing]]
+target = "branch-dehydration"
+weight = 1
+
+[[block]]
+type = "Compressor"
+pressure_range = "lp"
+drive_type = "electric"
+quantity = 2
+
+# Scaling factors
+compressor_duty = "100 MW"
+cooling_duty = "100 MW"
+
+# Item-specific electrical power (variable OPEX)
+electrical_power_compressor = "100 kW" # compressor motor (Item 007)
+electrical_power_cooler = "100 kW"     # after-cooler fans (Item 008)

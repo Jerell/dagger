@@ -5,6 +5,12 @@ import { Schema } from "effect";
  * 
  * The costing adapter maps this to specific cost library modules based on:
  * - pressure_range: "lp" → LpCompression, "hp" → HpCompression, "booster" → BoosterCompression
+ * 
+ * Cost library modules have multiple cost items (components):
+ * - LP/HP Compression: Compressor (Item 007) + After-cooler (Item 008)
+ * - Each component can have its own electrical power requirement
+ * 
+ * All dimensional values should be strings with units, e.g., "100 MW"
  */
 export const CompressorSchema = Schema.Struct({
   type: Schema.Literal("Compressor"),
@@ -29,23 +35,64 @@ export const CompressorSchema = Schema.Struct({
   
   quantity: Schema.optional(Schema.Number),
 
-  // Scaling factors
-  compressor_duty: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "power",
-      defaultUnit: "MW",
-      title: "Compressor duty",
-    })
+  // === Scaling factors ===
+  
+  /** Compressor duty - scales the compressor component (Item 007) */
+  compressor_duty: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "power",
+        defaultUnit: "MW",
+        title: "Compressor duty",
+        description: "Mechanical power required by the compressor",
+        costItem: "Item 007",
+        costParameter: "Compressor Duty",
+      })
+    )
   ),
 
-  cooling_duty: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "power",
-      defaultUnit: "MW",
-      title: "Cooling duty",
-    })
+  /** Cooling duty - scales the after-cooler component (Item 008) */
+  cooling_duty: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "power",
+        defaultUnit: "MW",
+        title: "Cooling duty",
+        description: "Heat duty of the after-cooler",
+        costItem: "Item 008",
+        costParameter: "Cooling duty",
+      })
+    )
+  ),
+
+  // === Variable OPEX parameters ===
+  
+  /** Electrical power for the compressor motor (Item 007) */
+  electrical_power_compressor: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "power",
+        defaultUnit: "kW",
+        title: "Compressor electrical power",
+        description: "Electrical power consumption of the compressor motor",
+        costItem: "Item 007",
+        costParameter: "Electrical power",
+      })
+    )
+  ),
+
+  /** Electrical power for the after-cooler fans (Item 008) */
+  electrical_power_cooler: Schema.optional(
+    Schema.String.pipe(
+      Schema.annotations({
+        dimension: "power",
+        defaultUnit: "kW",
+        title: "Cooler electrical power",
+        description: "Electrical power consumption of the after-cooler fans",
+        costItem: "Item 008",
+        costParameter: "Electrical power",
+      })
+    )
   ),
 });
 

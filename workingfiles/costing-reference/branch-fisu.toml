@@ -1,0 +1,16 @@
+# FISU - Floating Storage and Injection Unit
+type = "branch"
+label = "FISU"
+
+[position]
+x = 800
+y = 300
+
+[[outgoing]]
+target = "branch-injection-topsides"
+weight = 1
+
+[[block]]
+type = "OffshorePlatform"
+platform_type = "fisu"
+number_of_fisu_vessels = 100 # dimensionless count

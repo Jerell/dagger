@@ -1,0 +1,16 @@
+# Shipping - EP pressure class
+type = "branch"
+label = "Shipping"
+
+[position]
+x = 700
+y = 300
+
+[[outgoing]]
+target = "branch-fisu"
+weight = 1
+
+[[block]]
+type = "Shipping"
+pressure_class = "ep"
+# Note: Shipping module has no required parameters in the cost library

@@ -1,0 +1,24 @@
+# Injection Topsides - pair with FISU
+type = "branch"
+label = "Injection Topsides"
+
+[position]
+x = 900
+y = 300
+
+[[outgoing]]
+target = "branch-injection-well"
+weight = 1
+
+[[block]]
+type = "InjectionTopsides"
+location = "offshore"
+
+# Scaling factors
+pump_motor_rating = "100 kW"
+pump_flowrate = "100 m^3/h"
+heater_duty = "100 MW"
+
+# Item-specific electrical power
+electrical_power_pump = "100 kW"   # injection pump (Item 028)
+electrical_power_heater = "100 kW" # heater (Item 006)

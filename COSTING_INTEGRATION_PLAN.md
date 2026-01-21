@@ -715,23 +715,35 @@ function OperationCard({ operation, networkId }) {
 - [ ] Track which assets/fields are using defaults
 - [ ] Create validation service to check network readiness (block properties only)
 
-### Phase 4: Adapter Implementation
+### Phase 4: Adapter Implementation ✅ COMPLETE
 
-- [ ] Create `transformNetworkToCostingRequest()` function
-- [ ] Implement block → cost item transformation with unit conversion (dim)
-- [ ] Implement group → named asset transformation
-- [ ] Implement ungrouped branch → unnamed asset transformation
-- [ ] Create `transformCostingResponseToNetwork()` function
-- [ ] Map costs back to network structure (cluster/asset/module levels)
+- [x] Create `transformNetworkToCostingRequest()` function
+- [x] Implement block → cost item transformation with unit conversion (dim)
+- [x] Implement group → named asset transformation
+- [x] Implement ungrouped branch → unnamed asset transformation
+- [x] Create `transformCostingResponse()` function
+- [x] Map costs back to network structure (cluster/asset/module levels)
+- [x] Add tests (47 passing total)
 
-### Phase 5: API Endpoints
+### Phase 4.5: Integration Tests ✅ COMPLETE
 
-- [ ] Create `/api/operations/costing/estimate` endpoint
-- [ ] Create `/api/operations/costing/validate` endpoint
-- [ ] Create `/api/operations/costing/libraries` endpoint
-- [ ] Create `/api/operations/costing/libraries/:id/modules` endpoint
-- [ ] Add error handling for costing server unavailability
-- [ ] Add Excel export endpoint `/api/operations/costing/export-excel`
+- [x] Create integration test file (`adapter.integration.test.ts`)
+- [x] Reference network: Capture Unit (Amine) - matches e2e test structure
+- [x] Reference network: LP Compression (Electric Drive)
+- [x] Reference network: Full chain (10 modules)
+- [x] Tests skip gracefully when costing server unavailable
+- [x] Add `test:costing:integration` script
+
+### Phase 5: API Endpoints ✅ COMPLETE
+
+- [x] Create `/api/operations/costing/estimate` endpoint (POST)
+- [x] Create `/api/operations/costing/validate` endpoint (POST)
+- [x] Create `/api/operations/costing/libraries` endpoint (GET)
+- [x] Create `/api/operations/costing/libraries/:id` endpoint (GET)
+- [x] Create `/api/operations/costing/libraries/:id/modules` endpoint (GET)
+- [x] Create `/api/operations/costing/health` endpoint (GET)
+- [x] Add error handling for costing server unavailability (503 response)
+- [ ] Add Excel export endpoint `/api/operations/costing/export-excel` (deferred)
 
 ### Phase 6: Operation Registry
 

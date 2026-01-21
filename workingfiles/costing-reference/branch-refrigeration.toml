@@ -1,0 +1,18 @@
+# Refrigeration - EP with Water Cooling
+type = "branch"
+label = "Refrigeration"
+
+[position]
+x = 600
+y = 300
+
+[[outgoing]]
+target = "branch-shipping"
+weight = 1
+
+[[block]]
+type = "Refrigeration"
+pressure_class = "ep"
+cooling_method = "water"
+heat_duty = "100 MW"
+cooling_water = "100 m^3/h" # 10°C temp rise

@@ -27,11 +27,46 @@ import {
 // ============================================================================
 
 /**
+ * Network data passed directly in request.
+ */
+export type NetworkData = {
+  groups: NetworkGroup[];
+  branches: NetworkBranch[];
+};
+
+export type NetworkGroup = {
+  id: string;
+  label?: string;
+  branchIds: string[];
+};
+
+export type NetworkBranch = {
+  id: string;
+  label?: string;
+  parentId?: string;
+  blocks: NetworkBlock[];
+};
+
+export type NetworkBlock = {
+  type: string;
+  quantity?: number;
+  [key: string]: unknown;
+};
+
+/**
+ * Network source - discriminated union.
+ * Either provide a path to read from disk, or pass network data directly.
+ */
+export type NetworkSource =
+  | { type: "path"; path: string }
+  | { type: "data"; network: NetworkData };
+
+/**
  * Request body for costing estimate.
  */
 export type CostingEstimateRequest = {
-  /** Path to the network directory */
-  networkPath: string;
+  /** Network source - either path or inline data */
+  source: NetworkSource;
   
   /** Cost library to use (e.g., "V1.1_working") */
   libraryId: string;

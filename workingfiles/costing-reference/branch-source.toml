@@ -1,0 +1,16 @@
+# CO2 Source - Cement plant
+type = "branch"
+label = "CO2 Source"
+
+[position]
+x = 100
+y = 300
+
+[[outgoing]]
+target = "branch-capture"
+weight = 1
+
+[[block]]
+type = "Emitter"
+emitter_type = "cement"
+mass_flow = "100 t/h"

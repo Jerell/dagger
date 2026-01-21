@@ -1,0 +1,24 @@
+# HP Compression (40 to 120 bar) - Electric Drive
+type = "branch"
+label = "HP Compression"
+
+[position]
+x = 500
+y = 300
+
+[[outgoing]]
+target = "branch-refrigeration"
+weight = 1
+
+[[block]]
+type = "Compressor"
+pressure_range = "hp"
+drive_type = "electric"
+
+# Scaling factors
+compressor_duty = "100 MW"
+cooling_duty = "100 MW"
+
+# Item-specific electrical power (variable OPEX)
+electrical_power_compressor = "100 kW" # compressor motor (Item 007)
+electrical_power_cooler = "100 kW"     # after-cooler fans (Item 008)

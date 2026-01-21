@@ -1,0 +1,31 @@
+# Costing Reference Network
+# 
+# This network matches the full chain from the costing tool's e2e tests.
+# Used for integration testing the costing adapter.
+#
+# Expected results (from costing.spec.ts):
+# - Direct Equipment Cost: €8,501,698,415.04
+# - Total Installed Cost: €31,881,369,056.40
+
+[properties]
+# Default timeline for all assets
+constructionStart = 2025
+constructionFinish = 2026
+operationStart = 2027
+operationFinish = 2046
+decommissioningStart = 2047
+decommissioningFinish = 2047
+
+# Default asset parameters
+discountRate = 0.1
+assetUptime = 0.95
+ftePersonnel = 5
+labourAverageSalary = 55000
+labourCurrency = "USD"
+
+[dimensions]
+mass_flow = "massflow"
+compressor_duty = "power"
+cooling_duty = "power"
+electrical_power = "power"
+heat_duty = "power"

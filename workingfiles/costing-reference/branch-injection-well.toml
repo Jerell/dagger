@@ -1,0 +1,12 @@
+# Offshore Injection Well
+type = "branch"
+label = "Injection Well"
+
+[position]
+x = 1000
+y = 300
+
+[[block]]
+type = "InjectionWell"
+location = "offshore"
+number_of_wells = 100  # dimensionless count

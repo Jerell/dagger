@@ -1,0 +1,17 @@
+# Capture Unit - Amine absorption
+type = "branch"
+label = "Capture Unit"
+
+[position]
+x = 200
+y = 300
+
+[[outgoing]]
+target = "branch-lp-compression"
+weight = 1
+
+[[block]]
+type = "CaptureUnit"
+capture_technology = "amine"
+mass_flow = "100 t/h"
+quantity = 3
