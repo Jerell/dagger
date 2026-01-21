@@ -224,7 +224,7 @@ function App() {
           or both. My intention is for blocks to be the atomic pieces, but if
           any sequence of blocks is repeated enough it might be useful to group
           them together as one block. But I do think it's generally better to
-          avoid compount blocks.
+          avoid compound blocks.
         </p>
 
         <h4 className="text-lg font-bold">Assets</h4>
