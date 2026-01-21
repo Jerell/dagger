@@ -10,7 +10,7 @@ export type GeographicWindowNodeData = GroupNodeData & {
 
 export const GeographicWindowNode = forwardRef<HTMLDivElement, NodeProps>(
   ({ data, selected, width, height }, ref) => {
-    const nodeData = data as GeographicWindowNodeData;
+    // const nodeData = data as GeographicWindowNodeData;
 
     return (
       <div

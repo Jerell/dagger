@@ -713,13 +713,14 @@ function OperationCard({ operation, networkId }) {
 
 ## Implementation Checklist
 
-### Phase 1: Cost Library Integration
+### Phase 1: Cost Library Integration ✅ COMPLETE
 
 - [x] Copy cost library reference data to `backend/reference/costing/`
-- [ ] Create type normalization dictionary (e.g., "Capture Unit" → "CaptureUnit")
-- [ ] Parse cost library to extract available modules and their required parameters
-- [ ] Create module lookup service (block type + subtype → module ID)
-- [ ] Create types for cost library structures
+- [x] Create type normalization function (e.g., "Capture Unit" → "CaptureUnit")
+- [x] Parse cost library to extract available modules and their required parameters
+- [x] Create module lookup service (block type + subtype → module ID)
+- [x] Create types for cost library structures
+- [x] Add tests (23 passing)
 
 ### Phase 2: Schema Definition
 

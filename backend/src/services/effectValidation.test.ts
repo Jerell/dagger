@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, mock } from "bun:test";
 import {
   validateQueryBlocks,
   validateNetworkBlocks,
@@ -6,7 +6,7 @@ import {
 } from "./effectValidation";
 
 // Mock WASM - use a class mock
-vi.mock("../../pkg/dagger.js", () => {
+mock.module("../../pkg/dagger.js", () => {
   class MockDaggerWasm {
     query_from_files(
       filesJson: string,
@@ -44,14 +44,14 @@ vi.mock("../../pkg/dagger.js", () => {
 });
 
 // Mock file system
-vi.mock("fs/promises", () => ({
-  readdir: vi.fn(() =>
+mock.module("fs/promises", () => ({
+  readdir: mock(() =>
     Promise.resolve([
       { name: "branch-2.toml", isFile: () => true },
       { name: "config.toml", isFile: () => true },
     ])
   ),
-  readFile: vi.fn((path: string) => {
+  readFile: mock((path: string) => {
     if (path.includes("branch-2.toml")) {
       return Promise.resolve(`
         [[blocks]]
@@ -75,10 +75,10 @@ vi.mock("fs/promises", () => ({
 }));
 
 // Mock dim
-vi.mock("./dim", () => ({
+mock.module("./dim", () => ({
   default: {
-    init: vi.fn(() => Promise.resolve()),
-    eval: vi.fn((expr: string) => {
+    init: mock(() => Promise.resolve()),
+    eval: mock((expr: string) => {
       if (expr.includes(" as ")) {
         const [valueStr, targetUnit] = expr.split(" as ");
         if (valueStr.includes("mi") && targetUnit.includes("km")) {
@@ -97,89 +97,92 @@ vi.mock("./dim", () => ({
 }));
 
 // Mock schema metadata and Effect Schema
-vi.mock("./effectSchemas", async () => {
-  const { Schema } = await import("effect");
+const { Schema } = await import("effect");
 
-  // Create a real Effect Schema for Pipe
-  const PipeSchema = Schema.Struct({
-    type: Schema.Literal("Pipe"),
-    quantity: Schema.optional(Schema.Number),
-    length: Schema.Number.pipe(
-      Schema.greaterThan(200),
+// Create a real Effect Schema for Pipe
+const PipeSchema = Schema.Struct({
+  type: Schema.Literal("Pipe"),
+  quantity: Schema.optional(Schema.Number),
+  length: Schema.Number.pipe(
+    Schema.greaterThan(200),
+    Schema.annotations({
+      dimension: "length",
+      defaultUnit: "m",
+      title: "Length",
+    })
+  ),
+  diameter: Schema.optional(
+    Schema.Number.pipe(
+      Schema.greaterThan(0),
       Schema.annotations({
         dimension: "length",
         defaultUnit: "m",
-        title: "Length",
+        title: "Diameter",
       })
-    ),
-    diameter: Schema.optional(
-      Schema.Number.pipe(
-        Schema.greaterThan(0),
-        Schema.annotations({
-          dimension: "length",
-          defaultUnit: "m",
-          title: "Diameter",
-        })
-      )
-    ),
-    uValue: Schema.optional(
-      Schema.Number.pipe(
-        Schema.greaterThan(0),
-        Schema.annotations({
-          dimension: "uValue",
-          defaultUnit: "W/m²K",
-          title: "U-Value",
-        })
-      )
-    ),
-  });
-
-  return {
-    getSchema: vi.fn((schemaSet: string, blockType: string) => {
-      if (schemaSet === "v1.0" && blockType === "Pipe") {
-        return PipeSchema;
-      }
-      return null;
-    }),
-    getSchemaMetadata: vi.fn((schemaSet: string, blockType: string) => {
-      if (schemaSet === "v1.0" && blockType === "Pipe") {
-        return {
-          blockType: "Pipe",
-          schemaSet: "v1.0",
-          required: ["length"],
-          optional: ["diameter", "uValue"],
-          properties: {
-            length: {
-              dimension: "length",
-              defaultUnit: "m",
-              title: "Length",
-              min: 200,
-            },
-            diameter: {
-              dimension: "length",
-              defaultUnit: "m",
-              title: "Diameter",
-              min: 0,
-            },
-          },
-        };
-      }
-      return null;
-    }),
-    getPropertyConstraints: vi.fn(() => ({ min: undefined, max: undefined })),
-  };
+    )
+  ),
+  uValue: Schema.optional(
+    Schema.Number.pipe(
+      Schema.greaterThan(0),
+      Schema.annotations({
+        dimension: "uValue",
+        defaultUnit: "W/m²K",
+        title: "U-Value",
+      })
+    )
+  ),
 });
 
+mock.module("./effectSchemas", () => ({
+  getSchema: mock((schemaSet: string, blockType: string) => {
+    if (schemaSet === "v1.0" && blockType === "Pipe") {
+      return PipeSchema;
+    }
+    return null;
+  }),
+  getSchemaMetadata: mock((schemaSet: string, blockType: string) => {
+    if (schemaSet === "v1.0" && blockType === "Pipe") {
+      return {
+        blockType: "Pipe",
+        schemaSet: "v1.0",
+        required: ["length"],
+        optional: ["diameter", "uValue"],
+        properties: {
+          length: {
+            dimension: "length",
+            defaultUnit: "m",
+            title: "Length",
+            min: 200,
+          },
+          diameter: {
+            dimension: "length",
+            defaultUnit: "m",
+            title: "Diameter",
+            min: 0,
+          },
+        },
+      };
+    }
+    return null;
+  }),
+  getPropertyConstraints: mock(() => ({ min: undefined, max: undefined })),
+}));
+
 // Mock path resolution
-vi.mock("path", () => ({
-  resolve: vi.fn((...args: string[]) => args.join("/")),
-  join: vi.fn((...args: string[]) => args.join("/")),
-  normalize: vi.fn((p: string) => p),
+mock.module("path", () => ({
+  resolve: mock((...args: string[]) => args.join("/")),
+  join: mock((...args: string[]) => args.join("/")),
+  normalize: mock((p: string) => p),
 }));
 
 describe("effectValidation", () => {
+  afterAll(() => {
+    // Restore all mocks after tests complete to prevent leakage to other test files
+    mock.restore();
+  });
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Mocks are reset automatically between tests in bun:test
   });
 
   describe("validateQueryBlocks", () => {

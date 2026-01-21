@@ -21,10 +21,6 @@ const config = defineConfig({
   define: {
     global: "globalThis",
   },
-  test: {
-    environment: "node",
-    globals: true,
-  },
 });
 
 export default config;

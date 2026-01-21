@@ -10,7 +10,7 @@ export type GeographicAnchorNodeData = GroupNodeData & {
 
 export const GeographicAnchorNode = forwardRef<HTMLDivElement, NodeProps>(
   ({ data, selected, width, height }, ref) => {
-    const nodeData = data as GeographicAnchorNodeData;
+    // const nodeData = data as GeographicAnchorNodeData;
 
     return (
       <div

@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, mock } from "bun:test";
 import { formatValueUnified, FormatValueOptions } from "./valueFormatter";
 import { UnitPreferences } from "./unitFormatter";
 
 // Mock dim
-vi.mock("./dim.js", () => ({
+mock.module("./dim.js", () => ({
   default: {
-    init: vi.fn().mockResolvedValue(undefined),
-    eval: vi.fn((expr: string) => {
+    init: mock(() => Promise.resolve(undefined)),
+    eval: mock((expr: string) => {
       // Mock unit conversions
       if (expr.includes("1 mi as km")) return "1.60934 km";
       if (expr.includes("1 mi as m")) return "1609.34 m";
@@ -19,11 +19,16 @@ vi.mock("./dim.js", () => ({
 }));
 
 // Mock schema properties lookup
-vi.mock("./effectSchemaProperties.js", () => ({
-  getBlockSchemaProperties: vi.fn().mockResolvedValue({}),
+mock.module("./effectSchemaProperties.js", () => ({
+  getBlockSchemaProperties: mock(() => Promise.resolve({})),
 }));
 
 describe("formatValueUnified", () => {
+  afterAll(() => {
+    // Restore all mocks after tests complete to prevent leakage to other test files
+    mock.restore();
+  });
+
   beforeEach(async () => {
     const dim = await import("./dim.js");
     await dim.default.init();

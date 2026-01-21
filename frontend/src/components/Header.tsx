@@ -4,16 +4,13 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  EyeIcon,
   Home,
-  HomeIcon,
   Menu,
   Network,
   SquareFunction,
   StickyNote,
   X,
 } from "lucide-react";
-import { Button } from "./ui/button";
 import { GlobalCommandDialog } from "./command-dialog";
 import {
   Breadcrumb,
