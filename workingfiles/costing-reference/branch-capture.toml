@@ -13,5 +13,6 @@ weight = 1
 [[block]]
 type = "CaptureUnit"
 capture_technology = "amine"
-mass_flow = "100 t/h"
+# Cost library expects kg/h; reference e2e test uses 100
+mass_flow = "100 kg/h"
 quantity = 3

@@ -89,12 +89,12 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
   if (source.type === "data") {
     return source.network;
   }
-  
+
   // Load from path using WASM
   const { files, configContent } = await readNetworkFiles(source.path);
   const filesJson = JSON.stringify(files);
   const wasm = getWasm();
-  
+
   // Query for all nodes
   const nodesResult = wasm.query_from_files(
     filesJson,
@@ -103,37 +103,51 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
   );
   const nodes: Array<{
     id: string;
-    type: string;
+    type?: string;
+    label?: string;
     parentId?: string;
+    blocks?: NetworkBlock[];
     data?: Record<string, unknown>;
   }> = JSON.parse(nodesResult);
-  
-  // Separate groups and branches
-  const rawGroups = nodes.filter(n => n.type === "labeledGroup" || n.type === "group");
-  const rawBranches = nodes.filter(n => n.type === "branch");
-  
-  // Build group objects
-  const groups: NetworkGroup[] = rawGroups.map(g => ({
-    id: g.id,
-    label: g.data?.label as string | undefined,
-    branchIds: rawBranches
-      .filter(b => b.parentId === g.id)
-      .map(b => b.id),
-  }));
-  
-  // Build branch objects with their blocks
-  const branches: NetworkBranch[] = await Promise.all(
-    rawBranches.map(async b => {
-      const blocks = await getBlocksFromBranchPath(b.id, filesJson, configContent, wasm);
-      return {
-        id: b.id,
-        label: b.data?.label as string | undefined,
-        parentId: b.parentId,
-        blocks,
-      };
+
+  // Nodes from network/nodes may not have a `type` field, but we can identify
+  // branches by the presence of a `blocks` array. Query each node individually
+  // to get its full data including type.
+  const enrichedNodes = await Promise.all(
+    nodes.map(async (node) => {
+      try {
+        const fullResult = wasm.query_from_files(filesJson, configContent || undefined, node.id);
+        const fullNode = JSON.parse(fullResult);
+        return { ...node, ...fullNode };
+      } catch {
+        return node;
+      }
     })
   );
-  
+
+  // Separate groups and branches based on type or presence of blocks
+  const rawGroups = enrichedNodes.filter(
+    (n) => n.type === "labeledGroup" || n.type === "group"
+  );
+  const rawBranches = enrichedNodes.filter(
+    (n) => n.type === "branch" || (Array.isArray(n.blocks) && n.blocks.length > 0)
+  );
+
+  // Build group objects
+  const groups: NetworkGroup[] = rawGroups.map((g) => ({
+    id: g.id,
+    label: (g.label as string) ?? (g.data?.label as string | undefined),
+    branchIds: rawBranches.filter((b) => b.parentId === g.id).map((b) => b.id),
+  }));
+
+  // Build branch objects with their blocks (already embedded in the nodes)
+  const branches: NetworkBranch[] = rawBranches.map((b) => ({
+    id: b.id,
+    label: b.label ?? (b.data?.label as string | undefined),
+    parentId: b.parentId,
+    blocks: b.blocks ?? [],
+  }));
+
   return { groups, branches };
 }
 
@@ -584,6 +598,21 @@ function normalizeParameterName(name: string): string {
 }
 
 /**
+ * Normalize unit strings for dim compatibility.
+ * The cost library uses "m3/h" and "m3/hr" but dim requires "m^3/h".
+ */
+function normalizeDimUnits(units: string): string {
+  // Replace patterns like "m3" with "m^3" for cubic meter
+  // Be careful not to affect other units like "CO2"
+  return units
+    .replace(/\bm3\b/g, "m^3") // m3 → m^3
+    .replace(/\bcm3\b/g, "cm^3") // cm3 → cm^3
+    .replace(/\bkm3\b/g, "km^3") // km3 → km^3
+    .replace(/\/hr\b/g, "/h") // hr → h (dim uses h for hour)
+    .replace(/\b(\d+)([a-zA-Z]+)3\b/g, "$1$2^3"); // Handle other cases
+}
+
+/**
  * Convert a parameter value to the target units using dim.
  */
 async function convertParameterValue(
@@ -593,7 +622,7 @@ async function convertParameterValue(
   if (typeof value === "number") {
     return value;
   }
-  
+
   if (typeof value === "string") {
     try {
       // Try parsing as a plain number first
@@ -601,19 +630,22 @@ async function convertParameterValue(
       if (!isNaN(parsed) && !value.match(/[a-zA-Z]/)) {
         return parsed;
       }
-      
+
       // Try converting unit string using dim (e.g., "100 kg/h" → target units)
       // dim.eval converts to base units, so we need to express the conversion
       if (targetUnits && value.trim()) {
+        // Normalize target units for dim compatibility
+        const normalizedTarget = normalizeDimUnits(targetUnits);
+
         // Expression like "(100 t/h) / (1 kg/h)" gives the numeric value in kg/h
-        const conversionExpr = `(${value}) / (1 ${targetUnits})`;
+        const conversionExpr = `(${value}) / (1 ${normalizedTarget})`;
         const result = dim.eval(conversionExpr);
         const numericResult = parseFloat(result);
         if (!isNaN(numericResult)) {
           return numericResult;
         }
       }
-      
+
       // Fallback: try parsing as a plain number
       if (!isNaN(parsed)) {
         return parsed;
@@ -622,7 +654,7 @@ async function convertParameterValue(
       console.warn(`Failed to convert value "${value}" to ${targetUnits}:`, error);
     }
   }
-  
+
   return null;
 }
 
