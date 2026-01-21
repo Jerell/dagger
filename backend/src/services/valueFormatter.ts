@@ -13,7 +13,7 @@ import { formatValue, UnitPreferences } from "./unitFormatter";
 import { getBlockSchemaProperties } from "./effectSchemaProperties";
 import { parseValue } from "./valueParser";
 
-export interface FormatValueOptions {
+export type FormatValueOptions = {
   /** Property name (e.g., "length", "ambientTemperature") */
   propertyName: string;
   /** Block type (e.g., "Pipe", "Compressor") - optional for global properties */
@@ -31,7 +31,7 @@ export interface FormatValueOptions {
   schemaSet?: string;
   /** Block path - used to look up schema metadata if not provided */
   blockPath?: string;
-}
+};
 
 /**
  * Format a single value according to unit preferences

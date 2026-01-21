@@ -11,14 +11,14 @@
 
 import dim from "./dim";
 
-export interface ValueParseResult {
+export type ValueParseResult = {
   /** The numeric value extracted */
   numericValue: number;
   /** The unit string if it was a unit string, undefined otherwise */
   unitString?: string;
   /** Whether this was a unit string */
   isUnitString: boolean;
-}
+};
 
 /**
  * Parse a value to extract numeric value and unit information

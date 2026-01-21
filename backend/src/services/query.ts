@@ -55,13 +55,13 @@ async function readNetworkFiles(networkPath: string): Promise<{
   return { files, configContent };
 }
 
-export interface UnitPreferences {
+export type UnitPreferences = {
   queryOverrides?: Record<string, string>;
   blockTypes?: Record<string, Record<string, string>>;
   dimensions?: Record<string, string>;
   originalStrings?: Record<string, string>;
   propertyDimensions?: Record<string, string>; // Maps property names to dimensions (e.g., "ambientTemperature" -> "temperature")
-}
+};
 
 /**
  * Parse unit preferences and property dimensions from config.toml content

@@ -14,25 +14,25 @@ import { normalizeBlockTypeWithOverrides } from "./type-normalization";
 // Types
 // ============================================================================
 
-export interface ModuleInfo {
+export type ModuleInfo = {
   id: string;           // e.g., "M0201"
   type: string;         // e.g., "CaptureUnit"
   subtype: string | null; // e.g., "Amine" or null if no subtype
   costItemIds: string[]; // e.g., ["Item 023"]
   requiredParameters: ParameterInfo[];
-}
+};
 
-export interface ParameterInfo {
+export type ParameterInfo = {
   name: string;        // e.g., "Mass flow"
   units: string;       // e.g., "kg/h"
   costItemId: string;  // Which cost item requires this parameter
-}
+};
 
-export interface ModuleLookupResult {
+export type ModuleLookupResult = {
   moduleId: string;
   costItemRefs: string[];
   requiredParameters: ParameterInfo[];
-}
+};
 
 // ============================================================================
 // Cost Library Loader
@@ -72,14 +72,14 @@ export async function listCostLibraries(): Promise<string[]> {
 // Module Index Builder
 // ============================================================================
 
-export interface ModuleIndex {
+export type ModuleIndex = {
   /** Map of normalized type → subtype → ModuleInfo */
   byTypeAndSubtype: Map<string, Map<string, ModuleInfo>>;
   /** Map of module ID → ModuleInfo */
   byId: Map<string, ModuleInfo>;
   /** All modules */
   all: ModuleInfo[];
-}
+};
 
 /**
  * Build a module index from a cost library for efficient lookup.

@@ -1,15 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 
-export interface NetworkFile {
+export type NetworkFile = {
   path: string;
   content: string;
-}
+};
 
-export interface OperationsServerConfig {
+export type OperationsServerConfig = {
   costing_url?: string | null;
   modelling_url?: string | null;
-}
+};
 
 /**
  * Start the local server (Bun + Hono)

@@ -20,17 +20,19 @@ This document outlines the integration between Dagger and an external costing se
 
 ### Key Insights
 
-**1. Groups → Named Assets**
+1. Groups → Named Assets
+
 - Groups with a `costing` section become named assets
 - All blocks from branches within the group are collected into one asset
 - Asset-level properties (timeline, factors) come from the group
 
-**2. Ungrouped Branches → Unnamed Assets**
+2. Ungrouped Branches → Unnamed Assets
+
 - Branches not in a group become standalone assets
 - Use default timeline/factors (shown in results as "using defaults")
 - Each ungrouped branch = one asset
 
-**3. Block Type Mapping**
+3. Block Type Mapping
 
 **UX Decision:** Dagger uses **human-readable format** for block types (natural language with spaces). The adapter normalizes internally to match cost library format.
 
@@ -48,6 +50,7 @@ type = "Compressor"
 ```
 
 The adapter normalizes user input to match cost library:
+
 ```typescript
 // backend/src/services/costing/type-normalization.ts
 
@@ -71,6 +74,7 @@ export function normalizeBlockType(userType: string): string {
 ```
 
 **Why this approach:**
+
 - Engineers shouldn't have to think about camelCase conventions
 - Natural language is more readable in TOML files
 - Adapter handles all translation internally

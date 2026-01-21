@@ -27,10 +27,10 @@ function resolvePath(relativePath: string): string {
   return path.resolve(process.cwd(), relativePath);
 }
 
-interface NetworkFiles {
+type NetworkFiles = {
   files: Record<string, string>;
   configContent: string | null;
-}
+};
 
 async function readNetworkFiles(networkPath: string): Promise<NetworkFiles> {
   const absolutePath = resolvePath(networkPath);
@@ -54,18 +54,18 @@ async function readNetworkFiles(networkPath: string): Promise<NetworkFiles> {
   return { files, configContent };
 }
 
-export interface ValidationResult {
+export type ValidationResult = {
   is_valid: boolean;
   severity?: "error" | "warning";
   message?: string;
   value?: string;
   scope?: string;
-}
+};
 
-export interface Block {
+export type Block = {
   type: string;
   [key: string]: string | number | null | undefined;
-}
+};
 
 export type PropertyValue = string | number | null | undefined;
 

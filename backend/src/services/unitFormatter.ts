@@ -7,18 +7,18 @@
 import dim from "./dim";
 import { formatValueUnified } from "./valueFormatter";
 
-export interface UnitPreferences {
+export type UnitPreferences = {
   queryOverrides?: Record<string, string>;
   blockTypes?: Record<string, Record<string, string>>;
   dimensions?: Record<string, string>;
   originalStrings?: Record<string, string>;
   propertyDimensions?: Record<string, string>; // Maps property names to dimensions
-}
+};
 
-interface UnitMetadata {
+type UnitMetadata = {
   dimension?: string;
   defaultUnit?: string;
-}
+};
 
 /**
  * Format a numeric value with unit preferences

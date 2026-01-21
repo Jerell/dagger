@@ -36,13 +36,13 @@ const nodeTypes: NodeTypes = {
   image: ImageNode as NodeTypes["image"],
 };
 
-interface FlowNetworkProps {
+type FlowNetworkProps = {
   nodes: FlowNode[];
   edges: FlowEdge[];
   nodesDraggable?: boolean;
   nodesConnectable?: boolean;
   elementsSelectable?: boolean;
-}
+};
 
 export function FlowNetwork({
   nodes,

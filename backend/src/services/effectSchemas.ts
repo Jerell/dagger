@@ -1,21 +1,21 @@
 import { Schema } from "effect";
 import { schemaRegistry } from "../schemas/index";
 
-export interface PropertyMetadata {
+export type PropertyMetadata = {
   dimension?: string;
   defaultUnit?: string;
   title?: string;
   min?: number;
   max?: number;
-}
+};
 
-export interface SchemaMetadata {
+export type SchemaMetadata = {
   blockType: string;
   schemaSet: string;
   required: string[];
   optional: string[];
   properties: Record<string, PropertyMetadata>;
-}
+};
 
 /**
  * Get a schema from the registry
