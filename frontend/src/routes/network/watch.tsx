@@ -98,26 +98,24 @@ function WatchPage() {
 
   return (
     <div className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
-      <div className="border-b border-brand-grey-3 flex items-center justify-between">
+      <div className="p-px pl-0.5 border-b border-brand-grey-3 flex items-center justify-between">
         {fileWatcher.watchMode.enabled ? (
           <>
             <div className="flex flex-col">
-              <h1 className="text-3xl">Watching Directory</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className="text-3xl">
                 {fileWatcher.watchMode.directoryPath}
-              </p>
+              </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleExport}
                 disabled={isExporting || nodes.length === 0}
               >
                 <Download className="mr-2 h-4 w-4" />
                 {isExporting ? "Exporting..." : "Export"}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDisableWatch}>
+              <Button variant="outline"  onClick={handleDisableWatch}>
                 <EyeOff className="mr-2 h-4 w-4" />
                 Stop Watching
               </Button>
@@ -128,10 +126,9 @@ function WatchPage() {
             <div className="flex flex-col">
               <h1 className="text-3xl">Watch Network Directory</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleExport}
                 disabled={isExporting || nodes.length === 0}
               >
