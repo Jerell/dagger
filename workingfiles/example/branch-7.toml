@@ -1,31 +1,24 @@
 type = "branch"
-
 label = "Branch 7"
 
 [position]
-x = 250
-y = 380
+x = 47.67411300919845
+y = 484.08672798948754
 
 [[block]]
-quantity = 1
 type = "Source"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Sink"

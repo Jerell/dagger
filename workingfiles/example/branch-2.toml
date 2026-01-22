@@ -1,5 +1,4 @@
 type = "branch"
-
 label = "Branch 2"
 parentId = "group-1"
 
@@ -16,7 +15,6 @@ target = "branch-5"
 weight = 3
 
 [[block]]
-quantity = 1
 type = "Pipe"
 length = "1 mi"
 
@@ -25,37 +23,28 @@ quantity = 2
 type = "Compressor"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Ship"

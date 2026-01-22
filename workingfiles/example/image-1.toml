@@ -1,10 +1,7 @@
 type = "image"
-
 label = "Pipeline Map"
 width = 300
 height = 200
-
-# Path relative to the network directory
 path = "assets/sample-diagram.svg"
 
 [position]

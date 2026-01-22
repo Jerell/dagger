@@ -1,12 +1,10 @@
 type = "labeledGroup"
-
 label = "Group"
 width = 750
 height = 550
-
 efficiency = 0.75
-pressure = "100 bar" # ignored
+pressure = "100 bar"
 
 [position]
-x = -150
-y = -250
+x = -338.2917214191853
+y = -108.48883048620237

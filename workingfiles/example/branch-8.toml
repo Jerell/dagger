@@ -1,5 +1,4 @@
 type = "branch"
-
 label = "Branch 8"
 
 [position]
@@ -11,17 +10,13 @@ target = "branch-5"
 weight = 1
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Pipe"
 
 [[block]]
-quantity = 1
 type = "Ship"
