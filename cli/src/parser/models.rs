@@ -4,8 +4,8 @@ use toml::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Position {
-    pub x: i32,
-    pub y: i32,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -125,6 +125,8 @@ struct BlockData {
     type_: String,
     kind: String,
     label: String,
+    #[serde(flatten)]
+    extra: HashMap<String, Value>,
 }
 
 impl From<&Block> for BlockData {
@@ -139,6 +141,7 @@ impl From<&Block> for BlockData {
             type_: block.type_.clone(),
             kind: kind.to_string(),
             label: block.type_.clone(),
+            extra: block.extra.clone(),
         }
     }
 }

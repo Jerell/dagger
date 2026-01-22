@@ -14,6 +14,8 @@ export type Block = {
   type: string;
   kind: string;
   label: string;
+  // Extra properties from TOML (e.g., pressure, length, diameter)
+  [key: string]: string | number | boolean | null | undefined;
 };
 
 // Base node properties that all nodes have

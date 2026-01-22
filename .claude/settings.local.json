@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Bash(cargo check:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run tsc:*)",
+      "Bash(npx tsc:*)",
+      "Bash(just build-wasm:*)"
     ]
   }
 }

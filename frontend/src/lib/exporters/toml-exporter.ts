@@ -45,31 +45,26 @@ function serializeNodeToToml(
 
   // Handle branch-specific properties
   if (node.type === "branch") {
-    // Add outgoing array (always include, even if empty)
-    // outgoing comes from edges, not from the node itself
+    // Add outgoing array only if there are outgoing edges
+    // (original TOML files omit this field when empty)
     if (outgoing && outgoing.length > 0) {
       tomlObj.outgoing = outgoing;
-    } else {
-      tomlObj.outgoing = [];
     }
 
     // Add blocks (convert from data.blocks to [[block]] format)
+    // Note: 'kind' and 'label' are computed fields from the backend, not part of the original TOML
     if (node.data.blocks && node.data.blocks.length > 0) {
       tomlObj.block = node.data.blocks.map((block) => {
-        const blockObj: Record<string, unknown> = {
-          type: block.type,
-        };
-        if (block.quantity !== undefined) {
+        const blockObj: Record<string, unknown> = {};
+        // Only include quantity if it's not the default (1)
+        if (block.quantity !== undefined && block.quantity !== 1) {
           blockObj.quantity = block.quantity;
         }
-        if (block.kind) {
-          blockObj.kind = block.kind;
-        }
-        if (block.label) {
-          blockObj.label = block.label;
-        }
-        // Add any extra properties from the block
+        // type is required
+        blockObj.type = block.type;
+        // Add any extra properties from the block (excluding computed fields)
         Object.keys(block).forEach((key) => {
+          // Skip known fields and computed fields (kind, label are computed by backend)
           if (!["type", "quantity", "kind", "label"].includes(key)) {
             blockObj[key] = (block as Record<string, unknown>)[key];
           }
@@ -96,6 +91,11 @@ function serializeNodeToToml(
         tomlObj[key] = node.data[key];
       }
     });
+  }
+
+  // For image nodes, add the path property
+  if (node.type === "image" && "path" in node.data) {
+    tomlObj.path = node.data.path;
   }
 
   // @iarna/toml will automatically serialize nested objects as TOML tables
