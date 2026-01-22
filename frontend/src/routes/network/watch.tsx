@@ -98,7 +98,7 @@ function WatchPage() {
 
   return (
     <div className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
-      <div className="p-4 border-b border-brand-grey-3 flex items-center justify-between">
+      <div className="border-b border-brand-grey-3 flex items-center justify-between">
         {fileWatcher.watchMode.enabled ? (
           <>
             <div className="flex flex-col">
@@ -127,9 +127,6 @@ function WatchPage() {
           <>
             <div className="flex flex-col">
               <h1 className="text-3xl">Watch Network Directory</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Select a directory to watch for TOML file changes
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <Button
