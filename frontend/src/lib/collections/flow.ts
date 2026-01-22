@@ -17,11 +17,11 @@ function getNodeZIndex(nodeType: string): number {
   switch (nodeType) {
     case "geographicWindow":
     case "geographicAnchor":
-      return 0; // Bottom layer
+      return -2; // Bottom layer
     case "image":
-      return 1; // Above geographic
+      return -1; // Above geographic
     default:
-      return 2; // Top layer (branches, groups, etc.)
+      return 0; // Top layer (branches, groups, etc.)
   }
 }
 
