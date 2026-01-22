@@ -10,9 +10,26 @@ import type { FlowNode, FlowEdge } from "./flow-nodes";
 import { getNetwork, type NetworkResponse } from "@/lib/api-client";
 
 /**
+ * Get z-index for node layering.
+ * Geographic nodes at bottom, images above, everything else on top.
+ */
+function getNodeZIndex(nodeType: string): number {
+  switch (nodeType) {
+    case "geographicWindow":
+    case "geographicAnchor":
+      return 0; // Bottom layer
+    case "image":
+      return 1; // Above geographic
+    default:
+      return 2; // Top layer (branches, groups, etc.)
+  }
+}
+
+/**
  * Sort nodes so parent nodes come before their children
  * ReactFlow requires this ordering when nodes have parentId
  * This must be called whenever nodes are read from collections
+ * Also ensures z-index is applied for proper layering
  */
 export function sortNodesWithParentsFirst(nodes: FlowNode[]): FlowNode[] {
   const nodeMap = new Map<string, FlowNode>();
@@ -34,8 +51,11 @@ export function sortNodesWithParentsFirst(nodes: FlowNode[]): FlowNode[] {
       }
     }
 
-    // Add this node
-    sorted.push(node);
+    // Add this node with z-index for layering
+    sorted.push({
+      ...node,
+      zIndex: node.zIndex ?? getNodeZIndex(node.type),
+    });
     visited.add(node.id);
   };
 
@@ -148,6 +168,8 @@ export async function resetFlowToNetwork(
       // Image nodes are not draggable (they're static reference images)
       draggable: node.type !== "image",
       selectable: true,
+      // Layer nodes: geographic at bottom, images above, everything else on top
+      zIndex: getNodeZIndex(node.type),
     };
     return flowNode;
   });

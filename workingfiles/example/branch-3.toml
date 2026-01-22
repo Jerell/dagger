@@ -2,8 +2,8 @@ type = "branch"
 label = "Branch 3"
 
 [position]
-x = 900
-y = 150
+x = 537.2544803986066
+y = -346.1051657989993
 
 [[block]]
 type = "Port"

@@ -2,8 +2,8 @@ type = "branch"
 label = "Branch 6"
 
 [position]
-x = 1_200
-y = 320
+x = 890.4092464146261
+y = 119.54879005548366
 
 [[block]]
 type = "Pipe"

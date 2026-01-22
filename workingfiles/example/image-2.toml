@@ -1,0 +1,9 @@
+type = "image"
+label = "Pipeline Map"
+width = 1_500
+height = 1_000
+path = "assets/Nagoya_map.png"
+
+[position]
+x = -300
+y = 400
