@@ -233,7 +233,9 @@ describe("adapter", () => {
           isGroup: true,
           branchIds: ["branch-1"],
           blockCount: 5,
+          costableBlockCount: 5,
           usingDefaults: ["timeline", "capex_lang_factors"],
+          blocks: [],
         },
       ];
 

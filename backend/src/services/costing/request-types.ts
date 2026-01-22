@@ -55,11 +55,13 @@ export type NetworkBlock = {
 
 /**
  * Network source - discriminated union.
- * Either provide a path to read from disk, or pass network data directly.
+ * Either provide a path to read from disk, pass network data directly,
+ * or reference a preset network by ID.
  */
 export type NetworkSource =
   | { type: "path"; path: string }
-  | { type: "data"; network: NetworkData };
+  | { type: "data"; network: NetworkData }
+  | { type: "networkId"; networkId: string };
 
 /**
  * Request body for costing estimate.

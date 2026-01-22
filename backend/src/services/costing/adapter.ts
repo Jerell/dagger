@@ -9,6 +9,7 @@
 import { DaggerWasm } from "../../../pkg/dagger.js";
 import * as path from "path";
 import * as fs from "fs/promises";
+import { resolveNetworkPath } from "../../utils/network-path";
 import type {
   CostEstimateRequest,
   AssetParameters,
@@ -30,7 +31,7 @@ import type {
   NetworkBlock,
 } from "./request-types";
 import { resolveAssetProperties } from "./request-types";
-import { mapBlockToModule } from "./block-to-module-mapper";
+import { mapBlockToModule, mapBlockToModuleDetailed, type MappingResult } from "./block-to-module-mapper";
 import { getModuleLookupService } from "./module-lookup";
 import dim from "../dim";
 
@@ -83,15 +84,20 @@ async function readNetworkFiles(networkPath: string): Promise<NetworkFiles> {
 }
 
 /**
- * Load network data from a source (either path or inline data).
+ * Load network data from a source (path, inline data, or networkId).
  */
 async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
   if (source.type === "data") {
     return source.network;
   }
 
+  // For networkId, resolve to a path using the same logic as the network routes
+  const networkPath = source.type === "networkId"
+    ? resolveNetworkPath(source.networkId)
+    : source.path;
+
   // Load from path using WASM
-  const { files, configContent } = await readNetworkFiles(source.path);
+  const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
   const wasm = getWasm();
 
@@ -109,6 +115,9 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
     blocks?: NetworkBlock[];
     data?: Record<string, unknown>;
   }> = JSON.parse(nodesResult);
+
+  console.log("[costing adapter] Initial nodes count:", nodes.length);
+  console.log("[costing adapter] Node IDs:", nodes.map(n => n.id));
 
   // Nodes from network/nodes may not have a `type` field, but we can identify
   // branches by the presence of a `blocks` array. Query each node individually
@@ -132,6 +141,9 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
   const rawBranches = enrichedNodes.filter(
     (n) => n.type === "branch" || (Array.isArray(n.blocks) && n.blocks.length > 0)
   );
+
+  console.log("[costing adapter] Found", rawGroups.length, "groups:", rawGroups.map(g => g.id));
+  console.log("[costing adapter] Found", rawBranches.length, "branches:", rawBranches.map(b => b.id));
 
   // Build group objects
   const groups: NetworkGroup[] = rawGroups.map((g) => ({
@@ -190,13 +202,32 @@ export type TransformResult = {
   assetMetadata: AssetMetadata[];
 };
 
+export type BlockValidation = {
+  id: string;
+  type: string;
+  status: "costable" | "missing_properties" | "not_costable" | "unknown";
+  /** Properties that are defined on this block */
+  definedProperties: Record<string, unknown>;
+  /** Properties that are required but missing */
+  missingProperties: string[];
+  /** Module it maps to (if costable) */
+  moduleType?: string;
+  moduleSubtype?: string;
+};
+
 export type AssetMetadata = {
   assetId: string;
   name?: string;
   isGroup: boolean;
   branchIds: string[];
+  /** Total number of blocks in this asset */
   blockCount: number;
+  /** Number of blocks that can be costed */
+  costableBlockCount: number;
+  /** Which asset-level properties are using defaults */
   usingDefaults: string[];
+  /** Per-block validation details */
+  blocks: BlockValidation[];
 };
 
 /**
@@ -235,7 +266,7 @@ export async function transformNetworkToCostingRequest(
     const groupBranches = group.branchIds
       .map(id => branchById.get(id))
       .filter((b): b is NetworkBranch => b !== undefined);
-    
+
     if (groupBranches.length === 0) continue; // Skip empty groups
 
     const result = await transformGroupToAsset(
@@ -245,9 +276,10 @@ export async function transformNetworkToCostingRequest(
       options
     );
 
-    if (result) {
+    // Always add metadata (for validation), but only add asset if it has costable items
+    assetMetadata.push(result.metadata);
+    if (result.asset.cost_items.length > 0) {
       assets.push(result.asset);
-      assetMetadata.push(result.metadata);
     }
   }
 
@@ -259,9 +291,10 @@ export async function transformNetworkToCostingRequest(
       options
     );
 
-    if (result) {
+    // Always add metadata (for validation), but only add asset if it has costable items
+    assetMetadata.push(result.metadata);
+    if (result.asset.cost_items.length > 0) {
       assets.push(result.asset);
-      assetMetadata.push(result.metadata);
     }
   }
 
@@ -272,6 +305,60 @@ export async function transformNetworkToCostingRequest(
 }
 
 /**
+ * Validate a block and extract its properties.
+ */
+function validateBlock(block: NetworkBlock, blockId: string): BlockValidation {
+  const mappingResult = mapBlockToModuleDetailed(block);
+
+  // Extract defined properties (exclude type, quantity, kind, label)
+  const excludeKeys = new Set(["type", "quantity", "kind", "label"]);
+  const definedProperties: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(block)) {
+    if (!excludeKeys.has(key) && value !== undefined && value !== null) {
+      definedProperties[key] = value;
+    }
+  }
+
+  switch (mappingResult.status) {
+    case "success":
+      return {
+        id: blockId,
+        type: block.type,
+        status: "costable",
+        definedProperties,
+        missingProperties: [],
+        moduleType: mappingResult.mapping.moduleType,
+        moduleSubtype: mappingResult.mapping.subtype ?? undefined,
+      };
+    case "missing_properties":
+      return {
+        id: blockId,
+        type: block.type,
+        status: "missing_properties",
+        definedProperties,
+        missingProperties: mappingResult.missingProperties,
+      };
+    case "not_costable":
+      return {
+        id: blockId,
+        type: block.type,
+        status: "not_costable",
+        definedProperties,
+        missingProperties: [],
+      };
+    case "unknown":
+    default:
+      return {
+        id: blockId,
+        type: block.type,
+        status: "unknown",
+        definedProperties,
+        missingProperties: [],
+      };
+  }
+}
+
+/**
  * Transform a group (with its branches) into an asset.
  */
 async function transformGroupToAsset(
@@ -279,26 +366,30 @@ async function transformGroupToAsset(
   branches: NetworkBranch[],
   moduleLookup: Awaited<ReturnType<typeof getModuleLookupService>>,
   options: TransformOptions
-): Promise<{ asset: AssetParameters; metadata: AssetMetadata } | null> {
+): Promise<{ asset: AssetParameters; metadata: AssetMetadata }> {
   // Collect all blocks from all branches in this group
   const allCostItems: CostItemParameters[] = [];
   const branchIds: string[] = [];
+  const blockValidations: BlockValidation[] = [];
 
   for (const branch of branches) {
     branchIds.push(branch.id);
-    
+
     for (let i = 0; i < branch.blocks.length; i++) {
       const block = branch.blocks[i];
-      const costItems = await transformBlockToCostItems(
-        block,
-        `${branch.id}/blocks/${i}`,
-        moduleLookup
-      );
-      allCostItems.push(...costItems);
+      const blockId = `${branch.id}/blocks/${i}`;
+
+      // Validate block
+      const validation = validateBlock(block, blockId);
+      blockValidations.push(validation);
+
+      // Transform to cost items if costable
+      if (validation.status === "costable") {
+        const costItems = await transformBlockToCostItems(block, blockId, moduleLookup);
+        allCostItems.push(...costItems);
+      }
     }
   }
-
-  if (allCostItems.length === 0) return null;
 
   // Resolve asset properties (apply overrides)
   const overrides = options.assetOverrides?.[group.id];
@@ -321,8 +412,10 @@ async function transformGroupToAsset(
     name: group.label || group.id,
     isGroup: true,
     branchIds,
-    blockCount: allCostItems.length,
+    blockCount: blockValidations.length,
+    costableBlockCount: blockValidations.filter(b => b.status === "costable").length,
     usingDefaults: Array.from(resolved.usingDefaults),
+    blocks: blockValidations,
   };
 
   return { asset, metadata };
@@ -335,20 +428,24 @@ async function transformBranchToAsset(
   branch: NetworkBranch,
   moduleLookup: Awaited<ReturnType<typeof getModuleLookupService>>,
   options: TransformOptions
-): Promise<{ asset: AssetParameters; metadata: AssetMetadata } | null> {
+): Promise<{ asset: AssetParameters; metadata: AssetMetadata }> {
   const costItems: CostItemParameters[] = [];
-  
+  const blockValidations: BlockValidation[] = [];
+
   for (let i = 0; i < branch.blocks.length; i++) {
     const block = branch.blocks[i];
-    const blockCostItems = await transformBlockToCostItems(
-      block,
-      `${branch.id}/blocks/${i}`,
-      moduleLookup
-    );
-    costItems.push(...blockCostItems);
-  }
+    const blockId = `${branch.id}/blocks/${i}`;
 
-  if (costItems.length === 0) return null;
+    // Validate block
+    const validation = validateBlock(block, blockId);
+    blockValidations.push(validation);
+
+    // Transform to cost items if costable
+    if (validation.status === "costable") {
+      const blockCostItems = await transformBlockToCostItems(block, blockId, moduleLookup);
+      costItems.push(...blockCostItems);
+    }
+  }
 
   // Resolve asset properties (ungrouped branches use defaults unless overridden)
   const overrides = options.assetOverrides?.[branch.id];
@@ -371,8 +468,10 @@ async function transformBranchToAsset(
     name: branch.label || branch.id,
     isGroup: false,
     branchIds: [branch.id],
-    blockCount: costItems.length,
+    blockCount: blockValidations.length,
+    costableBlockCount: blockValidations.filter(b => b.status === "costable").length,
     usingDefaults: Array.from(resolved.usingDefaults),
+    blocks: blockValidations,
   };
 
   return { asset, metadata };

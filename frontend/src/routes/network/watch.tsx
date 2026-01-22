@@ -10,6 +10,14 @@ import { useFileWatcher } from "@/lib/hooks/use-file-watcher";
 import { openDialog } from "@/contexts/dialog-provider";
 import { WatchDirectoryDialog } from "@/components/dialogs/watch-directory-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { OperationsList } from "@/components/operations";
 import { EyeOff, FolderOpen, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
@@ -97,82 +105,93 @@ function WatchPage() {
   };
 
   return (
-    <div className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
-      <div className="p-px pl-0.5 border-b border-brand-grey-3 flex items-center justify-between">
-        {fileWatcher.watchMode.enabled ? (
-          <>
-            <div className="flex flex-col">
-              <h1 className="text-3xl">
-                {fileWatcher.watchMode.directoryPath}
-              </h1>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={isExporting || nodes.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {isExporting ? "Exporting..." : "Export"}
-              </Button>
-              <Button variant="outline"  onClick={handleDisableWatch}>
-                <EyeOff className="mr-2 h-4 w-4" />
-                Stop Watching
-              </Button>
-            </div>
-          </>
+    <SidebarProvider defaultOpen={true}>
+      <SidebarInset className="flex flex-col bg-brand-white border border-brand-grey-3 min-h-0 h-full">
+        <div className="p-px pl-0.5 border-b border-brand-grey-3 flex items-center justify-between">
+          {fileWatcher.watchMode.enabled ? (
+            <>
+              <div className="flex flex-col">
+                <h1 className="text-3xl">
+                  {fileWatcher.watchMode.directoryPath}
+                </h1>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  disabled={isExporting || nodes.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {isExporting ? "Exporting..." : "Export"}
+                </Button>
+                <Button variant="outline" onClick={handleDisableWatch}>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  Stop Watching
+                </Button>
+                <SidebarTrigger className="ml-2" />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col">
+                <h1 className="text-3xl">Watch Network Directory</h1>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  disabled={isExporting || nodes.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {isExporting ? "Exporting..." : "Export"}
+                </Button>
+                <Button onClick={handleOpenWatchDialog}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Select Directory
+                </Button>
+                <SidebarTrigger className="ml-2" />
+              </div>
+            </>
+          )}
+        </div>
+        {fileWatcher.watchMode.enabled && fileWatcher.watchMode.directoryPath ? (
+          <div className="flex-1 min-h-0 h-full">
+            <NetworkProvider networkId={fileWatcher.watchMode.directoryPath}>
+              <FlowNetwork
+                nodes={nodes}
+                edges={edges}
+                nodesDraggable={fileWatcher.nodesDraggable}
+                nodesConnectable={fileWatcher.nodesConnectable}
+                elementsSelectable={fileWatcher.elementsSelectable}
+              />
+            </NetworkProvider>
+          </div>
         ) : (
-          <>
-            <div className="flex flex-col">
-              <h1 className="text-3xl">Watch Network Directory</h1>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={isExporting || nodes.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {isExporting ? "Exporting..." : "Export"}
-              </Button>
-              <Button onClick={handleOpenWatchDialog}>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground" />
+              <div>
+                <h2 className="text-xl font-semibold">No Directory Selected</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Click "Select Directory" to choose a directory containing TOML
+                  network files.
+                </p>
+              </div>
+              <Button onClick={handleOpenWatchDialog} size="lg">
                 <FolderOpen className="mr-2 h-4 w-4" />
                 Select Directory
               </Button>
             </div>
-          </>
-        )}
-      </div>
-      {fileWatcher.watchMode.enabled && fileWatcher.watchMode.directoryPath ? (
-        <div className="flex-1 min-h-0 h-full">
-          <NetworkProvider networkId={fileWatcher.watchMode.directoryPath}>
-            <FlowNetwork
-              nodes={nodes}
-              edges={edges}
-              nodesDraggable={fileWatcher.nodesDraggable}
-              nodesConnectable={fileWatcher.nodesConnectable}
-              elementsSelectable={fileWatcher.elementsSelectable}
-            />
-          </NetworkProvider>
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground" />
-            <div>
-              <h2 className="text-xl font-semibold">No Directory Selected</h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                Click "Select Directory" to choose a directory containing TOML
-                network files.
-              </p>
-            </div>
-            <Button onClick={handleOpenWatchDialog} size="lg">
-              <FolderOpen className="mr-2 h-4 w-4" />
-              Select Directory
-            </Button>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </SidebarInset>
+      <Sidebar side="right" collapsible="offcanvas">
+        <SidebarContent>
+          {fileWatcher.watchMode.enabled && fileWatcher.watchMode.directoryPath && (
+            <OperationsList networkPath={fileWatcher.watchMode.directoryPath} />
+          )}
+        </SidebarContent>
+      </Sidebar>
+    </SidebarProvider>
   );
 }

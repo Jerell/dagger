@@ -10,11 +10,13 @@ export type {
   Operation,
   OperationValidation,
   AssetValidation,
+  BlockValidation,
   Timeline,
   CostParameter,
   CapexLangFactors,
   FixedOpexFactors,
   AssetPropertyOverrides,
+  NetworkSource,
   CostingEstimateRequest,
   CostingEstimateResponse,
   AssetCostResult,
@@ -49,4 +51,5 @@ export {
   costingHealthQueryOptions,
   // Helpers
   createCostingRequest,
+  createNetworkSource,
 } from "./queries";

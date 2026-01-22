@@ -12,6 +12,7 @@ import type {
   CostLibraryModule,
   HealthStatus,
   AssetPropertyOverrides,
+  NetworkSource,
 } from "./types";
 
 // ============================================================================
@@ -45,20 +46,38 @@ export async function runCostingEstimate(
 }
 
 /**
+ * Check if a string looks like a filesystem path.
+ * Paths start with / or contain path separators.
+ */
+function isFilesystemPath(value: string): boolean {
+  return value.startsWith("/") || value.includes("/") || value.includes("\\");
+}
+
+/**
+ * Create a NetworkSource from a string that could be either a path or networkId.
+ */
+export function createNetworkSource(value: string): NetworkSource {
+  if (isFilesystemPath(value)) {
+    return { type: "path", path: value };
+  }
+  return { type: "networkId", networkId: value };
+}
+
+/**
  * Validate a network for costing readiness.
+ * Accepts either a filesystem path or a network ID.
  */
 export async function validateCostingNetwork(
-  networkPath: string,
+  networkPathOrId: string,
   libraryId: string
 ): Promise<OperationValidation> {
   const baseUrl = getApiBaseUrl();
+  const source = createNetworkSource(networkPathOrId);
+
   const response = await fetch(`${baseUrl}/api/operations/costing/validate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      source: { type: "path", path: networkPath },
-      libraryId,
-    }),
+    body: JSON.stringify({ source, libraryId }),
   });
 
   if (!response.ok) {
@@ -92,7 +111,9 @@ export async function listCostLibraries(): Promise<CostLibrary[]> {
   }
 
   const data = await response.json();
-  return data.libraries;
+  // Backend returns array of strings, convert to objects
+  const libraries: string[] = data.libraries;
+  return libraries.map((id) => ({ id, name: id }));
 }
 
 /**
@@ -163,16 +184,17 @@ export async function checkCostingHealth(): Promise<HealthStatus> {
 
 /**
  * Query options for costing validation.
+ * Accepts either a filesystem path or a network ID.
  */
 export function costingValidationQueryOptions(
-  networkPath: string,
+  networkPathOrId: string,
   libraryId: string
 ) {
   return {
-    queryKey: ["costing", "validation", networkPath, libraryId] as const,
-    queryFn: () => validateCostingNetwork(networkPath, libraryId),
+    queryKey: ["costing", "validation", networkPathOrId, libraryId] as const,
+    queryFn: () => validateCostingNetwork(networkPathOrId, libraryId),
     staleTime: 1000 * 30, // 30 seconds
-    enabled: !!networkPath && !!libraryId,
+    enabled: !!networkPathOrId && !!libraryId,
   };
 }
 
@@ -230,16 +252,17 @@ export function costingHealthQueryOptions() {
 /**
  * Create a costing estimate request.
  * Helper to construct the request with proper types.
+ * Accepts either a filesystem path or a network ID.
  */
 export function createCostingRequest(options: {
-  networkPath: string;
+  networkPathOrId: string;
   libraryId: string;
   targetCurrency?: string;
   assetDefaults?: AssetPropertyOverrides;
   assetOverrides?: Record<string, AssetPropertyOverrides>;
 }): CostingEstimateRequest {
   return {
-    source: { type: "path", path: options.networkPath },
+    source: createNetworkSource(options.networkPathOrId),
     libraryId: options.libraryId,
     targetCurrency: options.targetCurrency,
     assetDefaults: options.assetDefaults,

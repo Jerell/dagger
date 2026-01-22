@@ -52,12 +52,31 @@ export type OperationValidation = {
   assets: AssetValidation[];
 };
 
+export type BlockValidation = {
+  id: string;
+  type: string;
+  status: "costable" | "missing_properties" | "not_costable" | "unknown";
+  /** Properties defined on this block */
+  definedProperties: Record<string, unknown>;
+  /** Properties required but missing */
+  missingProperties: string[];
+  /** Module type (if costable) */
+  moduleType?: string;
+  moduleSubtype?: string;
+};
+
 export type AssetValidation = {
   id: string;
   name?: string;
   isGroup: boolean;
+  /** Total blocks in this asset */
   blockCount: number;
-  usingDefaults: boolean;
+  /** Number of blocks that can be costed */
+  costableBlockCount: number;
+  /** Which asset-level properties are using defaults */
+  usingDefaults: string[];
+  /** Per-block validation */
+  blocks: BlockValidation[];
 };
 
 // ============================================================================
@@ -128,11 +147,18 @@ export type AssetPropertyOverrides = {
 };
 
 /**
+ * Network source - either a filesystem path or a network ID (preset).
+ */
+export type NetworkSource =
+  | { type: "path"; path: string }
+  | { type: "networkId"; networkId: string };
+
+/**
  * Request body for costing estimate.
  */
 export type CostingEstimateRequest = {
-  /** Network source - path to network directory */
-  source: { type: "path"; path: string };
+  /** Network source - path to network directory or network ID */
+  source: NetworkSource;
 
   /** Cost library to use (e.g., "V1.1_working") */
   libraryId: string;

@@ -45,7 +45,12 @@ export const DataSourceSchema = S.mutable(S.Struct({
   network: NetworkDataSchema,
 }));
 
-export const NetworkSourceSchema = S.Union(PathSourceSchema, DataSourceSchema);
+export const NetworkIdSourceSchema = S.mutable(S.Struct({
+  type: S.Literal("networkId"),
+  networkId: S.String,
+}));
+
+export const NetworkSourceSchema = S.Union(PathSourceSchema, DataSourceSchema, NetworkIdSourceSchema);
 
 // ============================================================================
 // Asset Property Schemas

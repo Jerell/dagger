@@ -137,12 +137,12 @@ costingRoutes.post("/validate", async (c) => {
     
     // Count total blocks vs costable blocks
     const totalBlocks = assetMetadata.reduce((sum, a) => sum + a.blockCount, 0);
-    const costableBlocks = request.assets.reduce((sum, a) => sum + a.cost_items.length, 0);
-    
+    const costableBlocks = assetMetadata.reduce((sum, a) => sum + a.costableBlockCount, 0);
+
     return c.json({
-      isReady: request.assets.length > 0,
+      isReady: costableBlocks > 0,
       summary: {
-        assetCount: request.assets.length,
+        assetCount: assetMetadata.length,
         totalBlocks,
         costableBlocks,
         unmappedBlocks: totalBlocks - costableBlocks,
@@ -152,7 +152,17 @@ costingRoutes.post("/validate", async (c) => {
         name: m.name,
         isGroup: m.isGroup,
         blockCount: m.blockCount,
+        costableBlockCount: m.costableBlockCount,
         usingDefaults: m.usingDefaults,
+        blocks: m.blocks.map(b => ({
+          id: b.id,
+          type: b.type,
+          status: b.status,
+          definedProperties: b.definedProperties,
+          missingProperties: b.missingProperties,
+          moduleType: b.moduleType,
+          moduleSubtype: b.moduleSubtype,
+        })),
       })),
     });
   } catch (error) {

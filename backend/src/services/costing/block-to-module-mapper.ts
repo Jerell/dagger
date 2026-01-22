@@ -18,9 +18,27 @@ export type ModuleMapping = {
   subtype: string | null;
 };
 
+export type MappingResult =
+  | { status: "success"; mapping: ModuleMapping }
+  | { status: "missing_properties"; blockType: string; missingProperties: string[] }
+  | { status: "not_costable"; blockType: string }
+  | { status: "unknown"; blockType: string };
+
 // ============================================================================
 // Mapping Functions
 // ============================================================================
+
+/**
+ * Normalize block type name for mapping.
+ * Removes spaces, converts to PascalCase.
+ * e.g., "Capture Unit" → "CaptureUnit", "capture unit" → "CaptureUnit"
+ */
+function normalizeBlockType(type: string): string {
+  return type
+    .split(/[\s_-]+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join("");
+}
 
 /**
  * Map a Dagger block to a cost library module type and subtype.
@@ -38,6 +56,7 @@ export function mapBlockToModule(block: NetworkBlock): ModuleMapping | null {
     Metering: mapMetering,
     Storage: mapStorage,
     Shipping: mapShipping,
+    Ship: mapShipping, // Alias
     LandTransport: mapLandTransport,
     LoadingOffloading: mapLoadingOffloading,
     HeatingAndPumping: mapHeatingAndPumping,
@@ -46,14 +65,101 @@ export function mapBlockToModule(block: NetworkBlock): ModuleMapping | null {
     InjectionTopsides: mapInjectionTopsides,
     OffshorePlatform: mapOffshorePlatform,
     UtilisationEndpoint: () => ({ moduleType: "UtilisationEndpoint", subtype: null }),
+    // Non-costable block types (return null to skip)
+    Source: () => null,
+    Sink: () => null,
+    Port: () => null,
+    Cooler: () => null,
   };
 
-  const mapper = mappers[block.type];
+  // Normalize the block type (remove spaces, handle case)
+  const normalizedType = normalizeBlockType(block.type);
+  const mapper = mappers[normalizedType];
   if (!mapper) {
     return null;
   }
 
   return mapper(block);
+}
+
+/**
+ * Check if a block type is known (even if it can't be costed).
+ * Used for validation to distinguish unknown types from known non-costable types.
+ */
+export function isKnownBlockType(type: string): boolean {
+  const knownTypes = [
+    "Pipe", "Compressor", "Pump", "Emitter", "CaptureUnit", "Dehydration",
+    "Refrigeration", "Metering", "Storage", "Shipping", "Ship", "LandTransport",
+    "LoadingOffloading", "HeatingAndPumping", "PipeMerge", "InjectionWell",
+    "InjectionTopsides", "OffshorePlatform", "UtilisationEndpoint",
+    "Source", "Sink", "Port", "Cooler",
+  ];
+  const normalizedType = normalizeBlockType(type);
+  return knownTypes.includes(normalizedType);
+}
+
+/**
+ * Map a block with detailed result including missing properties.
+ */
+export function mapBlockToModuleDetailed(block: NetworkBlock): MappingResult {
+  const normalizedType = normalizeBlockType(block.type);
+
+  // Non-costable types
+  const nonCostableTypes = ["Source", "Sink", "Port", "Cooler"];
+  if (nonCostableTypes.includes(normalizedType)) {
+    return { status: "not_costable", blockType: normalizedType };
+  }
+
+  // Check required properties for costable types
+  const requiredProps = getRequiredProperties(normalizedType);
+  if (requiredProps) {
+    const missing = requiredProps.filter(prop => {
+      const value = block[prop];
+      return value === undefined || value === null || value === "";
+    });
+
+    if (missing.length > 0) {
+      return { status: "missing_properties", blockType: normalizedType, missingProperties: missing };
+    }
+  }
+
+  // Try to map
+  const mapping = mapBlockToModule(block);
+  if (mapping) {
+    return { status: "success", mapping };
+  }
+
+  // Unknown type
+  return { status: "unknown", blockType: block.type };
+}
+
+/**
+ * Get required properties for a block type.
+ */
+function getRequiredProperties(blockType: string): string[] | null {
+  const requirements: Record<string, string[]> = {
+    Pipe: ["phase", "location", "size"],
+    Compressor: ["pressure_range"],
+    Pump: [], // No required properties
+    Emitter: ["emitter_type"],
+    CaptureUnit: ["capture_technology"],
+    Dehydration: ["dehydration_type"],
+    Refrigeration: ["pressure_class", "cooling_method"],
+    Metering: ["metering_type"],
+    Storage: ["pressure_class"],
+    Shipping: ["pressure_class"],
+    Ship: ["pressure_class"],
+    LandTransport: ["mode"],
+    LoadingOffloading: ["facility_type"],
+    HeatingAndPumping: ["pressure_class"],
+    PipeMerge: ["phase"],
+    InjectionWell: ["location"],
+    InjectionTopsides: ["location"],
+    OffshorePlatform: ["platform_type"],
+    UtilisationEndpoint: [],
+  };
+
+  return requirements[blockType] ?? null;
 }
 
 // ============================================================================
