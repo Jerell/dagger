@@ -58,7 +58,11 @@ export type ValidationResult = {
   is_valid: boolean;
   severity?: "error" | "warning";
   message?: string;
+  /** Formatted value for display (with units) */
   value?: string;
+  /** Raw resolved value (for operations to use) */
+  rawValue?: PropertyValue;
+  /** Where the property was resolved from */
   scope?: string;
 };
 
@@ -68,6 +72,201 @@ export type Block = {
 };
 
 export type PropertyValue = string | number | null | undefined;
+
+export type ResolvedProperty = {
+  value: PropertyValue;
+  scope: string;
+};
+
+export type ResolvedBlock = {
+  type: string;
+  properties: Record<string, ResolvedProperty>;
+};
+
+/**
+ * Context for network operations - holds file data for efficient batch resolution.
+ */
+export type NetworkContext = {
+  filesJson: string;
+  configContent: string | null;
+};
+
+/**
+ * Create a network context from a path.
+ */
+export async function createNetworkContext(networkPath: string): Promise<NetworkContext> {
+  const { files, configContent } = await readNetworkFiles(networkPath);
+  return {
+    filesJson: JSON.stringify(files),
+    configContent,
+  };
+}
+
+/**
+ * Resolve a single property for a block using scope resolution.
+ * This is the core resolution function - uses WASM's resolve_property_with_scope
+ * which follows the inheritance rules in config.toml.
+ */
+export function resolveProperty(
+  ctx: NetworkContext,
+  branchId: string,
+  blockIndex: number,
+  propertyName: string
+): ResolvedProperty | null {
+  const wasm = getWasm();
+  try {
+    const scopeResult = wasm.resolve_property_with_scope(
+      ctx.filesJson,
+      ctx.configContent || undefined,
+      branchId,
+      blockIndex,
+      propertyName
+    );
+    const parsed = JSON.parse(scopeResult);
+    if (parsed?.value !== undefined && parsed.scope) {
+      return {
+        value: parsed.value,
+        scope: parsed.scope,
+      };
+    }
+  } catch {
+    // Property not found in any scope
+  }
+  return null;
+}
+
+/**
+ * Resolve all schema-defined properties for a block.
+ * Uses the schema to know what properties the block type should have,
+ * then resolves each using scope resolution.
+ *
+ * This is THE unified way to get resolved block properties - used by both
+ * validation and operations.
+ */
+export function resolveBlockPropertiesFromSchema(
+  block: Block,
+  branchId: string,
+  blockIndex: number,
+  schemaSet: string,
+  ctx: NetworkContext
+): Record<string, ResolvedProperty> {
+  const schemaMetadata = getSchemaMetadata(schemaSet, block.type);
+  if (!schemaMetadata) {
+    // No schema for this block type - just return block-level properties
+    const resolved: Record<string, ResolvedProperty> = {};
+    for (const [key, value] of Object.entries(block)) {
+      if (key !== "type" && value !== undefined && value !== null) {
+        resolved[key] = { value, scope: "block" };
+      }
+    }
+    return resolved;
+  }
+
+  const resolved: Record<string, ResolvedProperty> = {};
+  const allProperties = [...schemaMetadata.required, ...schemaMetadata.optional];
+
+  for (const propName of allProperties) {
+    // First check if property is directly on the block
+    if (block[propName] !== undefined && block[propName] !== null) {
+      resolved[propName] = {
+        value: block[propName],
+        scope: "block",
+      };
+    } else {
+      // Try to resolve from scope chain
+      const resolvedProp = resolveProperty(ctx, branchId, blockIndex, propName);
+      if (resolvedProp) {
+        resolved[propName] = resolvedProp;
+      }
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * Get an enriched block with all schema-defined properties resolved.
+ * Returns a new block object with resolved values merged in.
+ *
+ * This is THE unified way to get a block with inherited properties - used by
+ * both validation and operations.
+ */
+export function getEnrichedBlockFromSchema(
+  block: Block,
+  branchId: string,
+  blockIndex: number,
+  schemaSet: string,
+  ctx: NetworkContext
+): Block {
+  const resolved = resolveBlockPropertiesFromSchema(
+    block,
+    branchId,
+    blockIndex,
+    schemaSet,
+    ctx
+  );
+
+  const enriched: Block = { ...block };
+  for (const [propName, { value }] of Object.entries(resolved)) {
+    if (enriched[propName] === undefined || enriched[propName] === null) {
+      enriched[propName] = value;
+    }
+  }
+
+  return enriched;
+}
+
+/**
+ * Extract resolved properties for a specific block from validation results.
+ * Returns an object with all resolved property values (raw, not formatted).
+ *
+ * This is THE way for operations to get resolved block properties - they
+ * should NOT do their own property resolution.
+ */
+export function getResolvedBlockProperties(
+  validationResults: Record<string, ValidationResult>,
+  branchId: string,
+  blockIndex: number
+): Record<string, PropertyValue> {
+  const blockPath = `${branchId}/blocks/${blockIndex}`;
+  const resolved: Record<string, PropertyValue> = {};
+
+  for (const [path, result] of Object.entries(validationResults)) {
+    if (path.startsWith(blockPath + "/")) {
+      const propName = path.slice(blockPath.length + 1);
+      // Don't include nested paths (e.g., "branch-1/blocks/0/foo/bar")
+      if (!propName.includes("/") && result.rawValue !== undefined) {
+        resolved[propName] = result.rawValue;
+      }
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * Get an enriched block using validation results.
+ * The validation results contain already-resolved properties with rawValue.
+ *
+ * This is THE unified way for operations to get blocks with resolved properties.
+ */
+export function getEnrichedBlockFromValidation(
+  block: Block,
+  validationResults: Record<string, ValidationResult>,
+  branchId: string,
+  blockIndex: number
+): Block {
+  const resolved = getResolvedBlockProperties(validationResults, branchId, blockIndex);
+
+  const enriched: Block = { ...block };
+  for (const [propName, value] of Object.entries(resolved)) {
+    if (value !== undefined && value !== null) {
+      enriched[propName] = value;
+    }
+  }
+
+  return enriched;
+}
 
 /**
  * Validate a block directly without network context (for POST /api/schema/validate)
@@ -544,6 +743,7 @@ async function validateBlockInternal(
           severity: "error",
           message: constraintMessage,
           value: formattedValue,
+          rawValue: resolvedValue,
           scope: resolvedScope,
         };
         continue;
@@ -631,6 +831,7 @@ async function validateBlockInternal(
           severity: "error",
           message: simpleMessage,
           value: formattedValue,
+          rawValue: resolvedValue,
           scope: resolvedScope,
         };
         continue;
@@ -638,6 +839,7 @@ async function validateBlockInternal(
 
       const validResult: ValidationResult = {
         is_valid: true,
+        rawValue: resolvedValue,
       };
       // Always include value and scope for valid properties that have values
       if (formattedValue !== undefined && formattedValue !== null) {

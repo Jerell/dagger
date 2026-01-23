@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   startWatchingDirectory,
   stopWatchingDirectory,
@@ -18,6 +19,7 @@ export type WatchModeState = {
  * When enabled, watches a directory for changes and auto-updates the network
  */
 export function useFileWatcher() {
+  const queryClient = useQueryClient();
   const [watchMode, setWatchMode] = useState<WatchModeState>({
     enabled: false,
     directoryPath: null,
@@ -35,10 +37,15 @@ export function useFileWatcher() {
       try {
         // Reload network from the watched directory
         const network = await getNetworkFromPath(watchMode.directoryPath!);
-        
+
         // Update collections with the new network data
         await resetFlowToNetwork(network);
-        
+
+        // Invalidate operation queries so they refetch with updated network data
+        // This ensures costing validation reflects the latest file changes
+        await queryClient.invalidateQueries({ queryKey: ["costing", "validation"] });
+        await queryClient.invalidateQueries({ queryKey: ["schema", "validation"] });
+
         console.log("Network reloaded from file changes");
       } catch (error) {
         console.error("Error reloading network after file change:", error);
@@ -49,7 +56,7 @@ export function useFileWatcher() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [watchMode.enabled, watchMode.directoryPath]);
+  }, [watchMode.enabled, watchMode.directoryPath, queryClient]);
 
   const enableWatchMode = useCallback(async (directoryPath: string) => {
     try {

@@ -83,12 +83,22 @@ async function readNetworkFiles(networkPath: string): Promise<NetworkFiles> {
   return { files, configContent };
 }
 
+import {
+  validateNetworkBlocks,
+  getEnrichedBlockFromValidation,
+  type ValidationResult,
+  type Block,
+} from "../effectValidation";
+
 /**
  * Load network data from a source (path, inline data, or networkId).
+ * Returns the network structure and the resolved path (for validation).
  */
-async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
+async function loadNetworkData(
+  source: NetworkSource
+): Promise<{ data: NetworkData; networkPath: string | null }> {
   if (source.type === "data") {
-    return source.network;
+    return { data: source.network, networkPath: null };
   }
 
   // For networkId, resolve to a path using the same logic as the network routes
@@ -119,27 +129,12 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
   console.log("[costing adapter] Initial nodes count:", nodes.length);
   console.log("[costing adapter] Node IDs:", nodes.map(n => n.id));
 
-  // Nodes from network/nodes may not have a `type` field, but we can identify
-  // branches by the presence of a `blocks` array. Query each node individually
-  // to get its full data including type.
-  const enrichedNodes = await Promise.all(
-    nodes.map(async (node) => {
-      try {
-        const fullResult = wasm.query_from_files(filesJson, configContent || undefined, node.id);
-        const fullNode = JSON.parse(fullResult);
-        return { ...node, ...fullNode };
-      } catch {
-        return node;
-      }
-    })
-  );
-
-  // Separate groups and branches based on type or presence of blocks
-  const rawGroups = enrichedNodes.filter(
+  // Separate groups and branches based on type
+  const rawGroups = nodes.filter(
     (n) => n.type === "labeledGroup" || n.type === "group"
   );
-  const rawBranches = enrichedNodes.filter(
-    (n) => n.type === "branch" || (Array.isArray(n.blocks) && n.blocks.length > 0)
+  const rawBranches = nodes.filter(
+    (n) => n.type === "branch"
   );
 
   console.log("[costing adapter] Found", rawGroups.length, "groups:", rawGroups.map(g => g.id));
@@ -152,7 +147,7 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
     branchIds: rawBranches.filter((b) => b.parentId === g.id).map((b) => b.id),
   }));
 
-  // Build branch objects with their blocks (already embedded in the nodes)
+  // Build branch objects with their blocks
   const branches: NetworkBranch[] = rawBranches.map((b) => ({
     id: b.id,
     label: b.label ?? (b.data?.label as string | undefined),
@@ -160,7 +155,7 @@ async function loadNetworkData(source: NetworkSource): Promise<NetworkData> {
     blocks: b.blocks ?? [],
   }));
 
-  return { groups, branches };
+  return { data: { groups, branches }, networkPath };
 }
 
 /**
@@ -236,6 +231,9 @@ export type AssetMetadata = {
  * @param source - Network source (path or inline data)
  * @param options - Transform options including library ID and asset overrides
  */
+// Default schema set for costing operations
+const DEFAULT_COSTING_SCHEMA = "v1.0-costing";
+
 export async function transformNetworkToCostingRequest(
   source: NetworkSource,
   options: TransformOptions
@@ -243,9 +241,20 @@ export async function transformNetworkToCostingRequest(
   // Ensure dim is initialized (idempotent - safe to call multiple times)
   await dim.init();
 
+  // Use costing-specific schema for property resolution
+  const schemaSet = DEFAULT_COSTING_SCHEMA;
+
   // Load network data from source
-  const networkData = await loadNetworkData(source);
-  
+  const { data: networkData, networkPath } = await loadNetworkData(source);
+
+  // Get validation results with resolved properties
+  // This is THE unified way to get resolved properties - operations should NOT
+  // do their own property resolution
+  let validationResults: Record<string, ValidationResult> = {};
+  if (networkPath) {
+    validationResults = await validateNetworkBlocks(networkPath, schemaSet);
+  }
+
   // Get module lookup service
   const moduleLookup = await getModuleLookupService(options.libraryId);
 
@@ -273,7 +282,8 @@ export async function transformNetworkToCostingRequest(
       group,
       groupBranches,
       moduleLookup,
-      options
+      options,
+      validationResults
     );
 
     // Always add metadata (for validation), but only add asset if it has costable items
@@ -288,7 +298,8 @@ export async function transformNetworkToCostingRequest(
     const result = await transformBranchToAsset(
       branch,
       moduleLookup,
-      options
+      options,
+      validationResults
     );
 
     // Always add metadata (for validation), but only add asset if it has costable items
@@ -360,12 +371,14 @@ function validateBlock(block: NetworkBlock, blockId: string): BlockValidation {
 
 /**
  * Transform a group (with its branches) into an asset.
+ * Uses validation results which contain already-resolved properties.
  */
 async function transformGroupToAsset(
   group: NetworkGroup,
   branches: NetworkBranch[],
   moduleLookup: Awaited<ReturnType<typeof getModuleLookupService>>,
-  options: TransformOptions
+  options: TransformOptions,
+  validationResults: Record<string, ValidationResult>
 ): Promise<{ asset: AssetParameters; metadata: AssetMetadata }> {
   // Collect all blocks from all branches in this group
   const allCostItems: CostItemParameters[] = [];
@@ -379,13 +392,21 @@ async function transformGroupToAsset(
       const block = branch.blocks[i];
       const blockId = `${branch.id}/blocks/${i}`;
 
-      // Validate block
-      const validation = validateBlock(block, blockId);
+      // Get enriched block using validation results (properties already resolved)
+      const enrichedBlock = getEnrichedBlockFromValidation(
+        block as Block,
+        validationResults,
+        branch.id,
+        i
+      ) as NetworkBlock;
+
+      // Validate block for costing (map to cost module)
+      const validation = validateBlock(enrichedBlock, blockId);
       blockValidations.push(validation);
 
       // Transform to cost items if costable
       if (validation.status === "costable") {
-        const costItems = await transformBlockToCostItems(block, blockId, moduleLookup);
+        const costItems = await transformBlockToCostItems(enrichedBlock, blockId, moduleLookup);
         allCostItems.push(...costItems);
       }
     }
@@ -423,11 +444,13 @@ async function transformGroupToAsset(
 
 /**
  * Transform an ungrouped branch into an asset (uses defaults).
+ * Uses validation results which contain already-resolved properties.
  */
 async function transformBranchToAsset(
   branch: NetworkBranch,
   moduleLookup: Awaited<ReturnType<typeof getModuleLookupService>>,
-  options: TransformOptions
+  options: TransformOptions,
+  validationResults: Record<string, ValidationResult>
 ): Promise<{ asset: AssetParameters; metadata: AssetMetadata }> {
   const costItems: CostItemParameters[] = [];
   const blockValidations: BlockValidation[] = [];
@@ -436,13 +459,21 @@ async function transformBranchToAsset(
     const block = branch.blocks[i];
     const blockId = `${branch.id}/blocks/${i}`;
 
-    // Validate block
-    const validation = validateBlock(block, blockId);
+    // Get enriched block using validation results (properties already resolved)
+    const enrichedBlock = getEnrichedBlockFromValidation(
+      block as Block,
+      validationResults,
+      branch.id,
+      i
+    ) as NetworkBlock;
+
+    // Validate block for costing (map to cost module)
+    const validation = validateBlock(enrichedBlock, blockId);
     blockValidations.push(validation);
 
     // Transform to cost items if costable
     if (validation.status === "costable") {
-      const blockCostItems = await transformBlockToCostItems(block, blockId, moduleLookup);
+      const blockCostItems = await transformBlockToCostItems(enrichedBlock, blockId, moduleLookup);
       costItems.push(...blockCostItems);
     }
   }
