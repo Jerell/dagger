@@ -1,16 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun test:*)",
-      "Bash(cargo check:*)",
-      "Bash(npm run check:*)",
-      "Bash(npm run typecheck:*)",
-      "Bash(npm run tsc:*)",
-      "Bash(npx tsc:*)",
-      "Bash(just build-wasm:*)",
-      "Bash(npx shadcn@latest add:*)",
-      "Bash(http:*)",
-      "Bash(curl:*)"
+      "Bash(wc:*)",
+      "Bash(npm test:*)",
+      "Bash(git rm:*)",
+      "Bash(npm install:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm update:*)",
+      "Bash(node --version:*)",
+      "Bash(npm run build:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker ps:*)",
+      "Bash(ls:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker builder prune:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

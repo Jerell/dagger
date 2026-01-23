@@ -25,6 +25,15 @@ pub fn load_network_from_directory<P: AsRef<Path>>(
     let mut nodes = Vec::new();
     let mut validation = ValidationResult::new();
 
+    // Try to read config.toml for network metadata
+    let config_path = dir_path.join("config.toml");
+    let (network_id, network_label) = if config_path.exists() {
+        let config_content = fs::read_to_string(&config_path)?;
+        parse_network_metadata(&config_content)
+    } else {
+        (None, None)
+    };
+
     // Scan directory for TOML files
     let entries = fs::read_dir(dir_path)?;
 
@@ -33,7 +42,7 @@ pub fn load_network_from_directory<P: AsRef<Path>>(
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            // Skip config.toml for now (will handle in Phase 2)
+            // Skip config.toml (already handled above)
             if path.file_name().and_then(|n| n.to_str()) == Some("config.toml") {
                 continue;
             }
@@ -51,19 +60,44 @@ pub fn load_network_from_directory<P: AsRef<Path>>(
     }
 
     // Build network graph
-    let network = build_network(nodes, &mut validation)?;
+    let network = build_network(nodes, &mut validation, network_id, network_label)?;
 
     Ok((network, validation))
+}
+
+/// Parse network metadata (id and label) from config content
+fn parse_network_metadata(config_content: &str) -> (Option<String>, Option<String>) {
+    match toml::from_str::<Value>(config_content) {
+        Ok(config_value) => {
+            let id = config_value
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let label = config_value
+                .get("label")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            (id, label)
+        }
+        Err(_) => (None, None),
+    }
 }
 
 /// Load a network from file contents (filename -> content map)
 /// This is used when files are read in Node.js and passed to WASM
 pub fn load_network_from_files(
     files: HashMap<String, String>,
-    _config_content: Option<String>,
+    config_content: Option<String>,
 ) -> Result<(Network, ValidationResult), Box<dyn std::error::Error>> {
     let mut nodes = Vec::new();
     let mut validation = ValidationResult::new();
+
+    // Parse config for network metadata
+    let (network_id, network_label) = if let Some(ref config) = config_content {
+        parse_network_metadata(config)
+    } else {
+        (None, None)
+    };
 
     // Process each TOML file
     for (filename, content) in files {
@@ -91,7 +125,7 @@ pub fn load_network_from_files(
     }
 
     // Build network graph
-    let network = build_network(nodes, &mut validation)?;
+    let network = build_network(nodes, &mut validation, network_id, network_label)?;
 
     Ok((network, validation))
 }
@@ -225,6 +259,8 @@ fn process_units_in_node(
 fn build_network(
     nodes: Vec<NodeData>,
     validation: &mut ValidationResult,
+    network_id: Option<String>,
+    network_label: Option<String>,
 ) -> Result<Network, Box<dyn std::error::Error>> {
     // Create node lookup map
     let node_map: std::collections::HashMap<_, _> =
@@ -268,10 +304,10 @@ fn build_network(
         }
     }
 
-    // Determine network ID and label from directory name or use default
+    // Use id and label from config, or fall back to defaults
     let network = Network {
-        id: "preset-1".to_string(),    // TODO: derive from directory name
-        label: "Preset 1".to_string(), // TODO: derive from directory name or config
+        id: network_id.unwrap_or_else(|| "unknown".to_string()),
+        label: network_label.unwrap_or_else(|| "Unknown Network".to_string()),
         nodes,
         edges,
     };

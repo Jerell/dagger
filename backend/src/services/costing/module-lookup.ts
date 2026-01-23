@@ -1,6 +1,6 @@
 /**
  * Module lookup service for finding cost library modules from block types.
- * 
+ *
  * Parses the cost library and provides lookup functionality to map
  * Dagger block types to cost library module IDs.
  */
@@ -15,17 +15,17 @@ import { normalizeBlockTypeWithOverrides } from "./type-normalization";
 // ============================================================================
 
 export type ModuleInfo = {
-  id: string;           // e.g., "M0201"
-  type: string;         // e.g., "CaptureUnit"
+  id: string; // e.g., "M0201"
+  type: string; // e.g., "CaptureUnit"
   subtype: string | null; // e.g., "Amine" or null if no subtype
   costItemIds: string[]; // e.g., ["Item 023"]
   requiredParameters: ParameterInfo[];
 };
 
 export type ParameterInfo = {
-  name: string;        // e.g., "Mass flow"
-  units: string;       // e.g., "kg/h"
-  costItemId: string;  // Which cost item requires this parameter
+  name: string; // e.g., "Mass flow"
+  units: string; // e.g., "kg/h"
+  costItemId: string; // Which cost item requires this parameter
 };
 
 export type ModuleLookupResult = {
@@ -43,6 +43,9 @@ export type ModuleLookupResult = {
  * Resolves relative to process.cwd() which should be the backend directory.
  */
 function getLibraryDataPath(): string {
+  // this reference directory will be removed in the future.
+  // it was provided for reference only.
+  // we will make a new directory for the cost library data.
   return resolve(process.cwd(), "reference/costing/data");
 }
 
@@ -64,8 +67,8 @@ export async function listCostLibraries(): Promise<string[]> {
   const libraryDataPath = getLibraryDataPath();
   const entries = await readdir(libraryDataPath, { withFileTypes: true });
   return entries
-    .filter(entry => entry.isDirectory())
-    .map(entry => entry.name);
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 }
 
 // ============================================================================
@@ -110,8 +113,8 @@ export function buildModuleIndex(library: CostLibrary): ModuleIndex {
  * Extract module info from a cost library module.
  */
 function extractModuleInfo(module: CostLibraryModule): ModuleInfo {
-  const costItemIds = module.cost_items?.map(item => item.id) ?? [];
-  
+  const costItemIds = module.cost_items?.map((item) => item.id) ?? [];
+
   // Collect all required parameters from cost items
   const requiredParameters: ParameterInfo[] = [];
   for (const costItem of module.cost_items ?? []) {
@@ -153,7 +156,11 @@ export type CostItemInfo = {
     description?: string;
   };
   scaling_factors: Array<{ name: string; units: string; source_value: number }>;
-  variable_opex_contributions: Array<{ name: string; units: string; scaled_by?: number }>;
+  variable_opex_contributions: Array<{
+    name: string;
+    units: string;
+    scaled_by?: number;
+  }>;
 };
 
 export class ModuleLookupService {
@@ -167,7 +174,7 @@ export class ModuleLookupService {
 
   /**
    * Look up a module by user-provided block type and optional subtype.
-   * 
+   *
    * @param blockType User's block type (e.g., "Capture Unit")
    * @param subtype Optional subtype (e.g., "Amine")
    * @returns Module info, or undefined if not found
@@ -175,7 +182,7 @@ export class ModuleLookupService {
   lookup(blockType: string, subtype?: string): ModuleInfo | undefined {
     // Normalize the block type
     const normalizedType = normalizeBlockTypeWithOverrides(blockType);
-    
+
     const subtypeMap = this.index.byTypeAndSubtype.get(normalizedType);
     if (!subtypeMap) {
       return undefined;
@@ -230,7 +237,7 @@ export class ModuleLookupService {
       return [];
     }
     return Array.from(subtypeMap.values())
-      .map(m => m.subtype)
+      .map((m) => m.subtype)
       .filter((s): s is string => s !== null);
   }
 
@@ -248,16 +255,16 @@ export class ModuleLookupService {
 
   /**
    * Get full cost item info from a module.
-   * 
+   *
    * @param moduleId Module ID (e.g., "M0302")
    * @param costItemId Cost item ID (e.g., "Item 007")
    * @returns Full cost item info with scaling factors and OPEX contributions
    */
   getCostItem(moduleId: string, costItemId: string): CostItemInfo | undefined {
-    const module = this.library.modules.find(m => m.id === moduleId);
+    const module = this.library.modules.find((m) => m.id === moduleId);
     if (!module) return undefined;
 
-    const costItem = module.cost_items?.find(item => item.id === costItemId);
+    const costItem = module.cost_items?.find((item) => item.id === costItemId);
     if (!costItem) return undefined;
 
     return {
@@ -278,7 +285,9 @@ const serviceCache = new Map<string, ModuleLookupService>();
 /**
  * Get or create a module lookup service for a given library.
  */
-export async function getModuleLookupService(libraryId: string): Promise<ModuleLookupService> {
+export async function getModuleLookupService(
+  libraryId: string,
+): Promise<ModuleLookupService> {
   if (!serviceCache.has(libraryId)) {
     const library = await loadCostLibrary(libraryId);
     serviceCache.set(libraryId, new ModuleLookupService(library));

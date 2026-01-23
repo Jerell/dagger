@@ -32,10 +32,12 @@ export type MappingResult =
  * Normalize block type name for mapping.
  * Removes spaces, converts to PascalCase.
  * e.g., "Capture Unit" → "CaptureUnit", "capture unit" → "CaptureUnit"
+ * Also handles already-PascalCase input: "CaptureUnit" → "CaptureUnit"
  */
 function normalizeBlockType(type: string): string {
   return type
-    .split(/[\s_-]+/)
+    .split(/[\s_-]+|(?=[A-Z])/)
+    .filter(word => word.length > 0)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join("");
 }

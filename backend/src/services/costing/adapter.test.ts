@@ -1,15 +1,20 @@
 import { describe, it, expect } from "bun:test";
-import { transformNetworkToCostingRequest, transformCostingResponse } from "./adapter";
+import {
+  transformNetworkToCostingRequest,
+  transformCostingResponse,
+} from "./adapter";
 import type { CostEstimateResponse } from "./types";
 import type { NetworkSource } from "./request-types";
 
 describe("adapter", () => {
   describe("transformNetworkToCostingRequest", () => {
-    const pathSource: NetworkSource = { type: "path", path: "networks/preset1" };
-    
+    const pathSource: NetworkSource = {
+      type: "path",
+      path: "networks/preset1",
+    };
+
     it("produces valid structure even with incompatible blocks", async () => {
-      // preset1 has blocks without costing properties, so it should return empty assets
-      // This tests that the adapter handles incompatible networks gracefully
+      // preset1 may have blocks that can't be costed - the adapter should handle this gracefully
       const result = await transformNetworkToCostingRequest(pathSource, {
         libraryId: "V1.1_working",
       });
@@ -17,9 +22,12 @@ describe("adapter", () => {
       expect(result.request).toBeDefined();
       expect(result.request.assets).toBeInstanceOf(Array);
       expect(result.assetMetadata).toBeInstanceOf(Array);
-      
-      // Assets array matches metadata array
-      expect(result.assetMetadata.length).toBe(result.request.assets.length);
+
+      // Metadata tracks all groups/branches, assets only includes those with costable items
+      // So assets.length <= assetMetadata.length
+      expect(result.request.assets.length).toBeLessThanOrEqual(
+        result.assetMetadata.length
+      );
     });
 
     it("applies default properties to assets", async () => {
@@ -35,7 +43,7 @@ describe("adapter", () => {
         expect(asset.labour_average_salary).toBeDefined();
         expect(asset.cost_items).toBeInstanceOf(Array);
       }
-      
+
       // Each metadata tracks defaults usage
       for (const metadata of result.assetMetadata) {
         expect(metadata.assetId).toBeDefined();
@@ -67,7 +75,7 @@ describe("adapter", () => {
         expect(asset.timeline.operation_finish).toBe(2050);
       }
     });
-    
+
     it("accepts inline network data", async () => {
       const dataSource: NetworkSource = {
         type: "data",
@@ -81,7 +89,13 @@ describe("adapter", () => {
               label: "Test Branch",
               parentId: "group-1",
               blocks: [
-                { type: "Pipe", phase: "gas", location: "onshore", size: "medium", length: 1000 },
+                {
+                  type: "Pipe",
+                  phase: "gas",
+                  location: "onshore",
+                  size: "medium",
+                  length: 1000,
+                },
               ],
             },
           ],
