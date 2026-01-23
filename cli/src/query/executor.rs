@@ -124,25 +124,12 @@ impl<'a> QueryExecutor<'a> {
     fn execute_network_query(&self, collection: &str) -> Result<JsonValue, QueryError> {
         match collection {
             "nodes" => {
+                // Use the same logic as get_node to ensure consistent structure including `type` field
                 let nodes: Vec<JsonValue> = self
                     .network
                     .nodes
                     .iter()
-                    .map(|n| {
-                        let value = serde_json::to_value(n).map_err(|e| {
-                            QueryError::InvalidType(format!("Failed to serialize: {}", e))
-                        })?;
-                        match value {
-                            JsonValue::Object(map) => {
-                                if let Some((_, node_value)) = map.into_iter().next() {
-                                    Ok(node_value)
-                                } else {
-                                    Err(QueryError::InvalidType("Empty node".to_string()))
-                                }
-                            }
-                            _ => Ok(value),
-                        }
-                    })
+                    .map(|n| self.get_node(n.id()))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(JsonValue::Array(nodes))
             }

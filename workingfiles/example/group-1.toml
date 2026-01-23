@@ -5,6 +5,10 @@ height = 550
 efficiency = 0.75
 pressure = "100 bar"
 
+location = "onshore"
+phase = "gas"
+size = "medium"
+
 [position]
-x = -416.2120629026445
+x = -460
 y = -399.2291046463595

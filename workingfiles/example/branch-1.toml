@@ -2,6 +2,8 @@ type = "branch"
 label = "Branch 1 example"
 parentId = "group-1"
 
+location = "onshore"
+
 [position]
 x = 20
 y = 30
@@ -27,4 +29,3 @@ type = "Compressor"
 
 [[block]]
 type = "Cooler"
-length = "3 mi"

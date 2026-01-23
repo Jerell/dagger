@@ -33,7 +33,7 @@ function App() {
       <section className="flex flex-col justify-center border-b border-brand-grey-3 p-2">
         <h2 className="text-2xl font-bold">Directed Acyclic Graphs</h2>
         <p>
-          A directed acyclic graph (DAG) is a graph that has no cycles. It is a
+          A directed acyclic graph (DAG) is a directed graph that has no cycles. It is a
           set of nodes with directed edges connecting them. DAGs can be used to
           model and analyze network structures like flow networks.
         </p>
@@ -104,7 +104,7 @@ function App() {
             <code>[[block]]</code>
             <code>type = "Compressor"</code>
             <code>pressure = "100 bar"</code>
-            <code>flow = "100 m³/s"</code>
+            <code>mass_flow = "100 kg/s"</code>
             <code>efficiency = 0.7</code>
             <code>power = "100 kW"</code>
           </div>

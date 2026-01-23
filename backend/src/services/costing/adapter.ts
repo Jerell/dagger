@@ -542,6 +542,18 @@ async function transformBlockToCostItems(
 
   // Create a cost item for each cost reference item in the module
   for (const costItemRef of moduleInfo.costItemIds) {
+    // Get cost item info to know what parameters are required
+    const costItem = moduleLookup.getCostItem?.(moduleInfo.id, costItemRef);
+
+    // Collect all required parameter names for this cost item
+    const requiredParams: string[] = [];
+    for (const sf of costItem?.scaling_factors ?? []) {
+      requiredParams.push(sf.name);
+    }
+    for (const opex of costItem?.variable_opex_contributions ?? []) {
+      requiredParams.push(opex.name);
+    }
+
     const parameters = await extractParametersForCostItem(
       block,
       costItemRef,
@@ -549,15 +561,14 @@ async function transformBlockToCostItems(
       moduleLookup
     );
 
-    // Check if this cost item has required parameters
-    const costItem = moduleLookup.getCostItem?.(moduleInfo.id, costItemRef);
-    const hasRequiredParams = (costItem?.scaling_factors?.length ?? 0) > 0 || 
-                              (costItem?.variable_opex_contributions?.length ?? 0) > 0;
+    // Check if we have ALL required parameters
+    // A cost item should only be included if:
+    // 1. It has no required parameters (fixed cost items), OR
+    // 2. ALL required parameters are provided
+    const providedParams = new Set(Object.keys(parameters));
+    const hasAllRequiredParams = requiredParams.every(name => providedParams.has(name));
 
-    // Include cost item if:
-    // 1. It has no required parameters (fixed cost items like Item 009), OR
-    // 2. We found at least one parameter for it
-    if (!hasRequiredParams || Object.keys(parameters).length > 0) {
+    if (requiredParams.length === 0 || hasAllRequiredParams) {
       costItems.push({
         id: `${blockPath}/${costItemRef}`,
         ref: costItemRef,
@@ -682,6 +693,10 @@ function mapCostParamToBlockProp(costParamName: string): string[] {
     "Cooling water (10degC temp rise)": ["cooling_water", "cooling_water_10degc_temp_rise"],
     // Heater duty capitalization
     "Heater Duty": ["heater_duty"],
+    // Pipeline crossings - V1.1/V1.3 uses "Frequency of crossings per 10 km"
+    "Frequency of crossings per 10 km": ["crossings_frequency", "frequency_of_crossings_per_10_km"],
+    // V2.0 uses "Number of crossings" - keep both for compatibility
+    "Number of crossings": ["number_of_crossings", "crossings_frequency"],
   };
 
   if (explicitMappings[costParamName]) {

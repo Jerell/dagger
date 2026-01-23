@@ -1,6 +1,8 @@
 type = "branch"
 label = "Branch 8"
 
+location = "onshore"
+
 [position]
 x = -54.64153667556634
 y = 187.40376949866504
