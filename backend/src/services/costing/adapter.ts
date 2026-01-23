@@ -542,7 +542,6 @@ async function transformBlockToCostItems(
 
   // Create a cost item for each cost reference item in the module
   for (const costItemRef of moduleInfo.costItemIds) {
-    // Get cost item info to know what parameters are required
     const costItem = moduleLookup.getCostItem?.(moduleInfo.id, costItemRef);
 
     // Collect all required parameter names for this cost item
