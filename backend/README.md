@@ -54,7 +54,21 @@ This compiles the Rust code in `../cli` to WebAssembly and outputs it to `./pkg`
 
 ### Operations API
 
-I'll docment this later.
+#### Costing
+
+- `POST /api/operations/costing/estimate` - Run a costing estimate for a network
+- `POST /api/operations/costing/validate` - Validate a network for costing readiness
+- `GET /api/operations/costing/libraries` - List available cost libraries
+- `GET /api/operations/costing/libraries/:id` - Get details about a specific cost library
+- `GET /api/operations/costing/libraries/:id/modules?type=<type>` - List modules in a cost library (optionally filtered by type)
+- `GET /api/operations/costing/health` - Check if the costing server is reachable
+
+#### Snapshot
+
+- `POST /api/operations/snapshot/validate` - Validate a network for snapshot readiness
+- `POST /api/operations/snapshot/run` - Run a snapshot simulation
+- `POST /api/operations/snapshot/raw` - Pass through a raw ScenarioRequest to the Scenario Modeller API
+- `GET /api/operations/snapshot/health` - Check if the Scenario Modeller server is reachable
 
 ## Networks Directory
 
