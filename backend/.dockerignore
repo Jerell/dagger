@@ -1,0 +1,34 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files (not needed in production image)
+**/*.test.ts
+**/*.spec.ts
+vitest.config.ts
+coverage
+
+# Development files
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+LICENSE
+
+# OS files
+.DS_Store
+Thumbs.db

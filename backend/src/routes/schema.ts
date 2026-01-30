@@ -108,8 +108,11 @@ schemaRoutes.get("/network/properties", async (c) => {
  */
 schemaRoutes.get("/network/validate", async (c) => {
   const networkIdentifier = c.req.query("network");
-  const networkPath = resolveNetworkPath(networkIdentifier);
   const version = c.req.query("version");
+
+  if (!networkIdentifier) {
+    return c.json({ error: "Missing required query parameter: network" }, 400);
+  }
 
   if (!version) {
     return c.json({ error: "Missing required query parameter: version" }, 400);
@@ -125,8 +128,9 @@ schemaRoutes.get("/network/validate", async (c) => {
 
   try {
     const result = await validateNetworkBlocks(
-      networkPath,
+      { type: "networkId", networkId: networkIdentifier },
       version,
+      undefined,
       queryOverrides
     );
     return c.json(result);

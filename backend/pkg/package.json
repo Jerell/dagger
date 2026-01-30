@@ -1,0 +1,11 @@
+{
+  "name": "dagger",
+  "version": "0.1.0",
+  "files": [
+    "dagger_bg.wasm",
+    "dagger.js",
+    "dagger.d.ts"
+  ],
+  "main": "dagger.js",
+  "types": "dagger.d.ts"
+}

@@ -1,0 +1,27 @@
+# Network metadata
+id = "simple-snapshot"
+label = "Simple Snapshot"
+
+# Global properties (preset-level defaults)
+[properties]
+ambientTemperature = "20.0 C"
+
+# Inheritance rules
+[inheritance]
+general = ["block", "branch", "group", "global"]
+
+# Map property names to dimensions (for global properties not in schemas)
+[dimensions]
+ambientTemperature = "temperature"
+
+# Unit preferences
+[unitPreferences.Pipe]
+length = "km"
+
+[unitPreferences.Source]
+pressure = "bar"
+
+[unitPreferences.dimensions]
+length = "m"
+pressure = "Pa"
+temperature = "°C"

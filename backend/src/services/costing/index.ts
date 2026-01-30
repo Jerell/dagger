@@ -67,8 +67,8 @@ export { mapBlockToModule, type ModuleMapping } from "./block-to-module-mapper";
 export {
   transformNetworkToCostingRequest,
   transformCostingResponse,
-  type TransformOptions,
-  type TransformResult,
+  type CostingTransformOptions as TransformOptions,
+  type CostingTransformResult as TransformResult,
   type AssetMetadata,
 } from "./adapter";
 

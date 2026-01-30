@@ -8,17 +8,17 @@ import {
 
 describe("schemas", () => {
   describe("CostingEstimateRequestSchema", () => {
-    it("validates valid path-based request", () => {
+    it("validates valid networkId-based request", () => {
       const request = {
-        source: { type: "path", path: "networks/preset1" },
+        source: { type: "networkId", networkId: "preset1" },
         libraryId: "V1.1_working",
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isRight(result)).toBe(true);
       if (Either.isRight(result)) {
-        expect(result.right.source.type).toBe("path");
+        expect(result.right.source.type).toBe("networkId");
         expect(result.right.libraryId).toBe("V1.1_working");
       }
     });
@@ -42,7 +42,7 @@ describe("schemas", () => {
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isRight(result)).toBe(true);
       if (Either.isRight(result)) {
         expect(result.right.source.type).toBe("data");
@@ -56,17 +56,17 @@ describe("schemas", () => {
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isLeft(result)).toBe(true);
     });
 
     it("rejects request with missing libraryId", () => {
       const request = {
-        source: { type: "path", path: "networks/preset1" },
+        source: { type: "networkId", networkId: "preset1" },
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isLeft(result)).toBe(true);
     });
 
@@ -77,7 +77,7 @@ describe("schemas", () => {
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isLeft(result)).toBe(true);
     });
 
@@ -88,13 +88,13 @@ describe("schemas", () => {
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isLeft(result)).toBe(true);
     });
 
     it("validates request with asset overrides", () => {
       const request = {
-        source: { type: "path", path: "networks/preset1" },
+        source: { type: "networkId", networkId: "preset1" },
         libraryId: "V1.1_working",
         assetDefaults: {
           timeline: {
@@ -111,7 +111,7 @@ describe("schemas", () => {
       };
 
       const result = validateRequest(CostingEstimateRequestSchema, request);
-      
+
       expect(Either.isRight(result)).toBe(true);
       if (Either.isRight(result)) {
         expect(result.right.assetDefaults?.discount_rate).toBe(0.08);
@@ -126,7 +126,7 @@ describe("schemas", () => {
       ];
 
       const formatted = formatValidationErrors(errors);
-      
+
       expect(formatted.error).toBe("Invalid request body");
       expect(formatted.details).toHaveLength(1);
       expect(formatted.details[0].path).toBe("source");

@@ -47,10 +47,14 @@ The server will start on `http://localhost:3000` by default.
 The backend will use WebAssembly bindings from the Rust CLI code. To build the WASM package:
 
 ```bash
-npm run build:wasm
+just build-wasm
 ```
 
 This compiles the Rust code in `../cli` to WebAssembly and outputs it to `./pkg`.
+
+### Operations API
+
+I'll docment this later.
 
 ## Networks Directory
 

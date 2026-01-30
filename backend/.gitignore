@@ -1,11 +1,5 @@
 node_modules/
 dist/
-pkg/
 *.log
 .env
 .DS_Store
-
-# Networks directory (can be symlinked or copied from project root)
-# Uncomment to ignore if using symlinks:
-# networks/
-

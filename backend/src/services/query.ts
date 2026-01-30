@@ -1,19 +1,9 @@
-import { DaggerWasm } from "../../pkg/dagger.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 import dim from "./dim";
 import { formatQueryResult } from "./unitFormatter";
 import { getBlockSchemaProperties } from "./effectSchemaProperties";
-
-// With nodejs target, WASM is initialized synchronously when module loads
-let daggerWasm: DaggerWasm | null = null;
-
-function getWasm() {
-  if (!daggerWasm) {
-    daggerWasm = new DaggerWasm();
-  }
-  return daggerWasm;
-}
+import { getDagger } from "../utils/getDagger";
 
 function resolvePath(relativePath: string): string {
   // If path is already absolute, use it as-is
@@ -168,12 +158,12 @@ export async function queryNetwork(
   networkPath: string,
   query: string,
   schemaVersion?: string,
-  queryOverrides: Record<string, string> = {}
+  queryOverrides: Record<string, string> = {},
 ): Promise<any> {
   // Initialize dim module
   await dim.init();
 
-  const wasm = getWasm();
+  const dagger = getDagger();
 
   // Read files in Node.js and pass contents to WASM
   const { files, configContent } = await readNetworkFiles(networkPath);
@@ -192,10 +182,10 @@ export async function queryNetwork(
   const baseQuery = query.split("?")[0].split("&")[0];
 
   try {
-    const result = wasm.query_from_files(
+    const result = dagger.query_from_files(
       filesJson,
       configContent || undefined,
-      baseQuery
+      baseQuery,
     );
     const parsedResult = JSON.parse(result);
 
@@ -219,10 +209,10 @@ export async function queryNetwork(
       ) {
         const blockQuery = blockQueryParts.join("/");
         try {
-          const blockResult = wasm.query_from_files(
+          const blockResult = dagger.query_from_files(
             filesJson,
             configContent || undefined,
-            blockQuery
+            blockQuery,
           );
           const blockData = JSON.parse(blockResult);
           if (blockData && typeof blockData === "object" && blockData.type) {
@@ -265,7 +255,7 @@ export async function queryNetwork(
         const schemaProperties = await getBlockSchemaProperties(
           networkPath,
           schemaQuery,
-          schemaVersion || "v1.0"
+          schemaVersion || "v1.0",
         );
         // Look for this property in the schema results
         const propertyKey = `${schemaQuery}/${propertyName}`;
@@ -306,7 +296,7 @@ export async function queryNetwork(
       unitPreferences,
       blockType,
       propertyName,
-      propertyMetadata
+      propertyMetadata,
     );
     return formatted;
   } catch (error: any) {

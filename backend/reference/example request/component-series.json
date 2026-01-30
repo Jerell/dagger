@@ -1,0 +1,421 @@
+{
+  "series": {
+    "Emitter 1": [
+      {
+        "elem": "Source",
+        "name": "emitter1",
+        "elevation": 140.0,
+        "pressure": 3500000,
+        "temperature": 328.15,
+        "flowrate": 53.869749284,
+        "intermediate": false
+      },
+      {
+        "elem": "Valve",
+        "name": "Cement Plant Valve",
+        "elevation": 140.0,
+        "minimumPressure": 0
+      }
+    ],
+    "Emitter 2": [
+      {
+        "elem": "Source",
+        "name": "emitter2",
+        "elevation": 329.98706,
+        "pressure": 3500000,
+        "temperature": 328.15,
+        "flowrate": 72.882601972,
+        "intermediate": false
+      },
+      {
+        "elem": "Valve",
+        "name": "Gas Plant Valve",
+        "elevation": 329.98706,
+        "minimumPressure": 0
+      },
+      {
+        "elem": "Scavenger",
+        "name": "Gas Plant Scavenger",
+        "elevation": 329.98706,
+        "chemicals": "Oxygen,NitrogenDioxide",
+        "enabled": false
+      }
+    ],
+    "Emitter 3": [
+      {
+        "elem": "Source",
+        "name": "emitter3",
+        "elevation": 391.57175,
+        "pressure": 3500000,
+        "temperature": 328.15,
+        "flowrate": 63.376175628,
+        "intermediate": false
+      },
+      {
+        "elem": "Valve",
+        "name": "Blue Hydrogen Plant Valve",
+        "elevation": 391.57175,
+        "minimumPressure": 0
+      }
+    ],
+    "Storage Emitter": [
+      {
+        "elem": "Source",
+        "name": "emitter4",
+        "elevation": 94.22902,
+        "pressure": 1600000,
+        "temperature": 243.15,
+        "flowrate": 38.025705,
+        "intermediate": false
+      },
+      {
+        "elem": "Scavenger",
+        "name": "Port Storage Scavenger",
+        "elevation": 94.22902,
+        "chemicals": "Oxygen,NitrogenDioxide",
+        "enabled": false
+      },
+      {
+        "elem": "Pump",
+        "name": "storagePump",
+        "elevation": 94.22902,
+        "minimumUpstreamPressure": 0,
+        "maximumOutletPressure": 19000000,
+        "maximumOperatingTemperature": 418.15,
+        "isentropicEfficiency": 0.85,
+        "mechanicalEfficiency": 1,
+        "enabled": true,
+        "allowTwoPhase": true
+      },
+      {
+        "elem": "Heater",
+        "name": "storageHeater",
+        "elevation": 94.22902,
+        "outletTemperature": 298.15,
+        "pressureDelta": 0.0,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1,
+        "enabled": true
+      },
+      {
+        "elem": "Cooler",
+        "name": "storageCooler",
+        "elevation": 94.22902,
+        "outletTemperature": 313.15,
+        "pressureDelta": 0.0,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1,
+        "enabled": false
+      }
+    ],
+    "Storage Emitter End": [
+      {
+        "elem": "Sink",
+        "name": "Storage Emitter End",
+        "elevation": 94.22902,
+        "pressure": 4000000
+      }
+    ],
+    "Reservoir 1": [
+      {
+        "elem": "Heater",
+        "name": "wellheadHeater1",
+        "elevation": 26.6,
+        "outletTemperature": 298.15,
+        "pressureDelta": -100000,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1
+      },
+      {
+        "elem": "Valve",
+        "name": "wellheadValve1",
+        "elevation": 26.6,
+        "minimumPressure": 2000000
+      },
+      {
+        "elem": "Well",
+        "name": "well1",
+        "elevation": 0.0,
+        "pressureUnit": "Bara",
+        "flowrateType": "Mass",
+        "flowrateUnit": "Mtpa",
+        "densityUnit": "KgPerM3",
+        "split": 4,
+        "pf_exponents": ["000", "010", "100", "001"],
+        "pf_coefficients": [
+          -5.58419353175751, -2.74211714865716, -0.213292077872121,
+          0.0195785126128553
+        ]
+      },
+      {
+        "elem": "Perforation",
+        "name": "Reservoir 1 Perforation",
+        "elevation": -56.594177,
+        "pressureUnit": "Bara",
+        "flowrateUnit": "Kgps",
+        "split": 1,
+        "pf_exponents": ["00", "01", "10"],
+        "pf_coefficients": [
+          2.28020995800166, 0.0340005451948352, -0.02365752079062
+        ]
+      },
+      {
+        "elem": "Reservoir",
+        "name": "reservoir1",
+        "elevation": -56.594177,
+        "pressure": 2000000,
+        "pressureUnit": "Bara",
+        "m_exponents": ["0", "1", "2", "3", "4"],
+        "m_coefficients": [6.06178, 0.00000397, -8.2e-14, 8.04e-22, -2.82e-30]
+      }
+    ],
+    "Reservoir 1 Dense": [
+      {
+        "elem": "Heater",
+        "name": "wellheadHeater1",
+        "elevation": 26.6,
+        "outletTemperature": 298.15,
+        "pressureDelta": -100000,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1
+      },
+      {
+        "elem": "Valve",
+        "name": "wellheadValve1",
+        "elevation": 26.6,
+        "minimumPressure": 2000000
+      },
+      {
+        "elem": "Well",
+        "name": "well1",
+        "elevation": 0.0,
+        "pressureUnit": "Bara",
+        "flowrateType": "Mass",
+        "flowrateUnit": "Mtpa",
+        "densityUnit": "KgPerM3",
+        "split": 4,
+        "pf_exponents": ["000", "010", "100", "001"],
+        "pf_coefficients": [
+          60.63137527, -7.928443659, -0.5531392479, 0.04774437169
+        ]
+      },
+      {
+        "elem": "Perforation",
+        "name": "Reservoir 1 Perforation",
+        "elevation": -56.594177,
+        "pressureUnit": "Bara",
+        "flowrateUnit": "Kgps",
+        "split": 1,
+        "pf_exponents": ["00", "01", "10"],
+        "pf_coefficients": [
+          2.28020995800166, 0.0340005451948352, -0.02365752079062
+        ]
+      },
+      {
+        "elem": "Reservoir",
+        "name": "reservoir1",
+        "elevation": -56.594177,
+        "pressure": 2000000,
+        "pressureUnit": "Bara",
+        "m_exponents": ["0", "1", "2", "3", "4"],
+        "m_coefficients": [6.06178, 0.00000397, -8.2e-14, 8.04e-22, -2.82e-30]
+      }
+    ],
+    "Reservoir 2": [
+      {
+        "elem": "Heater",
+        "name": "wellheadHeater2",
+        "elevation": 0.0,
+        "outletTemperature": 298.15,
+        "pressureDelta": -100000,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1
+      },
+      {
+        "elem": "Valve",
+        "name": "wellheadValve2",
+        "elevation": 26.6,
+        "minimumPressure": 8000000
+      },
+      {
+        "elem": "Well",
+        "name": "well2",
+        "elevation": 0.0,
+        "pressureUnit": "Bara",
+        "flowrateType": "Mass",
+        "flowrateUnit": "Mtpa",
+        "densityUnit": "KgPerM3",
+        "split": 4,
+        "pf_exponents": ["000", "010", "100", "001"],
+        "pf_coefficients": [
+          -5.58419353175751, -2.74211714865716, -0.213292077872121,
+          0.0195785126128553
+        ]
+      },
+      {
+        "elem": "Perforation",
+        "name": "Reservoir 2 Perforation",
+        "elevation": -92.077896,
+        "pressureUnit": "Bara",
+        "flowrateUnit": "Kgps",
+        "split": 1,
+        "pf_exponents": ["00", "01", "10"],
+        "pf_coefficients": [
+          2.28020995800166, 0.0340005451948352, -0.02365752079062
+        ]
+      },
+      {
+        "elem": "Reservoir",
+        "name": "reservoir2",
+        "elevation": -92.077896,
+        "pressure": 2000000,
+        "pressureUnit": "Bara",
+        "m_exponents": ["0", "1", "2", "3", "4"],
+        "m_coefficients": [6.06178, 0.00000397, -8.2e-14, 8.04e-22, -2.82e-30]
+      }
+    ],
+    "Reservoir 2 Dense": [
+      {
+        "elem": "Heater",
+        "name": "wellheadHeater2",
+        "elevation": 0.0,
+        "outletTemperature": 303.15,
+        "pressureDelta": -100000,
+        "isentropicEfficiency": 1,
+        "mechanicalEfficiency": 1
+      },
+      {
+        "elem": "Valve",
+        "name": "wellheadValve2",
+        "elevation": 26.6,
+        "minimumPressure": 8000000
+      },
+      {
+        "elem": "Well",
+        "name": "well2",
+        "elevation": 0.0,
+        "pressureUnit": "Bara",
+        "flowrateType": "Mass",
+        "flowrateUnit": "Mtpa",
+        "densityUnit": "KgPerM3",
+        "split": 4,
+        "pf_exponents": ["000", "010", "100", "001"],
+        "pf_coefficients": [
+          60.63137527, -7.928443659, -0.5531392479, 0.04774437169
+        ]
+      },
+      {
+        "elem": "Perforation",
+        "name": "Reservoir 2 Perforation",
+        "elevation": -92.077896,
+        "pressureUnit": "Bara",
+        "flowrateUnit": "Kgps",
+        "split": 1,
+        "pf_exponents": ["00", "01", "10"],
+        "pf_coefficients": [
+          2.28020995800166, 0.0340005451948352, -0.02365752079062
+        ]
+      },
+      {
+        "elem": "Reservoir",
+        "name": "reservoir2",
+        "elevation": -92.077896,
+        "pressure": 2000000,
+        "pressureUnit": "Bara",
+        "m_exponents": ["0", "1", "2", "3", "4"],
+        "m_coefficients": [6.06178, 0.00000397, -8.2e-14, 8.04e-22, -2.82e-30]
+      }
+    ],
+    "Compression Station": [
+      {
+        "elem": "CompressorTrain",
+        "name": "compressorTrain1",
+        "elevation": 94.22902,
+        "numberOfStages": 4,
+        "compressorMinimumUpstreamPressure": 2000000,
+        "compressorMaximumOutletPressure": 19000000,
+        "compressorMaximumOperatingTemperature": 418.15,
+        "compressorIsentropicEfficiency": 1,
+        "compressorMechanicalEfficiency": 1,
+        "coolerOutletTemperature": 313.15,
+        "coolerPressureDelta": 0,
+        "coolerIsentropicEfficiency": 1,
+        "coolerMechanicalEfficiency": 1,
+        "enabled": true
+      }
+    ],
+    "Onshore Pipeline 1 End": [
+      {
+        "elem": "Sink",
+        "name": "Onshore Pipeline 1 End",
+        "elevation": 94.22902,
+        "pressure": 2000000
+      }
+    ],
+    "Onshore Pipeline 2 End": [
+      {
+        "elem": "Sink",
+        "name": "Onshore Pipeline 2 End",
+        "elevation": 403.18744,
+        "pressure": 3000000
+      }
+    ],
+    "Onshore Pipeline 3 Initial End": [
+      {
+        "elem": "Sink",
+        "name": "Onshore Pipeline 3 Initial End",
+        "elevation": 399.18256,
+        "pressure": 3000000
+      }
+    ],
+    "Onshore Pipeline 3 Merged Start": [
+      {
+        "elem": "Source",
+        "name": "Onshore Pipeline 3 Merged Start",
+        "elevation": 399.18256,
+        "pressure": 3500000,
+        "temperature": 313.15,
+        "flowrate": 200,
+        "intermediate": true
+      }
+    ],
+    "Onshore Pipeline 3 Merged End": [
+      {
+        "elem": "Sink",
+        "name": "Onshore Pipeline 3 Merged End",
+        "elevation": 94.22902,
+        "pressure": 2000000
+      }
+    ],
+    "Compression Station Start": [
+      {
+        "elem": "Source",
+        "name": "Compression Station Start",
+        "elevation": 94.22902,
+        "pressure": 2000000,
+        "temperature": 303.15,
+        "flowrate": 200,
+        "intermediate": true
+      }
+    ],
+    "Compression Station End": [
+      {
+        "elem": "Sink",
+        "name": "Compression Station End",
+        "elevation": 94.22902,
+        "pressure": 19000000
+      }
+    ],
+    "Offshore Pipelines Start": [
+      {
+        "elem": "Source",
+        "name": "Offshore Pipelines Start",
+        "elevation": 94.22902,
+        "pressure": 19000000,
+        "temperature": 313.15,
+        "flowrate": 300,
+        "intermediate": true
+      }
+    ]
+  }
+}

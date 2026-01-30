@@ -1,6 +1,8 @@
 # HTTPie API Testing Guide
 
-This guide provides HTTPie commands for testing all Dagger API endpoints.
+This guide provides [HTTPie](https://httpie.io/) commands for testing all Dagger API endpoints.
+
+You don't have to use HTTPie. I just do because I like it.
 
 ## Prerequisites
 

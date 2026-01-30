@@ -1,6 +1,6 @@
 /**
  * Request and response types for the costing API.
- * 
+ *
  * These types define the interface between the frontend and the local server's
  * costing adapter. Asset-level properties are provided at request time with
  * sensible defaults.
@@ -50,7 +50,8 @@ export type NetworkBranch = {
 export type NetworkBlock = {
   type: string;
   quantity?: number;
-  [key: string]: unknown;
+
+  [key: string]: string | number | null | undefined;
 };
 
 /**
@@ -69,19 +70,19 @@ export type NetworkSource =
 export type CostingEstimateRequest = {
   /** Network source - either path or inline data */
   source: NetworkSource;
-  
+
   /** Cost library to use (e.g., "V1.1_working") */
   libraryId: string;
-  
+
   /** Target currency for results (e.g., "USD", "EUR") */
   targetCurrency?: string;
-  
-  /** 
+
+  /**
    * Optional asset-level property overrides.
    * These apply to all assets unless per-asset overrides are specified.
    */
   assetDefaults?: AssetPropertyOverrides;
-  
+
   /**
    * Per-asset overrides keyed by group ID or branch ID.
    * Takes precedence over assetDefaults.
@@ -128,22 +129,22 @@ export type ResolvedAssetProperties = {
 export type CostingEstimateResponse = {
   /** Network ID */
   networkId: string;
-  
+
   /** Network name (if available) */
   networkName?: string;
-  
+
   /** Currency used for all amounts */
   currency: string;
-  
+
   /** Network-level totals (undiscounted) */
   lifetimeCosts: LifetimeCosts;
-  
+
   /** Network-level totals (discounted - Net Present Cost) */
   lifetimeNpcCosts: LifetimeCosts;
-  
+
   /** Per-asset results */
   assets: AssetCostResult[];
-  
+
   /** IDs of assets that used all defaults */
   assetsUsingDefaults: string[];
 };
@@ -154,22 +155,22 @@ export type CostingEstimateResponse = {
 export type AssetCostResult = {
   /** Asset ID (group ID or branch ID) */
   id: string;
-  
+
   /** Asset name */
   name?: string;
-  
+
   /** Whether this asset used default properties */
   isUsingDefaults: boolean;
-  
+
   /** Which properties used defaults */
   propertiesUsingDefaults: string[];
-  
+
   /** Lifetime costs (undiscounted) */
   lifetimeCosts: LifetimeCosts;
-  
+
   /** Lifetime NPC (discounted) */
   lifetimeNpcCosts: LifetimeCosts;
-  
+
   /** Per-block costs */
   blocks: BlockCostResult[];
 };
@@ -180,22 +181,22 @@ export type AssetCostResult = {
 export type BlockCostResult = {
   /** Block ID */
   id: string;
-  
+
   /** Block type (e.g., "CaptureUnit") */
   blockType: string;
-  
+
   /** Block subtype */
   subtype?: string;
-  
+
   /** Module reference in cost library */
   moduleRef: string;
-  
+
   /** Quantity */
   quantity: number;
-  
+
   /** Direct equipment cost */
   directEquipmentCost: number;
-  
+
   /** Total installed cost */
   totalInstalledCost: number;
 };
@@ -265,7 +266,7 @@ export function resolveAssetProperties(
   globalOverrides?: AssetPropertyOverrides
 ): ResolvedAssetProperties {
   const usingDefaults = new Set<string>();
-  
+
   // Start with defaults
   const timeline = { ...DEFAULT_TIMELINE };
   const capexLangFactors = { ...DEFAULT_CAPEX_LANG_FACTORS };
@@ -274,7 +275,7 @@ export function resolveAssetProperties(
   let ftePersonnel = DEFAULT_FTE_PERSONNEL;
   let assetUptime = DEFAULT_ASSET_UPTIME;
   let discountRate = DEFAULT_DISCOUNT_RATE;
-  
+
   // Track what's using defaults
   usingDefaults.add("timeline");
   usingDefaults.add("labour_average_salary");
@@ -283,17 +284,17 @@ export function resolveAssetProperties(
   usingDefaults.add("discount_rate");
   usingDefaults.add("capex_lang_factors");
   usingDefaults.add("opex_factors");
-  
+
   // Apply global overrides
   if (globalOverrides) {
     applyOverrides(globalOverrides);
   }
-  
+
   // Apply per-asset overrides (takes precedence)
   if (overrides) {
     applyOverrides(overrides);
   }
-  
+
   function applyOverrides(o: AssetPropertyOverrides) {
     if (o.timeline) {
       Object.assign(timeline, o.timeline);
@@ -324,7 +325,7 @@ export function resolveAssetProperties(
       usingDefaults.delete("opex_factors");
     }
   }
-  
+
   return {
     timeline,
     labour_average_salary: labourAverageSalary,

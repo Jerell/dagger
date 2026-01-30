@@ -1,11 +1,12 @@
 // Static schema registry - imports all schemas from all schema sets
 // This provides synchronous access to all schemas without dynamic imports
 
-import { PipeSchema as V10PipeSchema } from "./v1.0/pipe";
-import { CompressorSchema as V10CompressorSchema } from "./v1.0/compressor";
-import { ShipSchema as V10ShipSchema } from "./v1.0/ship";
+import { PipeSchema as V10PipeSchema } from "./v1.0-snapshot/pipe";
+import { CompressorSchema as V10CompressorSchema } from "./v1.0-snapshot/compressor";
+import { ShipSchema as V10ShipSchema } from "./v1.0-snapshot/ship";
+import { SourceSchema as V10SourceSchema } from "./v1.0-snapshot/source";
+import { ReservoirSchema as V10ReservoirSchema } from "./v1.0-snapshot/reservoir";
 
-// v1.0-costing schemas (generic, operation-agnostic)
 import { PipeSchema } from "./v1.0-costing/pipe";
 import { CompressorSchema } from "./v1.0-costing/compressor";
 import { PumpSchema } from "./v1.0-costing/pump";
@@ -33,13 +34,14 @@ import { OffshorePlatformSchema } from "./v1.0-costing/offshore";
 
 // Registry maps: schemaSet -> blockType -> Schema
 export const schemaRegistry = {
-  "v1.0": {
+  "v1.0-snapshot": {
     Pipe: V10PipeSchema,
     Compressor: V10CompressorSchema,
     Ship: V10ShipSchema,
+    Source: V10SourceSchema,
+    Reservoir: V10ReservoirSchema,
   },
   "v1.0-costing": {
-    // Generic block types - adapter maps to cost library modules
     Pipe: PipeSchema,
     Compressor: CompressorSchema,
     Pump: PumpSchema,
@@ -63,4 +65,6 @@ export const schemaRegistry = {
 
 // Type helpers
 export type SchemaSet = keyof typeof schemaRegistry;
-export type BlockType = keyof typeof schemaRegistry["v1.0"] | keyof typeof schemaRegistry["v1.0-costing"];
+export type BlockType =
+  | keyof (typeof schemaRegistry)["v1.0-snapshot"]
+  | keyof (typeof schemaRegistry)["v1.0-costing"];

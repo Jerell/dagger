@@ -18,27 +18,38 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { transformNetworkToCostingRequest, transformCostingResponse } from "./adapter";
+import {
+  transformNetworkToCostingRequest,
+  transformCostingResponse,
+} from "./adapter";
 import type { NetworkSource, NetworkData } from "./request-types";
 import type { CostEstimateResponse } from "./types";
 import * as path from "path";
 
-const COSTING_SERVER_URL = process.env.COSTING_SERVER_URL || "http://localhost:8080";
+const COSTING_SERVER_URL =
+  process.env.COSTING_SERVER_URL || "http://localhost:8080";
 const LIBRARY_ID = "V1.1_working";
 
 // Path to the reference network TOML files (relative to repo root, not backend/)
-const COSTING_REFERENCE_PATH = path.join(process.cwd(), "..", "workingfiles/costing-reference");
+const COSTING_REFERENCE_PATH = path.join(
+  process.cwd(),
+  "..",
+  "workingfiles/costing-reference"
+);
 
 // Helper to check if costing server is available
 async function isCostingServerAvailable(): Promise<boolean> {
   try {
     // Try the API endpoint with empty request
-    const response = await fetch(`${COSTING_SERVER_URL}/api/cost/estimate?library_id=${LIBRARY_ID}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assets: [] }),
-      signal: AbortSignal.timeout(5000),
-    });
+    const response = await fetch(
+      `${COSTING_SERVER_URL}/api/cost/estimate?library_id=${LIBRARY_ID}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assets: [] }),
+        signal: AbortSignal.timeout(5000),
+      }
+    );
     // Server is available if we get a response (even error response)
     return response.ok || response.status < 500;
   } catch {
@@ -58,12 +69,12 @@ async function callCostingServer(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   });
-  
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Costing server error: ${response.status} - ${text}`);
   }
-  
+
   return response.json();
 }
 
@@ -74,11 +85,13 @@ function parseEurAmount(str: string): number {
 
 describe("adapter integration tests", () => {
   let serverAvailable = false;
-  
+
   beforeAll(async () => {
     serverAvailable = await isCostingServerAvailable();
     if (!serverAvailable) {
-      console.warn("⚠️  Costing server not available - skipping integration tests");
+      console.warn(
+        "⚠️  Costing server not available - skipping integration tests"
+      );
     }
   });
 
@@ -118,9 +131,13 @@ describe("adapter integration tests", () => {
 
       const source: NetworkSource = { type: "data", network };
 
-      const { request, assetMetadata } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request, assetMetadata } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
       expect(request.assets.length).toBe(1);
       expect(request.assets[0].cost_items.length).toBe(1);
@@ -129,15 +146,25 @@ describe("adapter integration tests", () => {
       const costingResponse = await callCostingServer(request);
 
       // Transform response
-      const result = transformCostingResponse(costingResponse, assetMetadata, "EUR");
+      const result = transformCostingResponse(
+        costingResponse,
+        assetMetadata,
+        "EUR"
+      );
 
       // Expected values from e2e test (in EUR)
       const expectedDirectEquipment = parseEurAmount("€1,012,452.60");
       const expectedTotalInstalled = parseEurAmount("€3,796,697.23");
 
       expect(result.assets.length).toBe(1);
-      expect(result.assets[0].lifetimeCosts.directEquipmentCost).toBeCloseTo(expectedDirectEquipment, 0);
-      expect(result.assets[0].lifetimeCosts.totalInstalledCost).toBeCloseTo(expectedTotalInstalled, 0);
+      expect(result.assets[0].lifetimeCosts.directEquipmentCost).toBeCloseTo(
+        expectedDirectEquipment,
+        0
+      );
+      expect(result.assets[0].lifetimeCosts.totalInstalledCost).toBeCloseTo(
+        expectedTotalInstalled,
+        0
+      );
     });
   });
 
@@ -184,24 +211,37 @@ describe("adapter integration tests", () => {
 
       const source: NetworkSource = { type: "data", network };
 
-      const { request, assetMetadata } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request, assetMetadata } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
       expect(request.assets.length).toBe(1);
       // Should now have 2 cost items: one for compressor (Item 007), one for cooler (Item 008)
       expect(request.assets[0].cost_items.length).toBe(2);
 
       const costingResponse = await callCostingServer(request);
-      const result = transformCostingResponse(costingResponse, assetMetadata, "EUR");
+      const result = transformCostingResponse(
+        costingResponse,
+        assetMetadata,
+        "EUR"
+      );
 
       // Log for comparison - e2e expects €598,507,194.81
-      console.log(`LP Compression direct equipment: €${result.assets[0].lifetimeCosts.directEquipmentCost.toLocaleString()}`);
+      console.log(
+        `LP Compression direct equipment: €${result.assets[0].lifetimeCosts.directEquipmentCost.toLocaleString()}`
+      );
       console.log(`Expected (e2e): €598,507,194.81`);
 
       // Verify we get the expected cost
       const expectedDirectEquipment = parseEurAmount("€598,507,194.81");
-      expect(result.assets[0].lifetimeCosts.directEquipmentCost).toBeCloseTo(expectedDirectEquipment, 0);
+      expect(result.assets[0].lifetimeCosts.directEquipmentCost).toBeCloseTo(
+        expectedDirectEquipment,
+        0
+      );
     });
   });
 
@@ -270,22 +310,41 @@ describe("adapter integration tests", () => {
 
       const source: NetworkSource = { type: "data", network };
 
-      const { request, assetMetadata } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request, assetMetadata } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
-      console.log("Multi-asset chain - Assets generated:", request.assets.length);
-      console.log("Multi-asset chain - Asset IDs:", request.assets.map((a) => a.id));
+      console.log(
+        "Multi-asset chain - Assets generated:",
+        request.assets.length
+      );
+      console.log(
+        "Multi-asset chain - Asset IDs:",
+        request.assets.map((a) => a.id)
+      );
 
       expect(request.assets.length).toBe(3);
 
       const costingResponse = await callCostingServer(request);
-      const result = transformCostingResponse(costingResponse, assetMetadata, "EUR");
+      const result = transformCostingResponse(
+        costingResponse,
+        assetMetadata,
+        "EUR"
+      );
 
       // Log results
-      console.log("Network total direct equipment:", `€${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`);
+      console.log(
+        "Network total direct equipment:",
+        `€${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`
+      );
       for (const asset of result.assets) {
-        console.log(`  ${asset.id}: €${asset.lifetimeCosts.directEquipmentCost.toLocaleString()}`);
+        console.log(
+          `  ${asset.id}: €${asset.lifetimeCosts.directEquipmentCost.toLocaleString()}`
+        );
       }
 
       // Verify structure
@@ -336,30 +395,50 @@ describe("adapter integration tests", () => {
       // - WASM network loading
       // - Unit string parsing via dim (e.g., "100 kg/h", "100 m^3/h", "100 MW")
       // - Block property extraction from TOML
-      const source: NetworkSource = { type: "path", path: COSTING_REFERENCE_PATH };
+      const source: NetworkSource = {
+        type: "path",
+        path: COSTING_REFERENCE_PATH,
+      };
 
-      const { request, assetMetadata } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request, assetMetadata } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
       console.log("\n=== Path-Based Loading Test ===");
       console.log("Network path:", COSTING_REFERENCE_PATH);
       console.log("Assets generated:", request.assets.length);
-      console.log("Asset IDs:", request.assets.map((a) => a.id));
+      console.log(
+        "Asset IDs:",
+        request.assets.map((a) => a.id)
+      );
 
       // Verify we got assets from the TOML files
       expect(request.assets.length).toBeGreaterThan(0);
 
       // Call costing server
       const costingResponse = await callCostingServer(request);
-      const result = transformCostingResponse(costingResponse, assetMetadata, "EUR");
+      const result = transformCostingResponse(
+        costingResponse,
+        assetMetadata,
+        "EUR"
+      );
 
       // Log results
-      console.log(`\nNetwork Total Direct Equipment: €${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`);
-      console.log(`Network Total Installed: €${result.lifetimeCosts.totalInstalledCost.toLocaleString()}`);
+      console.log(
+        `\nNetwork Total Direct Equipment: €${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`
+      );
+      console.log(
+        `Network Total Installed: €${result.lifetimeCosts.totalInstalledCost.toLocaleString()}`
+      );
       console.log("\nPer-asset Direct Equipment:");
       for (const asset of result.assets) {
-        console.log(`  ${asset.name}: €${asset.lifetimeCosts.directEquipmentCost.toLocaleString()}`);
+        console.log(
+          `  ${asset.name}: €${asset.lifetimeCosts.directEquipmentCost.toLocaleString()}`
+        );
       }
 
       // Expected values from e2e test
@@ -390,7 +469,10 @@ describe("adapter integration tests", () => {
           if (expectedCost > 0) {
             // Allow 1% tolerance for floating point differences
             const tolerance = expectedCost * 0.01;
-            expect(asset.lifetimeCosts.directEquipmentCost).toBeCloseTo(expectedCost, -Math.log10(tolerance));
+            expect(asset.lifetimeCosts.directEquipmentCost).toBeCloseTo(
+              expectedCost,
+              -Math.log10(tolerance)
+            );
           }
         } else {
           missingAssets.push(name);
@@ -398,13 +480,22 @@ describe("adapter integration tests", () => {
       }
 
       if (missingAssets.length > 0) {
-        console.log("\nMissing assets (need schema/mapper work):", missingAssets);
+        console.log(
+          "\nMissing assets (need schema/mapper work):",
+          missingAssets
+        );
       }
 
       // Verify network totals match expected (if all assets present)
       if (missingAssets.length === 0) {
-        expect(result.lifetimeCosts.directEquipmentCost).toBeCloseTo(expectedTotalDirectEquipment, 0);
-        expect(result.lifetimeCosts.totalInstalledCost).toBeCloseTo(expectedTotalInstalled, 0);
+        expect(result.lifetimeCosts.directEquipmentCost).toBeCloseTo(
+          expectedTotalDirectEquipment,
+          0
+        );
+        expect(result.lifetimeCosts.totalInstalledCost).toBeCloseTo(
+          expectedTotalInstalled,
+          0
+        );
       } else {
         // At minimum, verify the assets we do have are costed correctly
         console.log("\nPartial chain test - verified assets:", matchedAssets);
@@ -420,14 +511,23 @@ describe("adapter integration tests", () => {
 
       // This test specifically verifies that dim handles volumetric flow rate
       // The TOML files contain unit strings like "100 m^3/h" which dim must parse
-      const source: NetworkSource = { type: "path", path: COSTING_REFERENCE_PATH };
+      const source: NetworkSource = {
+        type: "path",
+        path: COSTING_REFERENCE_PATH,
+      };
 
-      const { request } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
       // Find the Injection Topsides asset which has pump_flowrate in m^3/h
-      const injectionTopsides = request.assets.find((a) => a.id.includes("injection-topsides"));
+      const injectionTopsides = request.assets.find((a) =>
+        a.id.includes("injection-topsides")
+      );
       if (injectionTopsides) {
         console.log("\n=== Injection Topsides Cost Items ===");
         for (const item of injectionTopsides.cost_items) {
@@ -435,16 +535,23 @@ describe("adapter integration tests", () => {
         }
 
         // The pump flowrate should be converted from "100 m^3/h" to numeric
-        const pumpItem = injectionTopsides.cost_items.find((item) => item.parameters["Pump flowrate (volumetric)"] !== undefined);
+        const pumpItem = injectionTopsides.cost_items.find(
+          (item) => item.parameters["Pump flowrate (volumetric)"] !== undefined
+        );
         if (pumpItem) {
-          const pumpFlowrate = pumpItem.parameters["Pump flowrate (volumetric)"];
-          console.log(`\nPump flowrate converted: ${pumpFlowrate} (expected ~100 if in m³/h)`);
+          const pumpFlowrate =
+            pumpItem.parameters["Pump flowrate (volumetric)"];
+          console.log(
+            `\nPump flowrate converted: ${pumpFlowrate} (expected ~100 if in m³/h)`
+          );
           expect(pumpFlowrate).toBeCloseTo(100, 0);
         }
       }
 
       // Find the Refrigeration asset which has cooling_water in m^3/h
-      const refrigeration = request.assets.find((a) => a.id.includes("refrigeration"));
+      const refrigeration = request.assets.find((a) =>
+        a.id.includes("refrigeration")
+      );
       if (refrigeration) {
         console.log("\n=== Refrigeration Cost Items ===");
         for (const item of refrigeration.cost_items) {
@@ -452,10 +559,16 @@ describe("adapter integration tests", () => {
         }
 
         // The cooling water should be converted from "100 m^3/h" to numeric
-        const coolingItem = refrigeration.cost_items.find((item) => item.parameters["Cooling water (10degC temp rise)"] !== undefined);
+        const coolingItem = refrigeration.cost_items.find(
+          (item) =>
+            item.parameters["Cooling water (10degC temp rise)"] !== undefined
+        );
         if (coolingItem) {
-          const coolingWater = coolingItem.parameters["Cooling water (10degC temp rise)"];
-          console.log(`\nCooling water converted: ${coolingWater} (expected ~100 if in m³/h)`);
+          const coolingWater =
+            coolingItem.parameters["Cooling water (10degC temp rise)"];
+          console.log(
+            `\nCooling water converted: ${coolingWater} (expected ~100 if in m³/h)`
+          );
           expect(coolingWater).toBeCloseTo(100, 0);
         }
       }
@@ -469,10 +582,14 @@ describe("adapter integration tests", () => {
         }
 
         // mass_flow = "100 kg/h" should remain 100 kg/h (same units as cost library)
-        const massFlowItem = captureUnit.cost_items.find((item) => item.parameters["Mass flow"] !== undefined);
+        const massFlowItem = captureUnit.cost_items.find(
+          (item) => item.parameters["Mass flow"] !== undefined
+        );
         if (massFlowItem) {
           const massFlow = massFlowItem.parameters["Mass flow"];
-          console.log(`\nMass flow converted: ${massFlow} kg/h (expected 100 from "100 kg/h")`);
+          console.log(
+            `\nMass flow converted: ${massFlow} kg/h (expected 100 from "100 kg/h")`
+          );
           expect(massFlow).toBeCloseTo(100, 0);
         }
       }
@@ -625,18 +742,28 @@ describe("adapter integration tests", () => {
 
       const source: NetworkSource = { type: "data", network };
 
-      const { request, assetMetadata } = await transformNetworkToCostingRequest(source, {
-        libraryId: LIBRARY_ID,
-      });
+      const { request, assetMetadata } = await transformNetworkToCostingRequest(
+        source,
+        "v1.0-costing",
+        {
+          libraryId: LIBRARY_ID,
+        }
+      );
 
       console.log("\n=== Inline Data Test (with unit strings) ===");
       console.log("Assets generated:", request.assets.length);
 
       // Call costing server
       const costingResponse = await callCostingServer(request);
-      const result = transformCostingResponse(costingResponse, assetMetadata, "EUR");
+      const result = transformCostingResponse(
+        costingResponse,
+        assetMetadata,
+        "EUR"
+      );
 
-      console.log(`Network Total Direct Equipment: €${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`);
+      console.log(
+        `Network Total Direct Equipment: €${result.lifetimeCosts.directEquipmentCost.toLocaleString()}`
+      );
 
       // Results should match the path-based test
       expect(result.assets.length).toBeGreaterThan(0);

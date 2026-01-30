@@ -1,0 +1,44 @@
+type = "branch"
+
+label = "Branch 1"
+length = "10 km"
+diameter = "24 in"
+uValue = "0.03 W/m²*K"
+ambientTemperature = "20 °C"
+
+[position]
+x = 0
+y = 0
+
+[[block]]
+quantity = 1
+type = "Source"
+flowrate = "1 mtpa"
+pressure = "100 bar"
+temperature = "55 °C"
+carbonDioxideFraction = "1.0"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+length = "10 km"
+diameter = "24 in"
+uValue = "0.03 W/m²*K"
+ambientTemperature = "20 °C"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Pipe"
+
+[[block]]
+quantity = 1
+type = "Reservoir"
+pressure = "20 bar"

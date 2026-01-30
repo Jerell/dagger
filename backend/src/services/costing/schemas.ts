@@ -8,49 +8,66 @@ import * as S from "effect/Schema";
 // Network Data Schemas
 // ============================================================================
 
-export const NetworkBlockSchema = S.mutable(S.Struct({
-  type: S.String,
-  quantity: S.optional(S.Number),
-}).pipe(S.extend(S.Record({ key: S.String, value: S.Unknown }))));
+export const NetworkBlockSchema = S.mutable(
+  S.Struct({
+    type: S.String,
+    quantity: S.optional(S.Number),
+  }).pipe(
+    S.extend(
+      S.Record({
+        key: S.String,
+        value: S.Union(S.String, S.Number, S.Null, S.Undefined),
+      }),
+    ),
+  ),
+);
 
-export const NetworkBranchSchema = S.mutable(S.Struct({
-  id: S.String,
-  label: S.optional(S.String),
-  parentId: S.optional(S.String),
-  blocks: S.mutable(S.Array(NetworkBlockSchema)),
-}));
+export const NetworkBranchSchema = S.mutable(
+  S.Struct({
+    id: S.String,
+    label: S.optional(S.String),
+    parentId: S.optional(S.String),
+    blocks: S.mutable(S.Array(NetworkBlockSchema)),
+  }),
+);
 
-export const NetworkGroupSchema = S.mutable(S.Struct({
-  id: S.String,
-  label: S.optional(S.String),
-  branchIds: S.mutable(S.Array(S.String)),
-}));
+export const NetworkGroupSchema = S.mutable(
+  S.Struct({
+    id: S.String,
+    label: S.optional(S.String),
+    branchIds: S.mutable(S.Array(S.String)),
+  }),
+);
 
-export const NetworkDataSchema = S.mutable(S.Struct({
-  groups: S.mutable(S.Array(NetworkGroupSchema)),
-  branches: S.mutable(S.Array(NetworkBranchSchema)),
-}));
+export const NetworkDataSchema = S.mutable(
+  S.Struct({
+    groups: S.mutable(S.Array(NetworkGroupSchema)),
+    branches: S.mutable(S.Array(NetworkBranchSchema)),
+  }),
+);
 
 // ============================================================================
 // Network Source Schema (Discriminated Union)
 // ============================================================================
 
-export const PathSourceSchema = S.mutable(S.Struct({
-  type: S.Literal("path"),
-  path: S.String,
-}));
+export const DataSourceSchema = S.mutable(
+  S.Struct({
+    type: S.Literal("data"),
+    network: NetworkDataSchema,
+  }),
+);
 
-export const DataSourceSchema = S.mutable(S.Struct({
-  type: S.Literal("data"),
-  network: NetworkDataSchema,
-}));
+export const NetworkIdSourceSchema = S.mutable(
+  S.Struct({
+    type: S.Literal("networkId"),
+    networkId: S.String,
+  }),
+);
 
-export const NetworkIdSourceSchema = S.mutable(S.Struct({
-  type: S.Literal("networkId"),
-  networkId: S.String,
-}));
-
-export const NetworkSourceSchema = S.Union(PathSourceSchema, DataSourceSchema, NetworkIdSourceSchema);
+export const NetworkSourceSchema = S.Union(
+  DataSourceSchema,
+  NetworkIdSourceSchema,
+);
 
 // ============================================================================
 // Asset Property Schemas
@@ -108,13 +125,19 @@ export const AssetPropertyOverridesSchema = S.Struct({
 // Request Schemas
 // ============================================================================
 
-export const CostingEstimateRequestSchema = S.mutable(S.Struct({
-  source: NetworkSourceSchema,
-  libraryId: S.String,
-  targetCurrency: S.optional(S.String),
-  assetDefaults: S.optional(AssetPropertyOverridesSchema),
-  assetOverrides: S.optional(S.mutable(S.Record({ key: S.String, value: AssetPropertyOverridesSchema }))),
-}));
+export const CostingEstimateRequestSchema = S.mutable(
+  S.Struct({
+    source: NetworkSourceSchema,
+    libraryId: S.String,
+    targetCurrency: S.optional(S.String),
+    assetDefaults: S.optional(AssetPropertyOverridesSchema),
+    assetOverrides: S.optional(
+      S.mutable(
+        S.Record({ key: S.String, value: AssetPropertyOverridesSchema }),
+      ),
+    ),
+  }),
+);
 
 // Infer types from schemas
 export type NetworkBlockInput = S.Schema.Type<typeof NetworkBlockSchema>;
@@ -122,7 +145,9 @@ export type NetworkBranchInput = S.Schema.Type<typeof NetworkBranchSchema>;
 export type NetworkGroupInput = S.Schema.Type<typeof NetworkGroupSchema>;
 export type NetworkDataInput = S.Schema.Type<typeof NetworkDataSchema>;
 export type NetworkSourceInput = S.Schema.Type<typeof NetworkSourceSchema>;
-export type CostingEstimateRequestInput = S.Schema.Type<typeof CostingEstimateRequestSchema>;
+export type CostingEstimateRequestInput = S.Schema.Type<
+  typeof CostingEstimateRequestSchema
+>;
 
 // ============================================================================
 // Validation Helper
@@ -142,23 +167,23 @@ export type ValidationError = {
  */
 export function validateRequest<A, I>(
   schema: S.Schema<A, I>,
-  data: unknown
+  data: unknown,
 ): Either.Either<A, ValidationError[]> {
   const result = S.decodeUnknownEither(schema)(data);
-  
+
   if (Either.isRight(result)) {
     return Either.right(result.right);
   }
-  
+
   // Extract errors from ParseError
   const parseError = result.left;
   const errors: ValidationError[] = [];
-  
+
   // Traverse the error structure to extract meaningful messages
   function extractErrors(error: unknown, path: string = ""): void {
     if (error && typeof error === "object") {
       const err = error as Record<string, unknown>;
-      
+
       if ("message" in err && typeof err.message === "string") {
         errors.push({
           message: err.message,
@@ -166,21 +191,21 @@ export function validateRequest<A, I>(
           received: err.actual ?? undefined,
         });
       }
-      
+
       if ("errors" in err && Array.isArray(err.errors)) {
         for (const subError of err.errors) {
           extractErrors(subError, path);
         }
       }
-      
+
       if ("error" in err) {
         extractErrors(err.error, path);
       }
     }
   }
-  
+
   extractErrors(parseError);
-  
+
   // Fallback if no specific errors extracted
   if (errors.length === 0) {
     errors.push({
@@ -189,7 +214,7 @@ export function validateRequest<A, I>(
       received: data,
     });
   }
-  
+
   return Either.left(errors);
 }
 

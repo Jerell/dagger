@@ -1,0 +1,64 @@
+{
+  "networkStructure": {
+    "subnets": {
+      "emitter1": {
+        "subnetName": "emitter1",
+        "downstreamSubnetName": "compressionStation",
+        "componentSeriesMap": {
+          "Emitter 1": ["Onshore Pipeline 1"],
+          "Onshore Pipeline 1": ["Onshore Pipeline 1 End"]
+        }
+      },
+      "emitter2": {
+        "subnetName": "emitter2",
+        "downstreamSubnetName": "emitter3merged",
+        "componentSeriesMap": {
+          "Emitter 2": ["Onshore Pipeline 2"],
+          "Onshore Pipeline 2": ["Onshore Pipeline 2 End"]
+        }
+      },
+      "emitter3": {
+        "subnetName": "emitter3",
+        "downstreamSubnetName": "emitter3merged",
+        "componentSeriesMap": {
+          "Emitter 3": ["Onshore Pipeline 3 Initial"],
+          "Onshore Pipeline 3 Initial": ["Onshore Pipeline 3 Initial End"]
+        }
+      },
+      "emitter4": {
+        "subnetName": "emitter4",
+        "downstreamSubnetName": "offshorepipelines",
+        "componentSeriesMap": { "Storage Emitter": ["Storage Emitter End"] }
+      },
+      "emitter3merged": {
+        "subnetName": "emitter3merged",
+        "downstreamSubnetName": "compressionStation",
+        "componentSeriesMap": {
+          "Onshore Pipeline 3 Merged Start": ["Onshore Pipeline 3 Merged"],
+          "Onshore Pipeline 3 Merged": ["Onshore Pipeline 3 Merged End"]
+        }
+      },
+      "compressionStation": {
+        "subnetName": "compressionStation",
+        "downstreamSubnetName": "offshorepipelines",
+        "componentSeriesMap": {
+          "Compression Station Start": ["Compression Station"],
+          "Compression Station": ["Compression Station End"]
+        }
+      },
+      "offshorepipelines": {
+        "subnetName": "offshorepipelines",
+        "downstreamSubnetName": "",
+        "componentSeriesMap": {
+          "Offshore Pipelines Start": [
+            "Offshore Pipeline 1",
+            "Offshore Pipeline 2"
+          ],
+          "Offshore Pipeline 1": ["Reservoir 1 Dense"],
+          "Offshore Pipeline 2": ["Reservoir 2 Dense"]
+        }
+      }
+    },
+    "componentYamlFilenames": ["componentSeries.yml", "otherComponents.yml"]
+  }
+}

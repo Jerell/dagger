@@ -1,5 +1,4 @@
 import { Schema, Either } from "effect";
-import { DaggerWasm } from "../../pkg/dagger.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 import {
@@ -12,20 +11,8 @@ import { formatValueUnified, FormatValueOptions } from "./valueFormatter";
 import { parseUnitPreferences } from "./query";
 import dim from "./dim";
 import { parseValue, convertToNumber } from "./valueParser";
-
-// With nodejs target, WASM is initialized synchronously when module loads
-let daggerWasm: DaggerWasm | null = null;
-
-function getWasm() {
-  if (!daggerWasm) {
-    daggerWasm = new DaggerWasm();
-  }
-  return daggerWasm;
-}
-
-function resolvePath(relativePath: string): string {
-  return path.resolve(process.cwd(), relativePath);
-}
+import { getDagger } from "../utils/getDagger";
+import { resolveNetworkPath } from "../utils/network-path";
 
 type NetworkFiles = {
   files: Record<string, string>;
@@ -33,7 +20,7 @@ type NetworkFiles = {
 };
 
 async function readNetworkFiles(networkPath: string): Promise<NetworkFiles> {
-  const absolutePath = resolvePath(networkPath);
+  const absolutePath = resolveNetworkPath(networkPath);
   const entries = await fs.readdir(absolutePath, { withFileTypes: true });
 
   const files: Record<string, string> = {};
@@ -94,7 +81,9 @@ export type NetworkContext = {
 /**
  * Create a network context from a path.
  */
-export async function createNetworkContext(networkPath: string): Promise<NetworkContext> {
+export async function createNetworkContext(
+  networkPath: string,
+): Promise<NetworkContext> {
   const { files, configContent } = await readNetworkFiles(networkPath);
   return {
     filesJson: JSON.stringify(files),
@@ -111,16 +100,16 @@ export function resolveProperty(
   ctx: NetworkContext,
   branchId: string,
   blockIndex: number,
-  propertyName: string
+  propertyName: string,
 ): ResolvedProperty | null {
-  const wasm = getWasm();
+  const dagger = getDagger();
   try {
-    const scopeResult = wasm.resolve_property_with_scope(
+    const scopeResult = dagger.resolve_property_with_scope(
       ctx.filesJson,
       ctx.configContent || undefined,
       branchId,
       blockIndex,
-      propertyName
+      propertyName,
     );
     const parsed = JSON.parse(scopeResult);
     if (parsed?.value !== undefined && parsed.scope) {
@@ -148,7 +137,7 @@ export function resolveBlockPropertiesFromSchema(
   branchId: string,
   blockIndex: number,
   schemaSet: string,
-  ctx: NetworkContext
+  ctx: NetworkContext,
 ): Record<string, ResolvedProperty> {
   const schemaMetadata = getSchemaMetadata(schemaSet, block.type);
   if (!schemaMetadata) {
@@ -163,7 +152,10 @@ export function resolveBlockPropertiesFromSchema(
   }
 
   const resolved: Record<string, ResolvedProperty> = {};
-  const allProperties = [...schemaMetadata.required, ...schemaMetadata.optional];
+  const allProperties = [
+    ...schemaMetadata.required,
+    ...schemaMetadata.optional,
+  ];
 
   for (const propName of allProperties) {
     // First check if property is directly on the block
@@ -196,14 +188,14 @@ export function getEnrichedBlockFromSchema(
   branchId: string,
   blockIndex: number,
   schemaSet: string,
-  ctx: NetworkContext
+  ctx: NetworkContext,
 ): Block {
   const resolved = resolveBlockPropertiesFromSchema(
     block,
     branchId,
     blockIndex,
     schemaSet,
-    ctx
+    ctx,
   );
 
   const enriched: Block = { ...block };
@@ -226,7 +218,7 @@ export function getEnrichedBlockFromSchema(
 export function getResolvedBlockProperties(
   validationResults: Record<string, ValidationResult>,
   branchId: string,
-  blockIndex: number
+  blockIndex: number,
 ): Record<string, PropertyValue> {
   const blockPath = `${branchId}/blocks/${blockIndex}`;
   const resolved: Record<string, PropertyValue> = {};
@@ -254,9 +246,13 @@ export function getEnrichedBlockFromValidation(
   block: Block,
   validationResults: Record<string, ValidationResult>,
   branchId: string,
-  blockIndex: number
+  blockIndex: number,
 ): Block {
-  const resolved = getResolvedBlockProperties(validationResults, branchId, blockIndex);
+  const resolved = getResolvedBlockProperties(
+    validationResults,
+    branchId,
+    blockIndex,
+  );
 
   const enriched: Block = { ...block };
   for (const [propName, value] of Object.entries(resolved)) {
@@ -274,7 +270,7 @@ export function getEnrichedBlockFromValidation(
 export async function validateBlockDirect(
   block: Block,
   blockType: string,
-  schemaSet: string
+  schemaSet: string,
 ): Promise<Record<string, ValidationResult>> {
   const schema = getSchema(schemaSet, blockType);
   if (!schema) {
@@ -396,7 +392,7 @@ export async function validateQueryBlocks(
   networkPath: string,
   query: string,
   schemaSet: string,
-  queryOverrides: Record<string, string> = {}
+  queryOverrides: Record<string, string> = {},
 ): Promise<Record<string, ValidationResult>> {
   // Read files once at the top level
   const { files, configContent } = await readNetworkFiles(networkPath);
@@ -421,7 +417,7 @@ export async function validateQueryBlocks(
   // Merge query overrides into dimensions
   const mergedDimensions = { ...configDimensions };
   for (const [key, unit] of Object.entries(mergedOverrides)) {
-    mergedDimensions[key] = unit;
+    mergedDimensions[key as keyof typeof mergedDimensions] = unit;
   }
 
   const unitPreferences: UnitPreferences = {
@@ -431,16 +427,16 @@ export async function validateQueryBlocks(
     propertyDimensions,
   };
 
-  const wasm = getWasm();
+  const dagger = getDagger();
 
   // Extract original query path (remove unit parameters)
   const baseQuery = query.split("?")[0].split("&")[0];
 
   // Execute query to get blocks
-  const queryResult = wasm.query_from_files(
+  const queryResult = dagger.query_from_files(
     filesJson,
     configContent || undefined,
-    baseQuery
+    baseQuery,
   );
   const blocks = JSON.parse(queryResult);
 
@@ -469,10 +465,10 @@ export async function validateQueryBlocks(
         const blockQuery = baseQuery.endsWith("/blocks")
           ? `${baseQuery}/${i}`
           : `${baseQuery}/blocks/${i}`;
-        const blockPathResult = wasm.query_from_files(
+        const blockPathResult = dagger.query_from_files(
           filesJson,
           configContent || undefined,
-          blockQuery
+          blockQuery,
         );
         const pathBlock = JSON.parse(blockPathResult);
         if (pathBlock && pathBlock.type === block.type) {
@@ -495,7 +491,7 @@ export async function validateQueryBlocks(
       queryOverrides,
       files,
       filesJson,
-      unitPreferences
+      unitPreferences,
     );
 
     // Merge results
@@ -515,12 +511,12 @@ async function validateBlockInternal(
   blockType: string,
   blockPath: string,
   schemaSet: string,
-  networkPath: string,
+  networkPath: string | null,
   configContent: string | null,
   queryOverrides: Record<string, string> = {},
   files: Record<string, string>,
   filesJson: string,
-  unitPreferences: UnitPreferences
+  unitPreferences: UnitPreferences,
 ): Promise<Record<string, ValidationResult>> {
   const schema = getSchema(schemaSet, blockType);
   if (!schema) {
@@ -533,7 +529,7 @@ async function validateBlockInternal(
     };
   }
 
-  const wasm = getWasm();
+  const dagger = getDagger();
 
   // Get schema metadata
   const schemaMetadata = getSchemaMetadata(schemaSet, blockType);
@@ -554,7 +550,7 @@ async function validateBlockInternal(
   async function convertValueForValidation(
     value: PropertyValue,
     propertyName: string,
-    propertyMetadata: PropertyMetadata
+    propertyMetadata: PropertyMetadata,
   ): Promise<number | undefined> {
     const parsed = parseValue(value);
     if (!parsed) {
@@ -567,7 +563,7 @@ async function validateBlockInternal(
       } catch (error) {
         console.warn(
           `Failed to convert ${propertyName} value "${value}" to ${propertyMetadata.defaultUnit}:`,
-          error
+          error,
         );
         return undefined;
       }
@@ -585,7 +581,7 @@ async function validateBlockInternal(
       const converted = await convertValueForValidation(
         value,
         propertyName,
-        propertyMetadata
+        propertyMetadata,
       );
       if (converted !== undefined) {
         blockForValidation[propertyName] = converted;
@@ -624,7 +620,7 @@ async function validateBlockInternal(
         const converted = await convertValueForValidation(
           block[propName],
           propName,
-          propMetadata
+          propMetadata,
         );
         completeValidationObject[propName] = converted ?? block[propName];
       } else {
@@ -632,12 +628,12 @@ async function validateBlockInternal(
       }
     } else if (pathParts.length === 2) {
       try {
-        const scopeResult = wasm.resolve_property_with_scope(
+        const scopeResult = dagger.resolve_property_with_scope(
           filesJson,
           configContent || undefined,
           pathParts[0],
           parseInt(pathParts[1], 10),
-          propName
+          propName,
         );
         const parsed = JSON.parse(scopeResult);
         if (parsed?.value !== undefined && parsed.scope) {
@@ -647,7 +643,7 @@ async function validateBlockInternal(
             const converted = await convertValueForValidation(
               parsed.value,
               propName,
-              propMetadata
+              propMetadata,
             );
             completeValidationObject[propName] = converted ?? parsed.value;
           } else {
@@ -661,7 +657,7 @@ async function validateBlockInternal(
   }
 
   const fullValidationResult = Schema.decodeUnknownEither(schema)(
-    completeValidationObject
+    completeValidationObject,
   );
   const validationErrors = Either.isLeft(fullValidationResult)
     ? fullValidationResult.left
@@ -693,14 +689,14 @@ async function validateBlockInternal(
         blockType,
         unitPreferences,
         propertyMetadata,
-        networkPath,
+        networkPath: networkPath ?? undefined,
         schemaSet,
         blockPath,
       };
 
       const formattedValue = await formatValueUnified(
         resolvedValue,
-        formatOptions
+        formatOptions,
       );
 
       const isNumericProperty = !!propertyMetadata?.defaultUnit;
@@ -732,7 +728,7 @@ async function validateBlockInternal(
         } catch (error) {
           console.warn(
             `Failed to validate constraints for ${propertyName}:`,
-            error
+            error,
           );
         }
       }
@@ -812,7 +808,8 @@ async function validateBlockInternal(
           const errorLines = errorMessage.split("\n");
           const propertyErrorLine = errorLines.find(
             (line) =>
-              line.includes(`["${propertyName}"]`) && !line.includes("readonly")
+              line.includes(`["${propertyName}"]`) &&
+              !line.includes("readonly"),
           );
           if (propertyErrorLine) {
             let cleaned = propertyErrorLine.trim();
@@ -862,17 +859,53 @@ async function validateBlockInternal(
   return results;
 }
 
+export type NetworkSource =
+  | { type: "networkId"; networkId: string }
+  | { type: "data"; network: NetworkData };
+
+export type NetworkData = {
+  groups: Array<{ id: string; label?: string; branchIds: string[] }>;
+  branches: Array<{
+    id: string;
+    label?: string;
+    parentId?: string;
+    blocks: Block[];
+  }>;
+};
+
 /**
- * Validate all blocks in the network
+ * Validate all blocks in the network.
+ *
+ * @param source - Network source (networkId or inline data)
+ * @param schemaSet - Schema set to use for validation
+ * @param baseNetworkId - Optional networkId for property resolution when source is inline data
+ * @param queryOverrides - Optional unit overrides
  */
 export async function validateNetworkBlocks(
-  networkPath: string,
+  source: NetworkSource,
   schemaSet: string,
-  queryOverrides: Record<string, string> = {}
+  baseNetworkId?: string,
+  queryOverrides: Record<string, string> = {},
 ): Promise<Record<string, ValidationResult>> {
-  // Read files once at the top level
-  const { files, configContent } = await readNetworkFiles(networkPath);
-  const filesJson = JSON.stringify(files);
+  // Determine the network path for file-based property resolution
+  let networkPath: string | null = null;
+  if (source.type === "networkId") {
+    networkPath = resolveNetworkPath(source.networkId);
+  } else if (baseNetworkId) {
+    networkPath = resolveNetworkPath(baseNetworkId);
+  }
+
+  // Read files for property resolution (if we have a path)
+  let files: Record<string, string> = {};
+  let configContent: string | null = null;
+  let filesJson = "{}";
+
+  if (networkPath) {
+    const networkFiles = await readNetworkFiles(networkPath);
+    files = networkFiles.files;
+    configContent = networkFiles.configContent;
+    filesJson = JSON.stringify(files);
+  }
 
   // Initialize dim once for all blocks
   await dim.init();
@@ -897,70 +930,85 @@ export async function validateNetworkBlocks(
     propertyDimensions,
   };
 
-  const wasm = getWasm();
+  const dagger = getDagger();
   const allResults: Record<string, ValidationResult> = {};
 
-  // Query for all nodes and filter for branches
-  try {
-    const nodesQuery = wasm.query_from_files(
-      filesJson,
-      configContent || undefined,
-      "network/nodes"
-    );
-    const nodes = JSON.parse(nodesQuery);
-    const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
+  // Get branches either from inline data or by querying files
+  let branches: Array<{ id: string; blocks: Block[] }> = [];
 
-    // Filter for branch nodes (type is "branch" from TOML)
-    const branches = nodesArray.filter(
-      (node: any) => node && typeof node === "object" && node.type === "branch"
-    );
-
-    for (const branch of branches) {
-      if (!branch || typeof branch !== "object" || !branch.id) {
-        continue;
-      }
-
-      const branchId = branch.id;
-      // Query for blocks in this branch
-      const branchBlocksQuery = wasm.query_from_files(
+  if (source.type === "data") {
+    // Use inline data directly
+    branches = source.network.branches;
+  } else {
+    // Query for branches from files
+    try {
+      const nodesQuery = dagger.query_from_files(
         filesJson,
         configContent || undefined,
-        `${branchId}/blocks`
+        "network/nodes",
       );
-      const branchBlocks = JSON.parse(branchBlocksQuery);
-      const branchBlocksArray = Array.isArray(branchBlocks)
-        ? branchBlocks
-        : [branchBlocks];
+      const nodes = JSON.parse(nodesQuery);
+      const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
-      for (let i = 0; i < branchBlocksArray.length; i++) {
-        const block = branchBlocksArray[i];
-        if (!block || typeof block !== "object" || !block.type) {
+      // Filter for branch nodes (type is "branch" from TOML)
+      const branchNodes = nodesArray.filter(
+        (node: any) =>
+          node && typeof node === "object" && node.type === "branch",
+      );
+
+      for (const branch of branchNodes) {
+        if (!branch || typeof branch !== "object" || !branch.id) {
           continue;
         }
 
-        const blockPath = `${branchId}/blocks/${i}`;
-        const blockResults = await validateBlockInternal(
-          block,
-          block.type,
-          blockPath,
-          schemaSet,
-          networkPath,
-          configContent,
-          queryOverrides,
-          files,
+        // Query for blocks in this branch
+        const branchBlocksQuery = dagger.query_from_files(
           filesJson,
-          unitPreferences
+          configContent || undefined,
+          `${branch.id}/blocks`,
         );
+        const branchBlocks = JSON.parse(branchBlocksQuery);
+        const branchBlocksArray = Array.isArray(branchBlocks)
+          ? branchBlocks
+          : [branchBlocks];
 
-        // Merge results
-        for (const [propPath, result] of Object.entries(blockResults)) {
-          allResults[propPath] = result;
-        }
+        branches.push({ id: branch.id, blocks: branchBlocksArray });
+      }
+    } catch (error) {
+      console.warn("Failed to query network nodes for validation", error);
+      throw error;
+    }
+  }
+
+  // Validate all blocks from all branches
+  for (const branch of branches) {
+    const branchId = branch.id;
+
+    for (let i = 0; i < branch.blocks.length; i++) {
+      const block = branch.blocks[i];
+      if (!block || typeof block !== "object" || !block.type) {
+        continue;
+      }
+
+      const blockPath = `${branchId}/blocks/${i}`;
+      const blockResults = await validateBlockInternal(
+        block,
+        block.type,
+        blockPath,
+        schemaSet,
+        networkPath,
+        configContent,
+        queryOverrides,
+        files,
+        filesJson,
+        unitPreferences,
+      );
+
+      // Merge results
+      for (const [propPath, result] of Object.entries(blockResults)) {
+        allResults[propPath] = result;
       }
     }
-  } catch (error) {
-    console.warn("Failed to query network nodes for validation", error);
-    throw error;
   }
 
   return allResults;

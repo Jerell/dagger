@@ -8,16 +8,20 @@ import type { NetworkSource } from "./request-types";
 
 describe("adapter", () => {
   describe("transformNetworkToCostingRequest", () => {
-    const pathSource: NetworkSource = {
-      type: "path",
-      path: "networks/preset1",
+    const networkIdSource: NetworkSource = {
+      type: "networkId",
+      networkId: "preset1",
     };
 
     it("produces valid structure even with incompatible blocks", async () => {
       // preset1 may have blocks that can't be costed - the adapter should handle this gracefully
-      const result = await transformNetworkToCostingRequest(pathSource, {
-        libraryId: "V1.1_working",
-      });
+      const result = await transformNetworkToCostingRequest(
+        networkIdSource,
+        "v1.0-costing",
+        {
+          libraryId: "V1.1_working",
+        },
+      );
 
       expect(result.request).toBeDefined();
       expect(result.request.assets).toBeInstanceOf(Array);
@@ -26,14 +30,18 @@ describe("adapter", () => {
       // Metadata tracks all groups/branches, assets only includes those with costable items
       // So assets.length <= assetMetadata.length
       expect(result.request.assets.length).toBeLessThanOrEqual(
-        result.assetMetadata.length
+        result.assetMetadata.length,
       );
     });
 
     it("applies default properties to assets", async () => {
-      const result = await transformNetworkToCostingRequest(pathSource, {
-        libraryId: "V1.1_working",
-      });
+      const result = await transformNetworkToCostingRequest(
+        networkIdSource,
+        "v1.0-costing",
+        {
+          libraryId: "V1.1_working",
+        },
+      );
 
       // Each asset (if any) should have timeline with defaults
       for (const asset of result.request.assets) {
@@ -62,12 +70,16 @@ describe("adapter", () => {
         decommissioning_finish: 2052,
       };
 
-      const result = await transformNetworkToCostingRequest(pathSource, {
-        libraryId: "V1.1_working",
-        assetDefaults: {
-          timeline: customTimeline,
+      const result = await transformNetworkToCostingRequest(
+        networkIdSource,
+        "v1.0-costing",
+        {
+          libraryId: "V1.1_working",
+          assetDefaults: {
+            timeline: customTimeline,
+          },
         },
-      });
+      );
 
       // All assets (if any) should have the custom timeline
       for (const asset of result.request.assets) {
@@ -102,9 +114,13 @@ describe("adapter", () => {
         },
       };
 
-      const result = await transformNetworkToCostingRequest(dataSource, {
-        libraryId: "V1.1_working",
-      });
+      const result = await transformNetworkToCostingRequest(
+        dataSource,
+        "v1.0-costing",
+        {
+          libraryId: "V1.1_working",
+        },
+      );
 
       expect(result.request).toBeDefined();
       expect(result.assetMetadata).toBeInstanceOf(Array);

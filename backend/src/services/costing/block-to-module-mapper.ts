@@ -20,7 +20,11 @@ export type ModuleMapping = {
 
 export type MappingResult =
   | { status: "success"; mapping: ModuleMapping }
-  | { status: "missing_properties"; blockType: string; missingProperties: string[] }
+  | {
+      status: "missing_properties";
+      blockType: string;
+      missingProperties: string[];
+    }
   | { status: "not_costable"; blockType: string }
   | { status: "unknown"; blockType: string };
 
@@ -32,13 +36,12 @@ export type MappingResult =
  * Normalize block type name for mapping.
  * Removes spaces, converts to PascalCase.
  * e.g., "Capture Unit" → "CaptureUnit", "capture unit" → "CaptureUnit"
- * Also handles already-PascalCase input: "CaptureUnit" → "CaptureUnit"
  */
 function normalizeBlockType(type: string): string {
   return type
     .split(/[\s_-]+|(?=[A-Z])/)
-    .filter(word => word.length > 0)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join("");
 }
 
@@ -47,32 +50,36 @@ function normalizeBlockType(type: string): string {
  * Returns null if the block type is unknown or missing required properties.
  */
 export function mapBlockToModule(block: NetworkBlock): ModuleMapping | null {
-  const mappers: Record<string, (block: NetworkBlock) => ModuleMapping | null> = {
-    Pipe: mapPipe,
-    Compressor: mapCompressor,
-    Pump: mapPump,
-    Emitter: mapEmitter,
-    CaptureUnit: mapCaptureUnit,
-    Dehydration: mapDehydration,
-    Refrigeration: mapRefrigeration,
-    Metering: mapMetering,
-    Storage: mapStorage,
-    Shipping: mapShipping,
-    Ship: mapShipping, // Alias
-    LandTransport: mapLandTransport,
-    LoadingOffloading: mapLoadingOffloading,
-    HeatingAndPumping: mapHeatingAndPumping,
-    PipeMerge: mapPipeMerge,
-    InjectionWell: mapInjectionWell,
-    InjectionTopsides: mapInjectionTopsides,
-    OffshorePlatform: mapOffshorePlatform,
-    UtilisationEndpoint: () => ({ moduleType: "UtilisationEndpoint", subtype: null }),
-    // Non-costable block types (return null to skip)
-    Source: () => null,
-    Sink: () => null,
-    Port: () => null,
-    Cooler: () => null,
-  };
+  const mappers: Record<string, (block: NetworkBlock) => ModuleMapping | null> =
+    {
+      Pipe: mapPipe,
+      Compressor: mapCompressor,
+      Pump: mapPump,
+      Emitter: mapEmitter,
+      CaptureUnit: mapCaptureUnit,
+      Dehydration: mapDehydration,
+      Refrigeration: mapRefrigeration,
+      Metering: mapMetering,
+      Storage: mapStorage,
+      Shipping: mapShipping,
+      Ship: mapShipping, // Alias
+      LandTransport: mapLandTransport,
+      LoadingOffloading: mapLoadingOffloading,
+      HeatingAndPumping: mapHeatingAndPumping,
+      PipeMerge: mapPipeMerge,
+      InjectionWell: mapInjectionWell,
+      InjectionTopsides: mapInjectionTopsides,
+      OffshorePlatform: mapOffshorePlatform,
+      UtilisationEndpoint: () => ({
+        moduleType: "UtilisationEndpoint",
+        subtype: null,
+      }),
+      // Non-costable block types (return null to skip)
+      Source: () => null,
+      Sink: () => null,
+      Port: () => null,
+      Cooler: () => null,
+    };
 
   // Normalize the block type (remove spaces, handle case)
   const normalizedType = normalizeBlockType(block.type);
@@ -90,11 +97,29 @@ export function mapBlockToModule(block: NetworkBlock): ModuleMapping | null {
  */
 export function isKnownBlockType(type: string): boolean {
   const knownTypes = [
-    "Pipe", "Compressor", "Pump", "Emitter", "CaptureUnit", "Dehydration",
-    "Refrigeration", "Metering", "Storage", "Shipping", "Ship", "LandTransport",
-    "LoadingOffloading", "HeatingAndPumping", "PipeMerge", "InjectionWell",
-    "InjectionTopsides", "OffshorePlatform", "UtilisationEndpoint",
-    "Source", "Sink", "Port", "Cooler",
+    "Pipe",
+    "Compressor",
+    "Pump",
+    "Emitter",
+    "CaptureUnit",
+    "Dehydration",
+    "Refrigeration",
+    "Metering",
+    "Storage",
+    "Shipping",
+    "Ship",
+    "LandTransport",
+    "LoadingOffloading",
+    "HeatingAndPumping",
+    "PipeMerge",
+    "InjectionWell",
+    "InjectionTopsides",
+    "OffshorePlatform",
+    "UtilisationEndpoint",
+    "Source",
+    "Sink",
+    "Port",
+    "Cooler",
   ];
   const normalizedType = normalizeBlockType(type);
   return knownTypes.includes(normalizedType);
@@ -115,13 +140,17 @@ export function mapBlockToModuleDetailed(block: NetworkBlock): MappingResult {
   // Check required properties for costable types
   const requiredProps = getRequiredProperties(normalizedType);
   if (requiredProps) {
-    const missing = requiredProps.filter(prop => {
+    const missing = requiredProps.filter((prop) => {
       const value = block[prop];
       return value === undefined || value === null || value === "";
     });
 
     if (missing.length > 0) {
-      return { status: "missing_properties", blockType: normalizedType, missingProperties: missing };
+      return {
+        status: "missing_properties",
+        blockType: normalizedType,
+        missingProperties: missing,
+      };
     }
   }
 
@@ -178,7 +207,8 @@ function mapPipe(block: NetworkBlock): ModuleMapping | null {
   }
 
   const moduleType = phase === "gas" ? "GasPipeline" : "DensePhasePipeline";
-  const locationStr = location === "onshore" ? "Onshore (Buried)" : "Offshore (Subsea)";
+  const locationStr =
+    location === "onshore" ? "Onshore (Buried)" : "Offshore (Subsea)";
   const sizeStr = size.charAt(0).toUpperCase() + size.slice(1);
   const subtype = `${locationStr} - ${sizeStr}`;
 
@@ -227,7 +257,10 @@ function mapEmitter(block: NetworkBlock): ModuleMapping | null {
     dac: "Direct Air Capture (DAC)",
   };
 
-  return { moduleType: "Emitter", subtype: subtypeMap[emitterType] ?? emitterType };
+  return {
+    moduleType: "Emitter",
+    subtype: subtypeMap[emitterType] ?? emitterType,
+  };
 }
 
 function mapCaptureUnit(block: NetworkBlock): ModuleMapping | null {
@@ -260,7 +293,10 @@ function mapDehydration(block: NetworkBlock): ModuleMapping | null {
     glycol: "Glycol (TEG)",
   };
 
-  return { moduleType: "Dehydration", subtype: subtypeMap[dehydrationType] ?? dehydrationType };
+  return {
+    moduleType: "Dehydration",
+    subtype: subtypeMap[dehydrationType] ?? dehydrationType,
+  };
 }
 
 function mapRefrigeration(block: NetworkBlock): ModuleMapping | null {
@@ -296,7 +332,10 @@ function mapMetering(block: NetworkBlock): ModuleMapping | null {
     compositional: "Compositional quality analysis",
   };
 
-  return { moduleType: "Metering", subtype: subtypeMap[meteringType] ?? meteringType };
+  return {
+    moduleType: "Metering",
+    subtype: subtypeMap[meteringType] ?? meteringType,
+  };
 }
 
 function mapStorage(block: NetworkBlock): ModuleMapping | null {
@@ -329,7 +368,10 @@ function mapLandTransport(block: NetworkBlock): ModuleMapping | null {
   }
 
   if (mode === "truck") {
-    return { moduleType: "RoadTanker", subtype: "Rental Liquefied Tanker Truck" };
+    return {
+      moduleType: "RoadTanker",
+      subtype: "Rental Liquefied Tanker Truck",
+    };
   } else {
     return { moduleType: "Rail", subtype: "Rental Liquefied Railcar" };
   }
@@ -348,7 +390,10 @@ function mapLoadingOffloading(block: NetworkBlock): ModuleMapping | null {
     jetty: "JettyLoadingArms",
   };
 
-  return { moduleType: typeMap[facilityType], subtype: "New Asset (no existing asset)" };
+  return {
+    moduleType: typeMap[facilityType],
+    subtype: "New Asset (no existing asset)",
+  };
 }
 
 function mapHeatingAndPumping(block: NetworkBlock): ModuleMapping | null {
@@ -370,7 +415,8 @@ function mapPipeMerge(block: NetworkBlock): ModuleMapping | null {
     return null;
   }
 
-  const moduleType = phase === "gas" ? "MergingGasPipeline" : "MergingDensePhase";
+  const moduleType =
+    phase === "gas" ? "MergingGasPipeline" : "MergingDensePhase";
   return { moduleType, subtype: null };
 }
 
@@ -381,7 +427,8 @@ function mapInjectionWell(block: NetworkBlock): ModuleMapping | null {
     return null;
   }
 
-  const moduleType = location === "onshore" ? "OnshoreInjectionWell" : "OffshoreInjectionWell";
+  const moduleType =
+    location === "onshore" ? "OnshoreInjectionWell" : "OffshoreInjectionWell";
   return { moduleType, subtype: null };
 }
 
@@ -392,7 +439,8 @@ function mapInjectionTopsides(block: NetworkBlock): ModuleMapping | null {
     return null;
   }
 
-  const moduleType = location === "onshore" ? "OnshoreInjection" : "PlatformFsiuInjection";
+  const moduleType =
+    location === "onshore" ? "OnshoreInjection" : "PlatformFsiuInjection";
   return { moduleType, subtype: null };
 }
 

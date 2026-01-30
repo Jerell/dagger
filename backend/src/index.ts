@@ -5,6 +5,7 @@ import { queryRoutes } from "./routes/query";
 import { networkRoutes } from "./routes/network";
 import { schemaRoutes } from "./routes/schema";
 import { costingRoutes } from "./routes/costing";
+import { snapshotRoutes } from "./routes/snapshot";
 import dim from "./services/dim";
 
 const app = new Hono();
@@ -28,6 +29,7 @@ app.route("/api/query", queryRoutes);
 app.route("/api/network", networkRoutes);
 app.route("/api/schema", schemaRoutes);
 app.route("/api/operations/costing", costingRoutes);
+app.route("/api/operations/snapshot", snapshotRoutes);
 
 // Export app type for type inference in frontend
 export type App = typeof app;

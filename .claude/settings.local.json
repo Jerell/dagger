@@ -14,7 +14,8 @@
       "Bash(ls:*)",
       "Bash(docker system prune:*)",
       "Bash(docker builder prune:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(bun test:*)"
     ]
   }
 }

@@ -1,3 +1,7 @@
+# Network metadata
+id = "preset1"
+label = "Preset 1"
+
 # Global properties (preset-level defaults)
 [properties]
 ambientTemperature = "20.0 C"

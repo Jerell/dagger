@@ -1,0 +1,144 @@
+{
+  "conditions": {
+    "source|branch-1_blocks_0|flowrate": {
+      "mtpa": 1
+    },
+    "source|branch-1_blocks_0|pressure": {
+      "bara": 100
+    },
+    "source|branch-1_blocks_0|temperature": {
+      "celsius": 55
+    },
+    "source|branch-1_blocks_0|enabled": {
+      "boolean": true
+    },
+    "source|branch-1_blocks_0|carbonDioxideFraction": {
+      "molFraction": 1
+    },
+    "pipe|branch-1_blocks_1|length": {
+      "meters": 10000
+    },
+    "pipe|branch-1_blocks_1|diameter": {
+      "meters": 0.6095999999999999
+    },
+    "pipe|branch-1_blocks_1|uValue": {
+      "wPerM2K": 0.03
+    },
+    "pipe|branch-1_blocks_1|ambientTemperature": {
+      "celsius": 20
+    },
+    "pipe|branch-1_blocks_2|length": {
+      "meters": 10000
+    },
+    "pipe|branch-1_blocks_2|diameter": {
+      "meters": 0.6095999999999999
+    },
+    "pipe|branch-1_blocks_2|uValue": {
+      "wPerM2K": 0.03
+    },
+    "pipe|branch-1_blocks_2|ambientTemperature": {
+      "celsius": 20
+    },
+    "pipe|branch-1_blocks_3|length": {
+      "meters": 10000
+    },
+    "pipe|branch-1_blocks_3|diameter": {
+      "meters": 0.6095999999999999
+    },
+    "pipe|branch-1_blocks_3|uValue": {
+      "wPerM2K": 0.03
+    },
+    "pipe|branch-1_blocks_3|ambientTemperature": {
+      "celsius": 20
+    },
+    "pipe|branch-1_blocks_4|length": {
+      "meters": 10000
+    },
+    "pipe|branch-1_blocks_4|diameter": {
+      "meters": 0.6095999999999999
+    },
+    "pipe|branch-1_blocks_4|uValue": {
+      "wPerM2K": 0.03
+    },
+    "pipe|branch-1_blocks_4|ambientTemperature": {
+      "celsius": 20
+    },
+    "reservoir|branch-1_blocks_5|enabled": {
+      "boolean": true
+    },
+    "reservoir|branch-1_blocks_5|pressure": {
+      "bara": 20
+    },
+    "network|Network|airMedium": {
+      "celsius": 29
+    },
+    "network|Network|soilMedium": {
+      "celsius": 25
+    },
+    "network|Network|waterMedium": {
+      "celsius": 20
+    }
+  },
+  "structure": {
+    "subnets": {
+      "branch-1": {
+        "subnetName": "branch-1",
+        "downstreamSubnetName": "",
+        "componentSeriesMap": {
+          "branch-1": []
+        }
+      }
+    },
+    "componentYamlFilenames": []
+  },
+  "series": {
+    "branch-1": [
+      {
+        "elem": "Source",
+        "name": "Source",
+        "pressure": 10000000,
+        "temperature": 328.15,
+        "flowrate": 31.68808781402895,
+        "carbonDioxideFraction": 1
+      },
+      {
+        "elem": "Pipe",
+        "name": "Pipe",
+        "length": 10000,
+        "diameter": 0.6095999999999999,
+        "uValue": 0.03,
+        "ambientTemperature": 293.15
+      },
+      {
+        "elem": "Pipe",
+        "name": "Pipe",
+        "length": 10000,
+        "diameter": 0.6095999999999999,
+        "uValue": 0.03,
+        "ambientTemperature": 293.15
+      },
+      {
+        "elem": "Pipe",
+        "name": "Pipe",
+        "length": 10000,
+        "diameter": 0.6095999999999999,
+        "uValue": 0.03,
+        "ambientTemperature": 293.15
+      },
+      {
+        "elem": "Pipe",
+        "name": "Pipe",
+        "length": 10000,
+        "diameter": 0.6095999999999999,
+        "uValue": 0.03,
+        "ambientTemperature": 293.15
+      },
+      {
+        "elem": "Reservoir",
+        "name": "Reservoir",
+        "pressure": 2000000
+      }
+    ]
+  },
+  "includeAllPipes": false
+}

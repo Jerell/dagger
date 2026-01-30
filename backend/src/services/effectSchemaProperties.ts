@@ -1,4 +1,3 @@
-import { DaggerWasm } from "../../pkg/dagger.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 import {
@@ -6,16 +5,7 @@ import {
   listSchemaSets,
   listBlockTypes,
 } from "./effectSchemas";
-
-// With nodejs target, WASM is initialized synchronously when module loads
-let daggerWasm: DaggerWasm | null = null;
-
-function getWasm() {
-  if (!daggerWasm) {
-    daggerWasm = new DaggerWasm();
-  }
-  return daggerWasm;
-}
+import { getDagger } from "../utils/getDagger";
 
 function resolvePath(relativePath: string): string {
   return path.resolve(process.cwd(), relativePath);
@@ -53,17 +43,17 @@ async function readNetworkFiles(networkPath: string): Promise<{
 export async function getBlockSchemaProperties(
   networkPath: string,
   query: string,
-  schemaSet: string
+  schemaSet: string,
 ): Promise<Record<string, any>> {
-  const wasm = getWasm();
+  const dagger = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
 
   // Execute query to get blocks
-  const queryResult = wasm.query_from_files(
+  const queryResult = dagger.query_from_files(
     filesJson,
     configContent || undefined,
-    query
+    query,
   );
   const blocks = JSON.parse(queryResult);
 
@@ -86,10 +76,10 @@ export async function getBlockSchemaProperties(
   // to determine the correct indices for the filtered results
   if (basePath.endsWith("/blocks")) {
     // Get all blocks to determine original indices
-    const allBlocksQuery = wasm.query_from_files(
+    const allBlocksQuery = dagger.query_from_files(
       filesJson,
       configContent || undefined,
-      basePath
+      basePath,
     );
     const allBlocks = JSON.parse(allBlocksQuery);
     const allBlocksArray = Array.isArray(allBlocks) ? allBlocks : [allBlocks];
@@ -160,7 +150,7 @@ export async function getBlockSchemaProperties(
       if (schemaMetadata) {
         // Add all properties for this block
         for (const [propName, propMetadata] of Object.entries(
-          schemaMetadata.properties
+          schemaMetadata.properties,
         )) {
           const propertyPath = `${blockPath}/${propName}`;
           const isRequired = schemaMetadata.required.includes(propName);
@@ -187,7 +177,7 @@ export async function getBlockSchemaProperties(
       if (schemaMetadata) {
         // Add all properties for this block
         for (const [propName, propMetadata] of Object.entries(
-          schemaMetadata.properties
+          schemaMetadata.properties,
         )) {
           const propertyPath = `${query}/${propName}`;
           const isRequired = schemaMetadata.required.includes(propName);
@@ -215,9 +205,9 @@ export async function getBlockSchemaProperties(
  */
 export async function getNetworkSchemas(
   networkPath: string,
-  schemaSet: string
+  schemaSet: string,
 ): Promise<Record<string, any>> {
-  const wasm = getWasm();
+  const wasm = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
 
@@ -228,14 +218,14 @@ export async function getNetworkSchemas(
     const nodesQuery = wasm.query_from_files(
       filesJson,
       configContent || undefined,
-      "network/nodes"
+      "network/nodes",
     );
     const nodes = JSON.parse(nodesQuery);
     const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
     // Filter for branch nodes (type is "branch" from TOML)
     const branches = nodesArray.filter(
-      (node: any) => node && typeof node === "object" && node.type === "branch"
+      (node: any) => node && typeof node === "object" && node.type === "branch",
     );
 
     for (const branch of branches) {
@@ -248,7 +238,7 @@ export async function getNetworkSchemas(
       const branchBlocksQuery = wasm.query_from_files(
         filesJson,
         configContent || undefined,
-        `${branchId}/blocks`
+        `${branchId}/blocks`,
       );
       const branchBlocks = JSON.parse(branchBlocksQuery);
       const branchBlocksArray = Array.isArray(branchBlocks)
@@ -268,7 +258,7 @@ export async function getNetworkSchemas(
         if (schemaMetadata) {
           // Add all properties for this block
           for (const [propName, propMetadata] of Object.entries(
-            schemaMetadata.properties
+            schemaMetadata.properties,
           )) {
             const propertyPath = `${blockPath}/${propName}`;
             const isRequired = schemaMetadata.required.includes(propName);

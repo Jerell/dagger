@@ -14,7 +14,7 @@ mod tests {
                 id: "branch-1".to_string(),
                 type_: "branch".to_string(),
                 label: Some("Test Branch".to_string()),
-                position: Position { x: 0, y: 0 },
+                position: Position { x: 0.0, y: 0.0 },
                 parent_id: None,
                 width: None,
                 height: None,

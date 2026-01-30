@@ -1,16 +1,6 @@
-import { DaggerWasm } from "../../pkg/dagger.js";
 import * as path from "path";
 import * as fs from "fs/promises";
-
-// With nodejs target, WASM is initialized synchronously when module loads
-let daggerWasm: DaggerWasm | null = null;
-
-function getWasm() {
-  if (!daggerWasm) {
-    daggerWasm = new DaggerWasm();
-  }
-  return daggerWasm;
-}
+import { getDagger } from "../utils/getDagger";
 
 function resolvePath(relativePath: string): string {
   // If path is already absolute, use it as-is
@@ -50,19 +40,25 @@ async function readNetworkFiles(networkPath: string): Promise<{
 }
 
 export async function loadNetwork(networkPath: string): Promise<any> {
-  const wasm = getWasm();
+  const dagger = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
-  const result = wasm.load_network_from_files(
+  const result = dagger.load_network_from_files(
     filesJson,
-    configContent || undefined
+    configContent || undefined,
   );
-  return JSON.parse(result);
+  const network = JSON.parse(result);
+
+  // Derive network ID from path (last directory segment)
+  const networkId = networkPath.split("/").pop() || "unknown";
+  network.id = networkId;
+
+  return network;
 }
 
 export async function getNetworkNodes(
   networkPath: string,
-  nodeType?: string
+  nodeType?: string,
 ): Promise<any[]> {
   const network = await loadNetwork(networkPath);
   const nodes = network.nodes || [];
@@ -77,7 +73,7 @@ export async function getNetworkNodes(
 export async function getNetworkEdges(
   networkPath: string,
   source?: string,
-  target?: string
+  target?: string,
 ): Promise<any[]> {
   // For now, load the full network and filter in Node.js
   // TODO: Add get_edges_from_files to WASM bindings
