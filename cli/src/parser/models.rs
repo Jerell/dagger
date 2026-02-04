@@ -100,6 +100,7 @@ impl Serialize for BranchNode {
                 id: &self.base.id,
                 label: self.base.label.as_deref().unwrap_or(&self.base.id),
                 blocks: &blocks,
+                extra: &self.base.extra,
             },
         )?;
         if let Some(parent_id) = &self.base.parent_id {
@@ -116,6 +117,9 @@ struct BranchData<'a> {
     id: &'a str,
     label: &'a str,
     blocks: &'a Vec<BlockData>,
+    // Include extra properties in data for ReactFlow compatibility (branch-level properties like length, diameter)
+    #[serde(flatten)]
+    extra: &'a HashMap<String, Value>,
 }
 
 #[derive(Serialize)]
