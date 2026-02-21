@@ -10,6 +10,7 @@ export const daggerwasm_load_network: (a: number, b: number, c: number) => [numb
 export const daggerwasm_load_network_from_files: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
 export const daggerwasm_new: () => number;
 export const daggerwasm_query_from_files: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
+export const daggerwasm_resolve_all_blocks: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
 export const daggerwasm_resolve_property_with_scope: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;

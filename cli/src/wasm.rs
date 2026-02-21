@@ -332,6 +332,123 @@ impl DaggerWasm {
         Ok(json)
     }
 
+    /// Resolve properties for multiple blocks in a single call.
+    /// This parses the network once and resolves all requested properties,
+    /// avoiding repeated parsing overhead.
+    ///
+    /// requests_json: JSON array of { branch_id: string, block_index: number, properties: string[] }
+    /// Returns JSON: { "branchId/blockIndex": { "propName": { "value": ..., "scope": "..." }, ... }, ... }
+    #[wasm_bindgen]
+    pub fn resolve_all_blocks(
+        &self,
+        files_json: &str,
+        config_content: Option<String>,
+        requests_json: &str,
+    ) -> Result<String, JsValue> {
+        // Parse the JSON string into a HashMap
+        let files: std::collections::HashMap<String, String> = serde_json::from_str(files_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse files JSON: {}", e)))?;
+
+        // Load network ONCE
+        let (network, _validation) = parser::load_network_from_files(files, config_content.clone())
+            .map_err(|e| JsValue::from_str(&format!("Failed to load network: {}", e)))?;
+
+        // Load config for scope resolution ONCE
+        let config = if let Some(config_content) = config_content {
+            scope::config::Config::load_from_str(&config_content)
+                .map_err(|e| JsValue::from_str(&format!("Failed to load config: {}", e)))?
+        } else {
+            scope::config::Config::empty()
+        };
+        let resolver = scope::resolver::ScopeResolver::new(config);
+
+        // Build lookup maps for branches and groups
+        let mut branch_map: std::collections::HashMap<&str, &parser::models::BranchNode> =
+            std::collections::HashMap::new();
+        let mut group_map: std::collections::HashMap<&str, &parser::models::GroupNode> =
+            std::collections::HashMap::new();
+
+        for node in &network.nodes {
+            match node {
+                parser::models::NodeData::Branch(b) => {
+                    branch_map.insert(&b.base.id, b);
+                }
+                parser::models::NodeData::Group(g) => {
+                    group_map.insert(&g.base.id, g);
+                }
+                _ => {}
+            }
+        }
+
+        // Parse requests
+        #[derive(serde::Deserialize)]
+        struct BatchRequest {
+            branch_id: String,
+            block_index: usize,
+            properties: Vec<String>,
+        }
+
+        let requests: Vec<BatchRequest> = serde_json::from_str(requests_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse requests JSON: {}", e)))?;
+
+        // Resolve all properties
+        let mut results: std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, serde_json::Value>,
+        > = std::collections::HashMap::new();
+
+        for request in &requests {
+            let key = format!("{}/{}", request.branch_id, request.block_index);
+
+            let branch = match branch_map.get(request.branch_id.as_str()) {
+                Some(b) => *b,
+                None => continue,
+            };
+
+            let block = match branch.blocks.get(request.block_index) {
+                Some(b) => b,
+                None => continue,
+            };
+
+            // Find parent group
+            let group = branch
+                .base
+                .parent_id
+                .as_ref()
+                .and_then(|pid| group_map.get(pid.as_str()).copied());
+
+            let mut block_results: std::collections::HashMap<String, serde_json::Value> =
+                std::collections::HashMap::new();
+
+            for property in &request.properties {
+                if let Some((value, scope_level)) =
+                    resolver.resolve_property_with_scope(property, block, branch, group)
+                {
+                    let json_value = query::executor::toml_to_json(&value);
+                    let scope_str = match scope_level {
+                        scope::config::ScopeLevel::Block => "block",
+                        scope::config::ScopeLevel::Branch => "branch",
+                        scope::config::ScopeLevel::Group => "group",
+                        scope::config::ScopeLevel::Global => "global",
+                    };
+                    block_results.insert(
+                        property.clone(),
+                        serde_json::json!({
+                            "value": json_value,
+                            "scope": scope_str
+                        }),
+                    );
+                }
+                // Properties not found in any scope are omitted
+            }
+
+            results.insert(key, block_results);
+        }
+
+        serde_json::to_string(&results)
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize results: {}", e)))
+    }
+
     // Schema validation functions removed - validation now handled in TypeScript with Effect Schema
     // Removed: get_network_schemas, get_block_schema_properties, validate_block,
     // validate_query_blocks, validate_network_blocks

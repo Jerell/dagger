@@ -21,6 +21,15 @@ export class DaggerWasm {
    */
   query_from_files(files_json: string, config_content: string | null | undefined, query_str: string): string;
   /**
+   * Resolve properties for multiple blocks in a single call.
+   * This parses the network once and resolves all requested properties,
+   * avoiding repeated parsing overhead.
+   *
+   * requests_json: JSON array of { branch_id: string, block_index: number, properties: string[] }
+   * Returns JSON: { "branchId/blockIndex": { "propName": { "value": ..., "scope": "..." }, ... }, ... }
+   */
+  resolve_all_blocks(files_json: string, config_content: string | null | undefined, requests_json: string): string;
+  /**
    * Get available schema versions
    * Returns JSON array of version strings
    */
