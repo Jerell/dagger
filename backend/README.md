@@ -1,85 +1,80 @@
-# Dagger Backend API
+# Dagger Backend
 
-Hono-based API server for the Dagger network inspection tool.
+Bun/Elysia API server for Dagger.
 
-## Setup
+## Stack
+
+- Bun runtime
+- Elysia for routing
+- Effect for request flow and error handling
+
+## Run
 
 ```bash
-npm install
+bun install
+bun run dev
 ```
 
-## Development
+Standalone default URL:
+
+```text
+http://localhost:3000
+```
+
+## Build
 
 ```bash
-npm run dev
+bun run build
 ```
 
-The server will start on `http://localhost:3000` by default.
+## Main Endpoints
 
-## API Endpoints
+- `GET /health`
+- `GET /api/query?q=<query>&network=<path>`
+- `GET /api/network?network=<path>`
+- `GET /api/network/nodes?network=<path>&type=<type>`
+- `GET /api/network/edges?network=<path>&source=<id>&target=<id>`
+- `GET /api/network/list`
+- `GET /api/schema`
+- `GET /api/schema/:version`
+- `GET /api/schema/network`
+- `GET /api/schema/properties`
+- `GET /api/schema/validate`
+- `GET /api/schema/network/validate`
+- `POST /api/schema/validate`
 
-### Health Check
+## Operations
 
-- `GET /health` - Health check endpoint
+All operation modules are mounted under `/api/operations`.
 
-### Query API
+### Costing
 
-- `GET /api/query?q=<query>&network=<path>` - Execute a query on the network
+- `POST /api/operations/costing/estimate`
+- `POST /api/operations/costing/validate`
+- `GET /api/operations/costing/libraries`
+- `GET /api/operations/costing/libraries/:id`
+- `GET /api/operations/costing/libraries/:id/modules`
+- `GET /api/operations/costing/health`
 
-### Network API
+Environment:
 
-- `GET /api/network?network=<path>` - Get full network structure
-- `GET /api/network/nodes?network=<path>&type=<type>` - Get all nodes (optionally filtered by type)
-- `GET /api/network/edges?network=<path>&source=<id>&target=<id>` - Get all edges (optionally filtered)
+- `COSTING_SERVER_URL` default `http://localhost:8080`
 
-### Schema API
+### Snapshot
 
-- `GET /api/schema` - Get all available schema versions
-- `GET /api/schema/:version` - Get schemas for a specific version
-- `GET /api/schema/network?network=<name>&version=<version>` - Get schema properties for all blocks in a network (flattened format)
-- `GET /api/schema/properties?network=<name>&q=<query>&version=<version>` - Get schema properties for blocks matching a query path
-- `GET /api/schema/validate?network=<name>&q=<query>&version=<version>` - Validate blocks matching a query path
-- `GET /api/schema/network/validate?network=<name>&version=<version>` - Validate all blocks in a network
-- `POST /api/schema/validate` - Validate a block against a schema (without network context)
+- `POST /api/operations/snapshot/validate`
+- `POST /api/operations/snapshot/run`
+- `POST /api/operations/snapshot/raw`
+- `GET /api/operations/snapshot/health`
 
-## WebAssembly Integration
+Environment:
 
-The backend will use WebAssembly bindings from the Rust CLI code. To build the WASM package:
+- `SNAPSHOT_SERVER_URL` default `http://localhost:5000`
+
+## WASM
+
+The backend consumes WASM artifacts produced from [cli](/Users/jerell/Repos/dagger/cli).
 
 ```bash
 just build-wasm
 ```
-
-This compiles the Rust code in `../cli` to WebAssembly and outputs it to `./pkg`.
-
-### Operations API
-
-#### Costing
-
-- `POST /api/operations/costing/estimate` - Run a costing estimate for a network
-- `POST /api/operations/costing/validate` - Validate a network for costing readiness
-- `GET /api/operations/costing/libraries` - List available cost libraries
-- `GET /api/operations/costing/libraries/:id` - Get details about a specific cost library
-- `GET /api/operations/costing/libraries/:id/modules?type=<type>` - List modules in a cost library (optionally filtered by type)
-- `GET /api/operations/costing/health` - Check if the costing server is reachable
-
-#### Snapshot
-
-- `POST /api/operations/snapshot/validate` - Validate a network for snapshot readiness
-- `POST /api/operations/snapshot/run` - Run a snapshot simulation
-- `POST /api/operations/snapshot/raw` - Pass through a raw ScenarioRequest to the Scenario Modeller API
-- `GET /api/operations/snapshot/health` - Check if the Scenario Modeller server is reachable
-
-## Networks Directory
-
-Networks are stored in `backend/networks/`. You can:
-
-- Copy networks from the project root: `cp -r ../network/preset1 ./networks/`
-- Create symlinks: `ln -s ../network/preset1 ./networks/preset1`
-- Create new networks directly in `networks/`
-
-The API uses network names (e.g., `preset1`) which map to `networks/preset1/`.
-
-## Environment Variables
-
-- `PORT` - Server port (default: 3000)

@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  onFileChanged,
   startWatchingDirectory,
   stopWatchingDirectory,
-} from "@/lib/tauri";
+} from "@/lib/desktop";
 import { getNetworkFromPath } from "@/lib/api-client";
 import { resetFlowToNetwork } from "@/lib/collections/flow";
 
@@ -26,12 +26,11 @@ export function useFileWatcher() {
     isWatching: false,
   });
 
-  // Listen for file change events from Tauri
+  // Listen for file change events from the desktop shell
   useEffect(() => {
     if (!watchMode.enabled || !watchMode.directoryPath) return;
 
-    const unlisten = listen<string[]>("file-changed", async (event) => {
-      const changedPaths = event.payload;
+    const unlisten = onFileChanged(async (changedPaths) => {
       console.log("File changed:", changedPaths);
 
       try {
@@ -53,9 +52,7 @@ export function useFileWatcher() {
       }
     });
 
-    return () => {
-      unlisten.then((fn) => fn());
-    };
+    return unlisten;
   }, [watchMode.enabled, watchMode.directoryPath, queryClient]);
 
   const enableWatchMode = useCallback(async (directoryPath: string) => {
@@ -102,4 +99,3 @@ export function useFileWatcher() {
     elementsSelectable: !watchMode.enabled,
   };
 }
-

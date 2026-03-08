@@ -26,7 +26,7 @@ impl ValidationResult {
             warnings: Vec::new(),
         }
     }
-    
+
     pub fn add_error(&mut self, message: String, location: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: IssueSeverity::Error,
@@ -34,7 +34,7 @@ impl ValidationResult {
             location,
         });
     }
-    
+
     pub fn add_warning(&mut self, message: String, location: Option<String>) {
         self.warnings.push(ValidationIssue {
             severity: IssueSeverity::Warning,
@@ -42,11 +42,11 @@ impl ValidationResult {
             location,
         });
     }
-    
+
     pub fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
-    
+
     pub fn has_issues(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
@@ -70,7 +70,7 @@ impl fmt::Display for ValidationResult {
                 }
             }
         }
-        
+
         if !self.warnings.is_empty() {
             writeln!(f, "Warnings:")?;
             for warning in &self.warnings {
@@ -81,8 +81,7 @@ impl fmt::Display for ValidationResult {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
-

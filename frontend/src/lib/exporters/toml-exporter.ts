@@ -2,7 +2,7 @@ import * as TOML from "@iarna/toml";
 import type { FlowNode, FlowEdge } from "@/lib/collections/flow-nodes";
 import type { NetworkNode } from "@/lib/api-client";
 import { toNetworkNode } from "@/lib/utils/filter-reactflow-props";
-import { writeNetworkFile } from "@/lib/tauri";
+import { writeNetworkFile } from "@/lib/desktop";
 
 /**
  * Convert a NetworkNode to TOML format
@@ -141,7 +141,7 @@ export async function exportNetworkToToml(
     // Serialize to TOML
     const tomlContent = serializeNodeToToml(nodeForToml, outgoing);
 
-    // Write file using Tauri (construct path manually since we're in browser)
+    // Write file using the desktop bridge (construct path manually since we're in browser)
     const filePath = directoryPath.endsWith("/")
       ? `${directoryPath}${node.id}.toml`
       : `${directoryPath}/${node.id}.toml`;

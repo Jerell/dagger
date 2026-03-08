@@ -1,4 +1,4 @@
-import { Effect, Either } from "effect";
+import { Effect } from "effect";
 import {
   getModuleLookupService,
   listCostLibraries,

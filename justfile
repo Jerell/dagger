@@ -5,30 +5,36 @@ default:
   @just --list
 
 # Quick reference:
-#   just dev          - Start Tauri app (recommended for development)
+#   just dev          - Start Electron app (recommended for development)
 #   just dev-backend  - Start backend server standalone
-#   just dev-frontend - Start frontend dev server standalone (browser)
+#   just dev-frontend - Start frontend Electron shell
+#   just dev-web      - Start frontend dev server standalone (browser)
 
 # Development
-# Start Tauri app (includes frontend dev server and backend via Tauri)
+# Start Electron app (includes frontend dev server and backend via Electron)
 dev:
   @just kill-dev || true
-  cd {{justfile_directory()}}/frontend && bun tauri dev
+  cd {{justfile_directory()}}/frontend && bun run dev
 
-# Kill any stale dev processes (vite, tauri)
+# Kill any stale dev processes (vite, electron)
 kill-dev:
   @echo "Killing stale dev processes..."
   -pkill -f "vite dev" || true
-  -pkill -f "tauri dev" || true
+  -pkill -f "tsc -p tsconfig.electron.json --watch" || true
+  -pkill -f "electron dist-electron/main.js" || true
   @echo "Done"
 
 # Start backend server standalone (for testing API directly)
 dev-backend:
   cd {{justfile_directory()}}/backend && bun run dev
 
-# Start frontend dev server standalone (for browser testing)
+# Start frontend Electron shell
 dev-frontend:
   cd {{justfile_directory()}}/frontend && bun run dev
+
+# Start frontend dev server standalone (for browser testing)
+dev-web:
+  cd {{justfile_directory()}}/frontend && bun run dev:web
 
 # Build commands
 build-wasm:
@@ -42,6 +48,10 @@ build-wasm-release:
 build-backend:
   # Typecheck the backend
   cd {{justfile_directory()}}/backend && bun run build
+
+build-frontend:
+  # Build the frontend and Electron shell
+  cd {{justfile_directory()}}/frontend && bun run build
 
 # Test commands
 test:
@@ -73,6 +83,10 @@ test-all:
 lint:
   # Run clippy on Rust code
   cd {{justfile_directory()}}/cli && cargo clippy
+
+lint-ts:
+  # Run TypeScript lint checks
+  cd {{justfile_directory()}} && bun run lint:ts
 
 lint-fix:
   # Run clippy and auto-fix
@@ -110,19 +124,14 @@ setup:
   cd {{justfile_directory()}}/schemas && bun install
   just setup-networks
   just setup-dim
-  just setup-tauri
 
 setup-backend:
   # Setup backend dependencies
   cd {{justfile_directory()}}/backend && bun install
 
 setup-frontend:
-  # Setup frontend dependencies (including Tauri)
+  # Setup frontend dependencies (including Electron)
   cd {{justfile_directory()}}/frontend && bun install
-
-setup-tauri:
-  # Setup Tauri Rust dependencies
-  cd {{justfile_directory()}}/frontend/src-tauri && cargo build
 
 setup-schemas:
   # Setup schema generation dependencies
@@ -142,17 +151,27 @@ setup-dim:
 
 # Full development workflow
 dev-full:
-  # Build WASM, copy dim files, and start Tauri app
+  # Build WASM, copy dim files, and start Electron app
   @echo "Building WASM module..."
   just build-wasm
   @echo "Setting up dim WASM files..."
   just setup-dim
-  @echo "Starting Tauri app..."
+  @echo "Starting Electron app..."
   just dev
 
 # Check everything
+check-ts:
+  # Run TypeScript, docs, and app build checks
+  just lint-ts
+  cd {{justfile_directory()}}/backend && bun test
+  cd {{justfile_directory()}}/backend && bun run build
+  cd {{justfile_directory()}}/frontend && bun run build
+  bash {{justfile_directory()}}/scripts/check-docs-freshness.sh
+  bash {{justfile_directory()}}/scripts/check-test-counts.sh
+
 check:
   # Run all checks (format, lint, tests)
   just format-check
   just lint
   just test-all
+  just check-ts

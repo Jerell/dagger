@@ -19,7 +19,7 @@ export type App = unknown;
  *   // Then manually type: const data: QueryResponse = await response.json()
  */
 export type ApiResponse<
-  _TApp extends { [K in string]: any },
+  _TApp extends Record<string, unknown>,
   _TPath extends string,
   _TMethod extends "get" | "post" | "put" | "delete" | "patch" = "get",
 > = Promise<unknown>;
@@ -29,7 +29,7 @@ export type ApiResponse<
  * Usage: type QueryResponse = GetApiResponse<App, "/api/query">
  */
 export type GetApiResponse<
-  TApp extends { [K in string]: any },
+  TApp extends Record<string, unknown>,
   TPath extends string,
 > = ApiResponse<TApp, TPath, "get">;
 
@@ -38,7 +38,7 @@ export type GetApiResponse<
  * Usage: type ValidateResponse = PostApiResponse<App, "/api/schema/validate">
  */
 export type PostApiResponse<
-  TApp extends { [K in string]: any },
+  TApp extends Record<string, unknown>,
   TPath extends string,
 > = ApiResponse<TApp, TPath, "post">;
 

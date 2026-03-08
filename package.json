@@ -9,8 +9,20 @@
     "dev": "just dev",
     "dev:backend": "cd backend && bun run dev",
     "dev:frontend": "cd frontend && bun run dev",
+    "dev:web": "cd frontend && bun run dev:web",
     "test": "bun run test:backend",
     "test:backend": "cd backend && bun test",
-    "check:backend": "cd backend && bun run build"
+    "check:backend": "cd backend && bun run build",
+    "check:frontend": "cd frontend && bun run build",
+    "lint:ts": "bunx eslint backend/src frontend/src frontend/electron",
+    "check:docs": "bash scripts/check-docs-freshness.sh",
+    "check:test-counts": "bash scripts/check-test-counts.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0"
   }
 }

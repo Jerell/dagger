@@ -20,7 +20,7 @@ import {
 import { OperationsList } from "@/components/operations";
 import { Download } from "lucide-react";
 import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
-import { pickNetworkDirectory } from "@/lib/tauri";
+import { pickNetworkDirectory } from "@/lib/desktop";
 import { NetworkProvider } from "@/contexts/network-context";
 
 export const Route = createFileRoute("/network/$networkId")({

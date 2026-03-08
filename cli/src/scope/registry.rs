@@ -25,4 +25,3 @@ impl PropertyRegistry {
         self.config.inheritance.rules.contains_key(property)
     }
 }
-

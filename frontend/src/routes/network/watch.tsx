@@ -21,7 +21,7 @@ import { OperationsList } from "@/components/operations";
 import { EyeOff, FolderOpen, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { exportNetworkToToml } from "@/lib/exporters/toml-exporter";
-import { pickNetworkDirectory } from "@/lib/tauri";
+import { pickNetworkDirectory } from "@/lib/desktop";
 import { NetworkProvider } from "@/contexts/network-context";
 
 export const Route = createFileRoute("/network/watch")({

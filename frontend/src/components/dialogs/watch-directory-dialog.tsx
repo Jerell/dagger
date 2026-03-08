@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDialog } from "@/contexts/dialog-provider";
-import { pickNetworkDirectory } from "@/lib/tauri";
+import { pickNetworkDirectory } from "@/lib/desktop";
 import { Loader2 } from "lucide-react";
 
 export function WatchDirectoryDialog({
@@ -60,4 +60,3 @@ export function WatchDirectoryDialog({
     </div>
   );
 }
-
