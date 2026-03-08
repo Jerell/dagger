@@ -12,8 +12,8 @@ export type OperationsServerConfig = {
 };
 
 /**
- * Start the local server (Bun + Hono)
- * @param backendPath Path to the backend directory
+ * Start the local server (Bun + Elysia)
+ * @param backendPath Path to the backend package directory
  * @returns Server URL
  */
 export async function startLocalServer(backendPath: string): Promise<string> {
@@ -95,4 +95,3 @@ export async function stopWatchingDirectory(): Promise<void> {
 export async function getOperationsConfig(): Promise<OperationsServerConfig> {
   return await invoke<OperationsServerConfig>("get_operations_config");
 }
-

@@ -1,9 +1,12 @@
 /**
  * Type helpers for API routes
- * These types are inferred from the backend Hono app
+ * Lightweight API helpers for frontend route modules.
+ *
+ * The backend is no longer coupled to Hono RPC types, so these helpers are
+ * intentionally transport-agnostic.
  */
 
-import type { App } from "@backend/index";
+export type App = unknown;
 
 /**
  * Extract the response type for a specific route
@@ -38,11 +41,6 @@ export type PostApiResponse<
   TApp extends { [K in string]: any },
   TPath extends string,
 > = ApiResponse<TApp, TPath, "post">;
-
-/**
- * Re-export the App type for convenience
- */
-export type { App };
 
 /**
  * Re-export API client types

@@ -68,7 +68,7 @@ impl LocalServer {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Spawn Bun process running local server with hot reload
-        // Use the "dev" script which runs "tsx watch" for hot reload in development
+        // Use the package's "dev" script for the Elysia backend.
         let mut cmd = Command::new("bun");
         cmd.arg("run")
             .arg("dev")

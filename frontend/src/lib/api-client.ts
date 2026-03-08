@@ -1,5 +1,3 @@
-import type { App } from "@backend/index";
-import { hc } from "hono/client";
 import { getApiBaseUrl } from "./api-proxy";
 
 // Define proper types for network data structures matching Rust serialization
@@ -112,63 +110,32 @@ export type NetworkResponse = {
   edges: NetworkEdge[];
 };
 
-// Create client helper following Hono RPC documentation pattern
-// See: https://hono.dev/docs/guides/rpc
-// Using a const helper to help TypeScript infer the type correctly
-const createHonoClient = (baseUrl: string) => hc<App>(baseUrl);
-
-// Pre-calculate client type at compile time (recommended for monorepos)
-// This helps TypeScript resolve types correctly
-// Note: TypeScript may show errors due to bundler mode limitations in monorepos,
-// but the types are correct at runtime
-export type Client = ReturnType<typeof createHonoClient>;
-
-// Create a typed client - Hono RPC will properly infer types from App
-export function getClient(): Client {
+async function apiGet<T>(
+  path: string,
+  query?: Record<string, string | undefined>,
+): Promise<T> {
   const baseUrl = getApiBaseUrl();
-  return createHonoClient(baseUrl);
-}
+  const url = new URL(path, baseUrl);
 
-export async function getNetwork(networkId: string): Promise<NetworkResponse> {
-  const client = getClient();
-  try {
-    // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
-    // The client type is correctly inferred at runtime via Hono RPC
-    const response = await client.api.network.$get({
-      query: { network: networkId },
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        error: "Unknown error",
-        status: response.status,
-      }));
-      throw new Error(
-        error.message ||
-          error.error ||
-          `Request failed with status ${response.status}`
-      );
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, value);
+      }
     }
+  }
 
-    return (await response.json()) as NetworkResponse;
+  let response: Response;
+  try {
+    response = await fetch(url.toString());
   } catch (error) {
-    // Check if it's a network/connection error
     if (error instanceof TypeError && error.message.includes("fetch")) {
       throw new Error(
-        "Backend server is not running. Please ensure the backend server is started."
+        "Backend server is not running. Please ensure the backend server is started.",
       );
     }
     throw error;
   }
-}
-
-export async function getNetworkNodes(networkId: string, nodeType?: string) {
-  const client = getClient();
-  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
-  // The client type is correctly inferred at runtime via Hono RPC
-  const response = await client.api.network.nodes.$get({
-    query: { network: networkId, ...(nodeType && { type: nodeType }) },
-  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
@@ -178,11 +145,22 @@ export async function getNetworkNodes(networkId: string, nodeType?: string) {
     throw new Error(
       error.message ||
         error.error ||
-        `Request failed with status ${response.status}`
+        `Request failed with status ${response.status}`,
     );
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
+}
+
+export async function getNetwork(networkId: string): Promise<NetworkResponse> {
+  return apiGet<NetworkResponse>("/api/network", { network: networkId });
+}
+
+export async function getNetworkNodes(networkId: string, nodeType?: string) {
+  return apiGet<unknown[]>("/api/network/nodes", {
+    network: networkId,
+    type: nodeType,
+  });
 }
 
 export async function getNetworkEdges(
@@ -190,30 +168,11 @@ export async function getNetworkEdges(
   source?: string,
   target?: string
 ) {
-  const client = getClient();
-  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
-  // The client type is correctly inferred at runtime via Hono RPC
-  const response = await client.api.network.edges.$get({
-    query: {
-      network: networkId,
-      ...(source && { source }),
-      ...(target && { target }),
-    },
+  return apiGet<unknown[]>("/api/network/edges", {
+    network: networkId,
+    source,
+    target,
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: "Unknown error",
-      status: response.status,
-    }));
-    throw new Error(
-      error.message ||
-        error.error ||
-        `Request failed with status ${response.status}`
-    );
-  }
-
-  return response.json();
 }
 
 export function networkQueryOptions(networkId: string) {
@@ -241,23 +200,7 @@ export async function getNetworkFromPath(
 export async function getAvailablePresets(): Promise<
   Array<{ id: string; label: string }>
 > {
-  const client = getClient();
-  // @ts-expect-error - TypeScript limitation with bundler mode in monorepos
-  const response = await client.api.network.list.$get();
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: "Unknown error",
-      status: response.status,
-    }));
-    throw new Error(
-      error.message ||
-        error.error ||
-        `Request failed with status ${response.status}`
-    );
-  }
-
-  return (await response.json()) as Array<{ id: string; label: string }>;
+  return apiGet<Array<{ id: string; label: string }>>("/api/network/list");
 }
 
 export function presetsQueryOptions() {
