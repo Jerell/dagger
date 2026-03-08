@@ -94,6 +94,12 @@ export const NetworkConditionsSchema = S.Struct({
 export type NetworkConditionsInput = S.Schema.Type<
   typeof NetworkConditionsSchema
 >;
+export type SnapshotRunRequestInput = S.Schema.Type<
+  typeof SnapshotRunRequestSchema
+>;
+export type SnapshotValidateRequestInput = S.Schema.Type<
+  typeof SnapshotValidateRequestSchema
+>;
 
 export const SnapshotRunRequestSchema = S.Struct({
   source: NetworkSourceSchema,

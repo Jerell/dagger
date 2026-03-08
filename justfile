@@ -24,10 +24,6 @@ kill-dev:
 
 # Start backend server standalone (for testing API directly)
 dev-backend:
-  cd {{justfile_directory()}}/backend-elysia && bun run dev
-
-# Start legacy backend server standalone
-dev-backend-legacy:
   cd {{justfile_directory()}}/backend && bun run dev
 
 # Start frontend dev server standalone (for browser testing)
@@ -44,8 +40,8 @@ build-wasm-release:
   cd {{justfile_directory()}}/cli && wasm-pack build --release --target nodejs --out-dir ../backend/pkg
 
 build-backend:
-  # Typecheck the Elysia backend
-  cd {{justfile_directory()}}/backend-elysia && bun run check
+  # Typecheck the backend
+  cd {{justfile_directory()}}/backend && bun run build
 
 # Test commands
 test:
@@ -119,7 +115,6 @@ setup:
 setup-backend:
   # Setup backend dependencies
   cd {{justfile_directory()}}/backend && bun install
-  cd {{justfile_directory()}}/backend-elysia && bun install
 
 setup-frontend:
   # Setup frontend dependencies (including Tauri)

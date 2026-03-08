@@ -1,55 +1,36 @@
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { queryRoutes } from "./routes/query";
-import { networkRoutes } from "./routes/network";
-import { schemaRoutes } from "./routes/schema";
-import { costingRoutes } from "./routes/costing";
-import { snapshotRoutes } from "./routes/snapshot";
-import dim from "./services/dim";
+import { Effect } from "effect";
+import { createFlowServer } from "./core/server";
+import { internalError, tryPromise } from "./core/http";
+import { createDaggerServerConfig } from "./dagger/config";
+import { daggerModules } from "./dagger/modules";
+import { initDim } from "./services/dim";
 
-const app = new Hono();
+const config = createDaggerServerConfig();
 
-// Initialize dim at startup
-dim.init().catch((err) => {
-  console.error("Failed to initialize dim:", err);
-  process.exit(1);
+const app = await createFlowServer({
+  serviceName: config.serviceName,
+  health: { projectRoot: config.projectRoot },
+  env: config,
+  modules: daggerModules,
+  init: async () => {
+    await runInit();
+  },
 });
 
-// CORS middleware
-app.use("/*", cors());
+app.listen(config.port);
 
-// Health check
-app.get("/health", (c) => {
-  return c.json({ status: "ok", service: "dagger-api" });
-});
+console.log(
+  `Elysia server running for ${config.serviceName} at http://localhost:${config.port}`,
+);
 
-// API routes
-app.route("/api/query", queryRoutes);
-app.route("/api/network", networkRoutes);
-app.route("/api/schema", schemaRoutes);
-app.route("/api/operations/costing", costingRoutes);
-app.route("/api/operations/snapshot", snapshotRoutes);
+async function runInit(): Promise<void> {
+  const init = tryPromise(
+    () => initDim(),
+    (error) =>
+      internalError("Failed to initialize dim", {
+        message: error instanceof Error ? error.message : String(error),
+      }),
+  );
 
-// Export app type for type inference in frontend
-export type App = typeof app;
-
-// 404 handler
-app.notFound((c) => {
-  return c.json({ error: "Not found" }, 404);
-});
-
-// Error handler
-app.onError((err, c) => {
-  console.error("Error:", err);
-  return c.json({ error: "Internal server error", message: err.message }, 500);
-});
-
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-
-console.log(`🚀 Dagger API server starting on port ${port}`);
-
-serve({
-  fetch: app.fetch,
-  port,
-});
+  return Effect.runPromise(init);
+}
