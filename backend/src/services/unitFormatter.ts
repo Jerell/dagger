@@ -6,6 +6,7 @@
 
 import dim from "./dim";
 import { formatValueUnified } from "./valueFormatter";
+import type { JsonObject, JsonValue } from "./json";
 
 export type UnitPreferences = {
   queryOverrides?: Record<string, string>;
@@ -77,12 +78,12 @@ export function formatValue(
  * Recursively format unit values in a query result object
  */
 export async function formatQueryResult(
-  result: any,
+  result: JsonValue,
   unitPreferences: UnitPreferences,
   blockType?: string,
   propertyName?: string,
   propertyMetadata?: UnitMetadata
-): Promise<any> {
+): Promise<JsonValue> {
   if (result === null || result === undefined) {
     return result;
   }
@@ -121,8 +122,9 @@ export async function formatQueryResult(
   }
 
   if (typeof result === "object") {
-    const formatted: any = {};
-    const currentBlockType = result.type || blockType;
+    const formatted: JsonObject = {};
+    const currentBlockType =
+      typeof result.type === "string" ? result.type : blockType;
 
     for (const [key, value] of Object.entries(result)) {
       // Skip _property_original keys
@@ -134,7 +136,7 @@ export async function formatQueryResult(
       if (typeof value === "number") {
         // Check if there's an original string for this property
         const originalKey = `_${key}_original`;
-        if (result[originalKey]) {
+        if (typeof result[originalKey] === "string") {
           // This is a unit value - format it
           try {
             formatted[key] = formatValue(
@@ -172,7 +174,7 @@ export async function formatQueryResult(
           // Formatting failed, keep original string
           formatted[key] = value;
         }
-      } else {
+      } else if (value !== undefined) {
         // Recursively format nested objects/arrays
         formatted[key] = await formatQueryResult(
           value,

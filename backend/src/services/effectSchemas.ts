@@ -17,6 +17,31 @@ export type SchemaMetadata = {
   properties: Record<string, PropertyMetadata>;
 };
 
+type AnnotationMap = Record<string | symbol, unknown>;
+
+type SchemaAst = {
+  _tag?: string;
+  annotations?: AnnotationMap;
+  from?: SchemaAst;
+  propertySignatures?: PropertySignature[];
+  types?: SchemaAst[];
+};
+
+type PropertySignature = {
+  name: string;
+  isOptional?: boolean;
+  type: SchemaAst;
+};
+
+type SchemaWithAst = Schema.Schema<unknown> & {
+  ast?: SchemaAst;
+  fields?: Record<string, Schema.Schema<unknown> | OptionalSchemaField>;
+};
+
+type OptionalSchemaField = Schema.Schema<unknown> & {
+  from?: Schema.Schema<unknown>;
+};
+
 /**
  * Get a schema from the registry
  */
@@ -44,7 +69,7 @@ export function listSchemaSets(): string[] {
 export function listBlockTypes(schemaSet: string): string[] {
   const registry = schemaRegistry as Record<
     string,
-    Record<string, Schema.Schema<any>>
+    Record<string, Schema.Schema<unknown>>
   >;
   return Object.keys(registry[schemaSet] || {});
 }
@@ -53,10 +78,10 @@ export function listBlockTypes(schemaSet: string): string[] {
  * Extract annotations from a schema
  * Annotations are stored in the AST's annotations object
  */
-function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
+function getAnnotations(schema: Schema.Schema<unknown>): Record<string, unknown> {
   try {
     // Effect Schema stores annotations in the AST
-    const ast = (schema as any).ast;
+    const ast = (schema as SchemaWithAst).ast;
     if (!ast) {
       return {};
     }
@@ -65,7 +90,7 @@ function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
     const annotations = ast.annotations || {};
 
     // Extract plain object properties (not Symbol keys)
-    const result: Record<string, any> = {};
+    const result: Record<string, unknown> = {};
     for (const key in annotations) {
       // Skip Symbol keys, only get string keys
       if (typeof key === "string") {
@@ -85,16 +110,15 @@ function getAnnotations(schema: Schema.Schema<any>): Record<string, any> {
 function getPropertyMetadata(
   propertySchema: Schema.Schema<unknown>
 ): PropertyMetadata {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const schemaAny = propertySchema as any;
+  const schemaLike = propertySchema as OptionalSchemaField & SchemaWithAst;
 
   // Get the AST - check the schema itself first
-  let ast = schemaAny.ast;
+  let ast = schemaLike.ast;
 
   // If no AST on the schema itself, and it has a 'from' field, check the 'from' schema
   // This handles optional properties (PropertySignatureWithFromImpl) where the actual schema is in 'from'
-  if (!ast && schemaAny.from) {
-    const fromSchema = schemaAny.from;
+  if (!ast && schemaLike.from) {
+    const fromSchema = schemaLike.from as SchemaWithAst;
     // Check if fromSchema has an ast (it might be a Refinement or other schema type)
     if (fromSchema && typeof fromSchema === "object" && "ast" in fromSchema) {
       ast = fromSchema.ast;
@@ -142,27 +166,30 @@ function getPropertyMetadata(
  * Constraints are stored in annotations JSONSchema object
  * Need to traverse nested refinements to find all constraints
  */
-function extractMinConstraint(ast: any): number | undefined {
+function extractMinConstraint(ast: SchemaAst | undefined): number | undefined {
   if (!ast) return undefined;
 
   // Check annotations for JSONSchema with minimum/exclusiveMinimum
   const annotations = ast.annotations || {};
 
   // Find the JSONSchema annotation (it's a Symbol key)
-  let jsonSchema: any = undefined;
+  let jsonSchema: Record<string, unknown> | undefined;
   for (const key of Object.getOwnPropertySymbols(annotations)) {
     if (String(key).includes("JSONSchema")) {
-      jsonSchema = annotations[key];
+      const candidate = annotations[key];
+      if (typeof candidate === "object" && candidate !== null) {
+        jsonSchema = candidate as Record<string, unknown>;
+      }
       break;
     }
   }
 
   if (jsonSchema) {
     if (jsonSchema.minimum !== undefined) {
-      return jsonSchema.minimum;
+      return Number(jsonSchema.minimum);
     }
     if (jsonSchema.exclusiveMinimum !== undefined) {
-      return jsonSchema.exclusiveMinimum;
+      return Number(jsonSchema.exclusiveMinimum);
     }
   }
 
@@ -188,27 +215,30 @@ function extractMinConstraint(ast: any): number | undefined {
  * Constraints are stored in annotations JSONSchema object
  * Need to traverse nested refinements to find all constraints
  */
-function extractMaxConstraint(ast: any): number | undefined {
+function extractMaxConstraint(ast: SchemaAst | undefined): number | undefined {
   if (!ast) return undefined;
 
   // Check annotations for JSONSchema with maximum/exclusiveMaximum
   const annotations = ast.annotations || {};
 
   // Find the JSONSchema annotation (it's a Symbol key)
-  let jsonSchema: any = undefined;
+  let jsonSchema: Record<string, unknown> | undefined;
   for (const key of Object.getOwnPropertySymbols(annotations)) {
     if (String(key).includes("JSONSchema")) {
-      jsonSchema = annotations[key];
+      const candidate = annotations[key];
+      if (typeof candidate === "object" && candidate !== null) {
+        jsonSchema = candidate as Record<string, unknown>;
+      }
       break;
     }
   }
 
   if (jsonSchema) {
     if (jsonSchema.maximum !== undefined) {
-      return jsonSchema.maximum;
+      return Number(jsonSchema.maximum);
     }
     if (jsonSchema.exclusiveMaximum !== undefined) {
-      return jsonSchema.exclusiveMaximum;
+      return Number(jsonSchema.exclusiveMaximum);
     }
   }
 
@@ -237,12 +267,10 @@ function isOptionalProperty(
   propertyName: string
 ): boolean {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ast = (structSchema as any).ast;
+    const ast = (structSchema as SchemaWithAst).ast;
     if (ast && ast._tag === "TypeLiteral") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const property = ast.propertySignatures?.find(
-        (p: any) => p.name === propertyName
+        (p) => p.name === propertyName
       );
       if (property) {
         return property.isOptional === true;
@@ -259,11 +287,9 @@ function isOptionalProperty(
  */
 function getPropertyNames(structSchema: Schema.Schema<unknown>): string[] {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ast = (structSchema as any).ast;
+    const ast = (structSchema as SchemaWithAst).ast;
     if (ast && ast._tag === "TypeLiteral") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return ast.propertySignatures?.map((p: any) => p.name) || [];
+      return ast.propertySignatures?.map((p) => String(p.name)) || [];
     }
     return [];
   } catch {
@@ -282,30 +308,29 @@ function getPropertySchema(
 ): Schema.Schema<unknown> | undefined {
   try {
     // Access the schema's fields directly - this gives us the actual schema objects
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const schemaAny = structSchema as any;
-    const fields = schemaAny.fields;
+    const schemaLike = structSchema as SchemaWithAst;
+    const fields = schemaLike.fields;
     if (fields && fields[propertyName]) {
-      return fields[propertyName];
+      return fields[propertyName] as Schema.Schema<unknown>;
     }
 
     // Fallback: try AST approach
-    const ast = schemaAny.ast;
+    const ast = schemaLike.ast;
     if (ast && ast._tag === "TypeLiteral") {
       const property = ast.propertySignatures?.find(
-        (p: any) => p.name === propertyName
+        (p) => p.name === propertyName
       );
       if (property) {
         // For optional properties, type is a Union, extract the non-undefined branch
         if (property.isOptional && property.type._tag === "Union") {
           // Find the non-undefined type in the union
           const nonUndefined = property.type.types?.find(
-            (t: any) => t._tag !== "UndefinedKeyword"
+            (t) => t._tag !== "UndefinedKeyword"
           );
-          return nonUndefined || property.type;
+          return (nonUndefined ?? property.type) as unknown as Schema.Schema<unknown>;
         }
         // For required properties, return the type directly
-        return property.type;
+        return property.type as unknown as Schema.Schema<unknown>;
       }
     }
     return undefined;
@@ -345,17 +370,18 @@ export function getSchemaMetadata(
     }
 
     // Get schema directly from fields - this works for both required and optional
-    const schemaAny = schema as any;
-    let propSchema: Schema.Schema<any> | undefined;
+    const schemaLike = schema as SchemaWithAst;
+    let propSchema: Schema.Schema<unknown> | undefined;
 
-    if (schemaAny.fields && schemaAny.fields[propName]) {
-      propSchema = schemaAny.fields[propName];
+    if (schemaLike.fields && schemaLike.fields[propName]) {
+      propSchema = schemaLike.fields[propName] as Schema.Schema<unknown>;
 
       // For optional properties, the field is a PropertySignatureWithFromImpl
       // We need to get the actual schema from the 'from' field
       // But only do this if the property is optional (required properties with refinements should use the schema directly)
-      if (isOptional && propSchema && (propSchema as any).from) {
-        propSchema = (propSchema as any).from;
+      const optionalField = propSchema as OptionalSchemaField;
+      if (isOptional && propSchema && optionalField.from) {
+        propSchema = optionalField.from;
       }
     } else {
       // Fallback to getPropertySchema

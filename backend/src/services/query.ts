@@ -4,6 +4,7 @@ import dim from "./dim";
 import { formatQueryResult } from "./unitFormatter";
 import { getBlockSchemaProperties } from "./effectSchemaProperties";
 import { getDagger } from "../utils/getDagger";
+import type { JsonValue } from "./json";
 
 function resolvePath(relativePath: string): string {
   // If path is already absolute, use it as-is
@@ -159,7 +160,7 @@ export async function queryNetwork(
   query: string,
   schemaVersion?: string,
   queryOverrides: Record<string, string> = {},
-): Promise<any> {
+): Promise<JsonValue> {
   // Initialize dim module
   await dim.init();
 
@@ -187,7 +188,7 @@ export async function queryNetwork(
       configContent || undefined,
       baseQuery,
     );
-    const parsedResult = JSON.parse(result);
+    const parsedResult = JSON.parse(result) as JsonValue;
 
     // Extract property name and block type from query path for top-level unit strings
     // Query format: "branch-4/blocks/0/ambientTemperature" -> property = "ambientTemperature"
@@ -214,8 +215,13 @@ export async function queryNetwork(
             configContent || undefined,
             blockQuery,
           );
-          const blockData = JSON.parse(blockResult);
-          if (blockData && typeof blockData === "object" && blockData.type) {
+          const blockData = JSON.parse(blockResult) as JsonValue;
+          if (
+            typeof blockData === "object" &&
+            blockData !== null &&
+            !Array.isArray(blockData) &&
+            typeof blockData.type === "string"
+          ) {
             blockType = blockData.type;
           }
         } catch {
@@ -226,7 +232,7 @@ export async function queryNetwork(
 
     // Collect original strings from the result
     const originalStrings: Record<string, string> = {};
-    function collectOriginalStrings(obj: any, prefix = "") {
+    function collectOriginalStrings(obj: JsonValue, prefix = "") {
       if (typeof obj === "object" && obj !== null) {
         for (const [key, value] of Object.entries(obj)) {
           if (
@@ -236,7 +242,7 @@ export async function queryNetwork(
           ) {
             const propName = key.slice(1, -9); // Remove _ and _original
             originalStrings[`_${propName}_original`] = value;
-          } else if (typeof value === "object") {
+          } else if (typeof value === "object" && value !== null) {
             collectOriginalStrings(value, `${prefix}${key}.`);
           }
         }
@@ -299,9 +305,10 @@ export async function queryNetwork(
       propertyMetadata,
     );
     return formatted;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // WASM errors might not be properly propagated, check if it's a string error
-    const errorMessage = error?.message || error?.toString() || String(error);
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
     throw new Error(`WASM query failed: ${errorMessage}`);
   }
 }

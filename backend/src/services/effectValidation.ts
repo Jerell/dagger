@@ -13,6 +13,7 @@ import dim from "./dim";
 import { parseValue, convertToNumber } from "./valueParser";
 import { getDagger } from "../utils/getDagger";
 import { resolveNetworkPath } from "../utils/network-path";
+import type { JsonObject, JsonValue } from "./json";
 
 type NetworkFiles = {
   files: Record<string, string>;
@@ -63,6 +64,16 @@ export type PropertyValue = string | number | null | undefined;
 export type ResolvedProperty = {
   value: PropertyValue;
   scope: string;
+};
+
+type ResolvedBatchProperty = {
+  value: PropertyValue;
+  scope: string;
+};
+
+type BranchNode = JsonObject & {
+  id?: string;
+  type?: string;
 };
 
 export type ResolvedBlock = {
@@ -556,7 +567,7 @@ async function validateBlockInternal(
   files: Record<string, string>,
   filesJson: string,
   unitPreferences: UnitPreferences,
-  preResolved?: Record<string, { value: any; scope: string }>,
+  preResolved?: Record<string, ResolvedBatchProperty>,
 ): Promise<Record<string, ValidationResult>> {
   const schema = getSchema(schemaSet, blockType);
   if (!schema) {
@@ -1005,13 +1016,16 @@ export async function validateNetworkBlocks(
         configContent || undefined,
         "network/nodes",
       );
-      const nodes = JSON.parse(nodesQuery);
+      const nodes = JSON.parse(nodesQuery) as JsonValue;
       const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
       // Filter for branch nodes (type is "branch" from TOML)
       const branchNodes = nodesArray.filter(
-        (node: any) =>
-          node && typeof node === "object" && node.type === "branch",
+        (node): node is BranchNode =>
+          typeof node === "object" &&
+          node !== null &&
+          !Array.isArray(node) &&
+          node.type === "branch",
       );
 
       for (const branch of branchNodes) {
@@ -1068,10 +1082,7 @@ export async function validateNetworkBlocks(
     }
   }
 
-  let batchResults: Record<
-    string,
-    Record<string, { value: any; scope: string }>
-  > = {};
+  let batchResults: Record<string, Record<string, ResolvedBatchProperty>> = {};
 
   if (batchRequests.length > 0 && filesJson !== "{}") {
     try {

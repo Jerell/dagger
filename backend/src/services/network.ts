@@ -1,6 +1,7 @@
 import * as path from "path";
 import * as fs from "fs/promises";
 import { getDagger } from "../utils/getDagger";
+import type { JsonObject, JsonValue } from "./json";
 
 function resolvePath(relativePath: string): string {
   // If path is already absolute, use it as-is
@@ -39,7 +40,28 @@ async function readNetworkFiles(networkPath: string): Promise<{
   return { files, configContent };
 }
 
-export async function loadNetwork(networkPath: string): Promise<any> {
+export type NetworkNode = JsonObject & {
+  id?: string;
+  type?: string;
+};
+
+export type NetworkEdge = JsonObject & {
+  id?: string;
+  source?: string;
+  target?: string;
+};
+
+export type LoadedNetwork = JsonObject & {
+  id: string;
+  nodes?: NetworkNode[];
+  edges?: NetworkEdge[];
+};
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export async function loadNetwork(networkPath: string): Promise<LoadedNetwork> {
   const dagger = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
@@ -47,24 +69,34 @@ export async function loadNetwork(networkPath: string): Promise<any> {
     filesJson,
     configContent || undefined,
   );
-  const network = JSON.parse(result);
+  const parsed = JSON.parse(result) as JsonValue;
+  if (!isJsonObject(parsed)) {
+    throw new Error("Expected network JSON object from WASM");
+  }
 
   // Derive network ID from path (last directory segment)
   const networkId = networkPath.split("/").pop() || "unknown";
-  network.id = networkId;
-
-  return network;
+  return {
+    ...parsed,
+    id: networkId,
+    nodes: Array.isArray(parsed.nodes)
+      ? parsed.nodes.filter(isJsonObject)
+      : undefined,
+    edges: Array.isArray(parsed.edges)
+      ? parsed.edges.filter(isJsonObject)
+      : undefined,
+  };
 }
 
 export async function getNetworkNodes(
   networkPath: string,
   nodeType?: string,
-): Promise<any[]> {
+): Promise<NetworkNode[]> {
   const network = await loadNetwork(networkPath);
   const nodes = network.nodes || [];
 
   if (nodeType) {
-    return nodes.filter((n: any) => n?.type === nodeType);
+    return nodes.filter((node) => node.type === nodeType);
   }
 
   return nodes;
@@ -74,15 +106,15 @@ export async function getNetworkEdges(
   networkPath: string,
   source?: string,
   target?: string,
-): Promise<any[]> {
+): Promise<NetworkEdge[]> {
   // For now, load the full network and filter in Node.js
   // TODO: Add get_edges_from_files to WASM bindings
   const network = await loadNetwork(networkPath);
   const edges = network.edges || [];
 
-  return edges.filter((e: any) => {
-    if (source && e.source !== source) return false;
-    if (target && e.target !== target) return false;
+  return edges.filter((edge) => {
+    if (source && edge.source !== source) return false;
+    if (target && edge.target !== target) return false;
     return true;
   });
 }

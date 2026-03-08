@@ -224,7 +224,7 @@ export async function transformNetworkToCostingRequest(
   const effectSource: EffectNetworkSource =
     source.type === "networkId"
       ? { type: "networkId", networkId: source.networkId }
-      : { type: "data", network: networkData as any };
+      : { type: "data", network: networkData };
 
   // Validate all blocks and get resolved properties
   const validationResults = await validateNetworkBlocks(

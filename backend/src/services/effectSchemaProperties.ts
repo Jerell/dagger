@@ -2,10 +2,49 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import {
   getSchemaMetadata,
+  type SchemaMetadata,
   listSchemaSets,
   listBlockTypes,
 } from "./effectSchemas";
 import { getDagger } from "../utils/getDagger";
+import type { JsonObject, JsonValue } from "./json";
+
+type QueryNode = JsonObject & {
+  id?: string;
+  type?: string;
+};
+
+type QueryBlock = JsonObject & {
+  type: string;
+};
+
+export type SchemaPropertyEntry = {
+  block_type: string;
+  property: string;
+  required: boolean;
+  title?: string;
+  dimension?: string;
+  defaultUnit?: string;
+  min?: number;
+  max?: number;
+};
+
+export type SchemaSummary = {
+  block_type: string;
+  version: string;
+  required: string[];
+  optional: string[];
+  properties: SchemaMetadata["properties"];
+};
+
+function isQueryBlock(value: JsonValue): value is QueryBlock {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof value.type === "string"
+  );
+}
 
 function resolvePath(relativePath: string): string {
   return path.resolve(process.cwd(), relativePath);
@@ -44,7 +83,7 @@ export async function getBlockSchemaProperties(
   networkPath: string,
   query: string,
   schemaSet: string,
-): Promise<Record<string, any>> {
+): Promise<Record<string, SchemaPropertyEntry>> {
   const dagger = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
@@ -55,12 +94,12 @@ export async function getBlockSchemaProperties(
     configContent || undefined,
     query,
   );
-  const blocks = JSON.parse(queryResult);
+  const blocks = JSON.parse(queryResult) as JsonValue;
 
   // If query result is a single block, wrap it
   const blocksArray = Array.isArray(blocks) ? blocks : [blocks];
 
-  const result: Record<string, any> = {};
+  const result: Record<string, SchemaPropertyEntry> = {};
 
   // Extract block paths from query
   // For queries like "branch-1/blocks/0", the path is the query itself
@@ -81,13 +120,13 @@ export async function getBlockSchemaProperties(
       configContent || undefined,
       basePath,
     );
-    const allBlocks = JSON.parse(allBlocksQuery);
+    const allBlocks = JSON.parse(allBlocksQuery) as JsonValue;
     const allBlocksArray = Array.isArray(allBlocks) ? allBlocks : [allBlocks];
 
     // Query for all blocks in a branch (filtered or not)
     for (let i = 0; i < blocksArray.length; i++) {
       const block = blocksArray[i];
-      if (!block || typeof block !== "object" || !block.type) {
+      if (!isQueryBlock(block)) {
         continue;
       }
 
@@ -97,8 +136,7 @@ export async function getBlockSchemaProperties(
       for (let j = 0; j < allBlocksArray.length; j++) {
         const origBlock = allBlocksArray[j];
         if (
-          origBlock &&
-          typeof origBlock === "object" &&
+          isQueryBlock(origBlock) &&
           origBlock.type === block.type
         ) {
           // Check if this is the same block by comparing key properties
@@ -114,11 +152,7 @@ export async function getBlockSchemaProperties(
             let alreadyUsed = false;
             for (let k = 0; k < i; k++) {
               const prevBlock = blocksArray[k];
-              if (
-                prevBlock &&
-                typeof prevBlock === "object" &&
-                prevBlock.type === origBlock.type
-              ) {
+              if (isQueryBlock(prevBlock) && prevBlock.type === origBlock.type) {
                 let prevMatches = true;
                 for (const key of Object.keys(prevBlock)) {
                   if (key !== "type" && origBlock[key] !== prevBlock[key]) {
@@ -170,7 +204,7 @@ export async function getBlockSchemaProperties(
   } else if (query.includes("/blocks/")) {
     // Query for a specific block
     const block = blocksArray[0];
-    if (block && typeof block === "object" && block.type) {
+    if (isQueryBlock(block)) {
       const blockType = block.type;
       const schemaMetadata = getSchemaMetadata(schemaSet, blockType);
 
@@ -206,12 +240,12 @@ export async function getBlockSchemaProperties(
 export async function getNetworkSchemas(
   networkPath: string,
   schemaSet: string,
-): Promise<Record<string, any>> {
+): Promise<Record<string, SchemaPropertyEntry>> {
   const wasm = getDagger();
   const { files, configContent } = await readNetworkFiles(networkPath);
   const filesJson = JSON.stringify(files);
 
-  const result: Record<string, any> = {};
+  const result: Record<string, SchemaPropertyEntry> = {};
 
   // Query for all nodes and filter for branches
   try {
@@ -220,12 +254,16 @@ export async function getNetworkSchemas(
       configContent || undefined,
       "network/nodes",
     );
-    const nodes = JSON.parse(nodesQuery);
+    const nodes = JSON.parse(nodesQuery) as JsonValue;
     const nodesArray = Array.isArray(nodes) ? nodes : [nodes];
 
     // Filter for branch nodes (type is "branch" from TOML)
     const branches = nodesArray.filter(
-      (node: any) => node && typeof node === "object" && node.type === "branch",
+      (node): node is QueryNode =>
+        typeof node === "object" &&
+        node !== null &&
+        !Array.isArray(node) &&
+        node.type === "branch",
     );
 
     for (const branch of branches) {
@@ -240,14 +278,14 @@ export async function getNetworkSchemas(
         configContent || undefined,
         `${branchId}/blocks`,
       );
-      const branchBlocks = JSON.parse(branchBlocksQuery);
+      const branchBlocks = JSON.parse(branchBlocksQuery) as JsonValue;
       const branchBlocksArray = Array.isArray(branchBlocks)
         ? branchBlocks
         : [branchBlocks];
 
       for (let i = 0; i < branchBlocksArray.length; i++) {
         const block = branchBlocksArray[i];
-        if (!block || typeof block !== "object" || !block.type) {
+        if (!isQueryBlock(block)) {
           continue;
         }
 
@@ -293,9 +331,9 @@ export function getSchemas(): string[] {
 /**
  * Get schemas for a specific schema set
  */
-export function getSchema(schemaSet: string): Record<string, any> {
+export function getSchema(schemaSet: string): Record<string, SchemaSummary> {
   const blockTypes = listBlockTypes(schemaSet);
-  const result: Record<string, any> = {};
+  const result: Record<string, SchemaSummary> = {};
 
   for (const blockType of blockTypes) {
     const schemaMetadata = getSchemaMetadata(schemaSet, blockType);
