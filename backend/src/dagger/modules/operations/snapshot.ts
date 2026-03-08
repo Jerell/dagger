@@ -36,6 +36,10 @@ type ParseResult<A> =
   | { readonly _tag: "Left"; readonly left: ValidationError[] }
   | { readonly _tag: "Right"; readonly right: A };
 
+function getSnapshotServerUrl(): string {
+  return process.env.SNAPSHOT_SERVER_URL ?? "http://localhost:5000";
+}
+
 function toValidationNetworkSource(
   source: SnapshotRunRequestInput["source"] | SnapshotValidateRequestInput["source"],
   config: DaggerServerConfig,
@@ -89,11 +93,12 @@ function toValidationNetworkSource(
 }
 
 export const snapshotOperationModule =
-  createOperationModule<DaggerServerConfig>({
-    name: "snapshot",
-    prefix: "/api/operations/snapshot",
-    register: (app, config) =>
-      app
+  createOperationModule({
+    prefix: "/snapshot",
+    register: (app, config: DaggerServerConfig) => {
+      const snapshotServerUrl = getSnapshotServerUrl();
+
+      return app
         .post("/validate", async ({ body, set }) =>
           runRequest(
             Effect.gen(function* () {
@@ -196,7 +201,7 @@ export const snapshotOperationModule =
               const scenarioResponse = yield* tryPromise(
                 async () => {
                   const response = await fetch(
-                    `${config.snapshotServerUrl}/api/Scenario`,
+                    `${snapshotServerUrl}/api/Scenario`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -227,7 +232,7 @@ export const snapshotOperationModule =
                   }
                   return serviceUnavailable("Snapshot server unavailable", {
                     message:
-                      `Failed to connect to snapshot server at ${config.snapshotServerUrl}. Ensure the Scenario Modeller server is running.`,
+                      `Failed to connect to snapshot server at ${snapshotServerUrl}. Ensure the Scenario Modeller server is running.`,
                     details:
                       error instanceof Error ? error.message : String(error),
                   });
@@ -260,7 +265,7 @@ export const snapshotOperationModule =
               const scenarioResponse = yield* tryPromise(
                 async () => {
                   const response = await fetch(
-                    `${config.snapshotServerUrl}/api/Scenario`,
+                    `${snapshotServerUrl}/api/Scenario`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -289,7 +294,7 @@ export const snapshotOperationModule =
                   }
                   return serviceUnavailable("Snapshot server unavailable", {
                     message:
-                      `Failed to connect to snapshot server at ${config.snapshotServerUrl}. Ensure the Scenario Modeller server is running.`,
+                      `Failed to connect to snapshot server at ${snapshotServerUrl}. Ensure the Scenario Modeller server is running.`,
                     details:
                       error instanceof Error ? error.message : String(error),
                   });
@@ -307,7 +312,7 @@ export const snapshotOperationModule =
               async () => {
                 try {
                   const response = await fetch(
-                    `${config.snapshotServerUrl}/api/ScenarioDescription`,
+                    `${snapshotServerUrl}/api/ScenarioDescription`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -318,21 +323,21 @@ export const snapshotOperationModule =
                   if (response.ok) {
                     return {
                       status: "ok",
-                      snapshotServer: config.snapshotServerUrl,
+                      snapshotServer: snapshotServerUrl,
                       serverStatus: "reachable",
                     };
                   }
 
                   return {
                     status: "degraded",
-                    snapshotServer: config.snapshotServerUrl,
+                    snapshotServer: snapshotServerUrl,
                     serverStatus: "unhealthy",
                     statusCode: response.status,
                   };
                 } catch (error) {
                   return {
                     status: "error",
-                    snapshotServer: config.snapshotServerUrl,
+                    snapshotServer: snapshotServerUrl,
                     serverStatus: "unreachable",
                     message: error instanceof Error ? error.message : String(error),
                   };
@@ -345,5 +350,6 @@ export const snapshotOperationModule =
             ),
             set,
           ),
-        ),
+        );
+    },
   });

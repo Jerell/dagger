@@ -1,23 +1,36 @@
 import { Effect } from "effect";
+import { createOperationsApp } from "./core/operations";
 import { createFlowServer } from "./core/server";
 import { internalError, tryPromise } from "./core/http";
 import { createDaggerServerConfig } from "./dagger/config";
-import { daggerModules } from "./dagger/modules";
+import { queryModule } from "./dagger/modules/query";
+import { networkModule } from "./dagger/modules/network";
+import { schemaModule } from "./dagger/modules/schema";
+import { costingOperationModule } from "./dagger/modules/operations/costing";
+import { snapshotOperationModule } from "./dagger/modules/operations/snapshot";
 import { initDim } from "./services/dim";
 
 const config = createDaggerServerConfig();
+const operationsApp = createOperationsApp()
+  .use(costingOperationModule(config))
+  .use(snapshotOperationModule(config));
 
 const app = await createFlowServer({
   serviceName: config.serviceName,
   health: { projectRoot: config.projectRoot },
   env: config,
-  modules: daggerModules,
   init: async () => {
     await runInit();
   },
 });
 
-app.listen(config.port);
+const server = app
+  .use(queryModule(config))
+  .use(networkModule(config))
+  .use(schemaModule(config))
+  .use(operationsApp);
+
+server.listen(config.port);
 
 console.log(
   `Elysia server running for ${config.serviceName} at http://localhost:${config.port}`,

@@ -29,12 +29,17 @@ type ParseResult<A> =
   | { readonly _tag: "Left"; readonly left: ValidationError[] }
   | { readonly _tag: "Right"; readonly right: A };
 
+function getCostingServerUrl(): string {
+  return process.env.COSTING_SERVER_URL ?? "http://localhost:8080";
+}
+
 export const costingOperationModule =
-  createOperationModule<DaggerServerConfig>({
-    name: "costing",
-    prefix: "/api/operations/costing",
-    register: (app, config) =>
-      app
+  createOperationModule({
+    prefix: "/costing",
+    register: (app, config: DaggerServerConfig) => {
+      const costingServerUrl = getCostingServerUrl();
+
+      return app
         .post("/estimate", async ({ body, set }) =>
           runRequest(
             Effect.gen(function* () {
@@ -83,7 +88,7 @@ export const costingOperationModule =
               const costingResponse = yield* tryPromise(
                 async () => {
                   const response = await fetch(
-                    `${config.costingServerUrl}/api/cost/estimate?library_id=${payload.libraryId}&target_currency_code=${currency}`,
+                    `${costingServerUrl}/api/cost/estimate?library_id=${payload.libraryId}&target_currency_code=${currency}`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -115,7 +120,7 @@ export const costingOperationModule =
                   }
                   return serviceUnavailable("Costing server unavailable", {
                     message:
-                      `Failed to connect to costing server at ${config.costingServerUrl}. Ensure the costing server is running.`,
+                      `Failed to connect to costing server at ${costingServerUrl}. Ensure the costing server is running.`,
                     details:
                       error instanceof Error ? error.message : String(error),
                   });
@@ -277,7 +282,7 @@ export const costingOperationModule =
               async () => {
                 try {
                   const response = await fetch(
-                    `${config.costingServerUrl}/api/hello`,
+                    `${costingServerUrl}/api/hello`,
                     {
                       method: "GET",
                       signal: AbortSignal.timeout(5000),
@@ -287,21 +292,21 @@ export const costingOperationModule =
                   if (response.ok) {
                     return {
                       status: "ok",
-                      costingServer: config.costingServerUrl,
+                      costingServer: costingServerUrl,
                       serverStatus: "reachable",
                     };
                   }
 
                   return {
                     status: "degraded",
-                    costingServer: config.costingServerUrl,
+                    costingServer: costingServerUrl,
                     serverStatus: "unhealthy",
                     statusCode: response.status,
                   };
                 } catch (error) {
                   return {
                     status: "error",
-                    costingServer: config.costingServerUrl,
+                    costingServer: costingServerUrl,
                     serverStatus: "unreachable",
                     message: error instanceof Error ? error.message : String(error),
                   };
@@ -314,5 +319,6 @@ export const costingOperationModule =
             ),
             set,
           ),
-        ),
+        );
+    },
   });

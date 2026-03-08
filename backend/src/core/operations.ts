@@ -1,34 +1,30 @@
-import { Elysia } from "elysia";
-import type { FlowServerModule } from "./server";
+import { Elysia, type AnyElysia } from "elysia";
 
-type OperationApp = Elysia<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->;
+type OperationPrefix = `/${string}`;
+type NonApiOperationPrefix<TPrefix extends OperationPrefix> =
+  TPrefix extends `/api/${string}` ? never : TPrefix;
 
-export function createModule<Env>(
-  name: string,
-  register: FlowServerModule<Env>["register"],
-): FlowServerModule<Env> {
-  return { name, register };
+export type FlowModuleFactory<Env, TModule> = (env: Env) => TModule;
+
+export function createModule<Env, TModule>(
+  build: FlowModuleFactory<Env, TModule>,
+): FlowModuleFactory<Env, TModule> {
+  return build;
 }
 
-export function createOperationModule<Env>(options: {
-  readonly name: string;
-  readonly prefix: string;
-  readonly register: (app: OperationApp, env: Env) => OperationApp;
-}): FlowServerModule<Env> {
-  return createModule(options.name, (app, env) =>
-    app.use(
-      options.register(
-        new Elysia({ prefix: options.prefix }) as OperationApp,
-        env,
-      ) as OperationApp,
-    ),
+export function createOperationsApp(): Elysia<"/api/operations"> {
+  return new Elysia({ prefix: "/api/operations" });
+}
+
+export function createOperationModule<
+  Env,
+  const TPrefix extends OperationPrefix,
+  TApp extends AnyElysia,
+>(options: {
+  readonly prefix: NonApiOperationPrefix<TPrefix>;
+  readonly register: (app: Elysia<NonApiOperationPrefix<TPrefix>>, env: Env) => TApp;
+}): FlowModuleFactory<Env, TApp> {
+  return createModule((env) =>
+    options.register(new Elysia({ prefix: options.prefix }), env),
   );
 }

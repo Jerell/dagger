@@ -43,11 +43,9 @@ function isValidationBlock(value: unknown): value is Block {
   });
 }
 
-export const schemaModule = createModule<DaggerServerConfig>(
-  "schema",
-  (app, config) =>
-    app.use(
-      new Elysia({ prefix: "/api/schema" })
+export const schemaModule = createModule(
+  (config: DaggerServerConfig) =>
+    new Elysia({ prefix: "/api/schema" })
         .get("/", async ({ set }) =>
           runRequest(
             Effect.sync(() => getSchemas()),
@@ -238,5 +236,4 @@ export const schemaModule = createModule<DaggerServerConfig>(
             set,
           ),
         ),
-    ),
 );

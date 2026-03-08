@@ -30,11 +30,9 @@ const CONTENT_TYPES: Record<string, string> = {
   ".bmp": "image/bmp",
 };
 
-export const networkModule = createModule<DaggerServerConfig>(
-  "network",
-  (app, config) =>
-    app.use(
-      new Elysia({ prefix: "/api/network" })
+export const networkModule = createModule(
+  (config: DaggerServerConfig) =>
+    new Elysia({ prefix: "/api/network" })
         .get("/", async ({ query, set }) =>
           runRequest(
             tryPromise(
@@ -174,5 +172,4 @@ export const networkModule = createModule<DaggerServerConfig>(
             set,
           ),
         ),
-    ),
 );

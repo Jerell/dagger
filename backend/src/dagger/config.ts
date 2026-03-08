@@ -5,8 +5,6 @@ export type DaggerServerConfig = {
   readonly projectRoot: string;
   readonly port: number;
   readonly availableNetworks: ReadonlyArray<string>;
-  readonly costingServerUrl: string;
-  readonly snapshotServerUrl: string;
 };
 
 export function createDaggerServerConfig(): DaggerServerConfig {
@@ -15,10 +13,6 @@ export function createDaggerServerConfig(): DaggerServerConfig {
     projectRoot: process.cwd(),
     port: process.env.PORT ? Number.parseInt(process.env.PORT, 10) : 3000,
     availableNetworks: ["preset1", "simple-snapshot"],
-    costingServerUrl:
-      process.env.COSTING_SERVER_URL ?? "http://localhost:8080",
-    snapshotServerUrl:
-      process.env.SNAPSHOT_SERVER_URL ?? "http://localhost:5000",
   };
 }
 
