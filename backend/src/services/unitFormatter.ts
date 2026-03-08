@@ -23,13 +23,13 @@ type UnitMetadata = {
 /**
  * Format a numeric value with unit preferences
  */
-export async function formatValue(
+export function formatValue(
   value: number,
   propertyName: string,
   blockType: string | undefined,
   unitPreferences: UnitPreferences,
   propertyMetadata?: UnitMetadata
-): Promise<string> {
+): string {
   // Determine preferred unit using precedence:
   // 1. Query parameter override
   // 2. Block-type preference in config
@@ -137,7 +137,7 @@ export async function formatQueryResult(
         if (result[originalKey]) {
           // This is a unit value - format it
           try {
-            formatted[key] = await formatValue(
+            formatted[key] = formatValue(
               value,
               key,
               currentBlockType,

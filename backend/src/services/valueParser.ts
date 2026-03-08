@@ -79,10 +79,10 @@ export function parseValue(
  * @param targetUnit - The target unit to convert to (e.g., "m", "bar")
  * @returns The numeric value in the target unit, or undefined if conversion failed
  */
-export async function convertToNumber(
+export function convertToNumber(
   value: string | number | null | undefined,
   targetUnit: string
-): Promise<number | undefined> {
+): number | undefined {
   const parsed = parseValue(value);
   if (!parsed) {
     return undefined;

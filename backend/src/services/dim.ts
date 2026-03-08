@@ -113,16 +113,8 @@ export async function initDim(): Promise<void> {
         currentMemory = inst.exports.memory;
         instance = inst;
       } else {
-        // Path to dim WASM file - relative to backend directory
         const filePath = join(process.cwd(), "dim", "wasm", "dim_wasm.wasm");
-        // Try alternative path
-        const altPath = join(process.cwd(), "dim", "wasm", "dim.wasm");
-        let buf: Buffer;
-        try {
-          buf = await readFile(filePath);
-        } catch {
-          buf = await readFile(altPath);
-        }
+        const buf = await readFile(filePath);
         const bytes = buf.buffer.slice(
           buf.byteOffset,
           buf.byteOffset + buf.byteLength

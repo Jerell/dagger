@@ -116,7 +116,7 @@ export async function formatValueUnified(
     };
 
     // Format with unit preferences
-    return await formatValue(
+    return formatValue(
       parsed.numericValue,
       propertyName,
       blockType,
@@ -141,7 +141,7 @@ export async function formatValueUnified(
             [originalKey]: originalString,
           },
         };
-        return await formatValue(
+        return formatValue(
           value,
           propertyName,
           blockType,

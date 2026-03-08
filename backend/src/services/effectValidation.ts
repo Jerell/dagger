@@ -7,7 +7,7 @@ import {
   PropertyMetadata,
 } from "./effectSchemas";
 import { UnitPreferences } from "./unitFormatter";
-import { formatValueUnified, FormatValueOptions } from "./valueFormatter";
+import { formatValueUnified } from "./valueFormatter";
 import { parseUnitPreferences } from "./query";
 import dim from "./dim";
 import { parseValue, convertToNumber } from "./valueParser";
@@ -157,18 +157,57 @@ export function resolveBlockPropertiesFromSchema(
     ...schemaMetadata.optional,
   ];
 
+  const unresolvedProps: string[] = [];
   for (const propName of allProperties) {
-    // First check if property is directly on the block
     if (block[propName] !== undefined && block[propName] !== null) {
       resolved[propName] = {
         value: block[propName],
         scope: "block",
       };
     } else {
-      // Try to resolve from scope chain
-      const resolvedProp = resolveProperty(ctx, branchId, blockIndex, propName);
-      if (resolvedProp) {
-        resolved[propName] = resolvedProp;
+      unresolvedProps.push(propName);
+    }
+  }
+
+  if (unresolvedProps.length > 0) {
+    const dagger = getDagger();
+    try {
+      const batchRequest = [
+        {
+          branch_id: branchId,
+          block_index: blockIndex,
+          properties: unresolvedProps,
+        },
+      ];
+      const rawResult = dagger.resolve_all_blocks(
+        ctx.filesJson,
+        ctx.configContent || undefined,
+        JSON.stringify(batchRequest),
+      );
+      const batchResults = JSON.parse(rawResult);
+      const blockKey = `${branchId}/${blockIndex}`;
+      const blockResults = batchResults[blockKey];
+      if (blockResults) {
+        for (const propName of unresolvedProps) {
+          if (blockResults[propName]) {
+            resolved[propName] = {
+              value: blockResults[propName].value,
+              scope: blockResults[propName].scope,
+            };
+          }
+        }
+      }
+    } catch {
+      for (const propName of unresolvedProps) {
+        const resolvedProp = resolveProperty(
+          ctx,
+          branchId,
+          blockIndex,
+          propName,
+        );
+        if (resolvedProp) {
+          resolved[propName] = resolvedProp;
+        }
       }
     }
   }
@@ -517,6 +556,7 @@ async function validateBlockInternal(
   files: Record<string, string>,
   filesJson: string,
   unitPreferences: UnitPreferences,
+  preResolved?: Record<string, { value: any; scope: string }>,
 ): Promise<Record<string, ValidationResult>> {
   const schema = getSchema(schemaSet, blockType);
   if (!schema) {
@@ -547,11 +587,11 @@ async function validateBlockInternal(
 
   const results: Record<string, ValidationResult> = {};
 
-  async function convertValueForValidation(
+  function convertValueForValidation(
     value: PropertyValue,
     propertyName: string,
     propertyMetadata: PropertyMetadata,
-  ): Promise<number | undefined> {
+  ): number | undefined {
     const parsed = parseValue(value);
     if (!parsed) {
       return undefined;
@@ -559,7 +599,7 @@ async function validateBlockInternal(
 
     if (parsed.isUnitString && propertyMetadata?.defaultUnit) {
       try {
-        return await convertToNumber(value, propertyMetadata.defaultUnit);
+        return convertToNumber(value, propertyMetadata.defaultUnit);
       } catch (error) {
         console.warn(
           `Failed to convert ${propertyName} value "${value}" to ${propertyMetadata.defaultUnit}:`,
@@ -578,7 +618,7 @@ async function validateBlockInternal(
     const propertyMetadata = schemaMetadata.properties[propertyName];
 
     if (propertyMetadata?.defaultUnit !== undefined) {
-      const converted = await convertValueForValidation(
+      const converted = convertValueForValidation(
         value,
         propertyName,
         propertyMetadata,
@@ -617,7 +657,7 @@ async function validateBlockInternal(
       propertyScopes[propName] = "block";
       propertyValues[propName] = block[propName];
       if (propMetadata?.defaultUnit) {
-        const converted = await convertValueForValidation(
+        const converted = convertValueForValidation(
           block[propName],
           propName,
           propMetadata,
@@ -627,31 +667,42 @@ async function validateBlockInternal(
         completeValidationObject[propName] = block[propName];
       }
     } else if (pathParts.length === 2) {
-      try {
-        const scopeResult = dagger.resolve_property_with_scope(
-          filesJson,
-          configContent || undefined,
-          pathParts[0],
-          parseInt(pathParts[1], 10),
-          propName,
-        );
-        const parsed = JSON.parse(scopeResult);
-        if (parsed?.value !== undefined && parsed.scope) {
-          propertyScopes[propName] = parsed.scope;
-          propertyValues[propName] = parsed.value;
-          if (propMetadata?.defaultUnit) {
-            const converted = await convertValueForValidation(
-              parsed.value,
-              propName,
-              propMetadata,
-            );
-            completeValidationObject[propName] = converted ?? parsed.value;
-          } else {
-            completeValidationObject[propName] = parsed.value;
+      let resolved: ResolvedProperty | null = null;
+
+      if (preResolved && preResolved[propName]) {
+        const pr = preResolved[propName];
+        resolved = { value: pr.value, scope: pr.scope };
+      } else if (filesJson !== "{}") {
+        try {
+          const scopeResult = dagger.resolve_property_with_scope(
+            filesJson,
+            configContent || undefined,
+            pathParts[0],
+            parseInt(pathParts[1], 10),
+            propName,
+          );
+          const parsed = JSON.parse(scopeResult);
+          if (parsed?.value !== undefined && parsed.scope) {
+            resolved = { value: parsed.value, scope: parsed.scope };
           }
+        } catch {
+          // Property not found in scope
         }
-      } catch {
-        // Property not found in scope
+      }
+
+      if (resolved) {
+        propertyScopes[propName] = resolved.scope;
+        propertyValues[propName] = resolved.value;
+        if (propMetadata?.defaultUnit) {
+          const converted = convertValueForValidation(
+            resolved.value,
+            propName,
+            propMetadata,
+          );
+          completeValidationObject[propName] = converted ?? resolved.value;
+        } else {
+          completeValidationObject[propName] = resolved.value;
+        }
       }
     }
   }
@@ -664,12 +715,36 @@ async function validateBlockInternal(
     : null;
   const errorMessage = validationErrors ? String(validationErrors) : "";
 
+  const propsWithValues = allProperties.filter((propName) => {
+    const v = propertyValues[propName];
+    return v !== undefined && v !== null;
+  });
+
+  const formattedValues = await Promise.all(
+    propsWithValues.map((propName) =>
+      formatValueUnified(propertyValues[propName], {
+        propertyName: propName,
+        blockType,
+        unitPreferences,
+        propertyMetadata: schemaMetadata.properties[propName] || {},
+        networkPath: networkPath ?? undefined,
+        schemaSet,
+        blockPath,
+      }),
+    ),
+  );
+
+  const formattedMap = new Map(
+    propsWithValues.map((propName, i) => [propName, formattedValues[i]]),
+  );
+
   for (const propertyName of allProperties) {
     const propertyPath = `${blockPath}/${propertyName}`;
     const propertyMetadata = schemaMetadata.properties[propertyName] || {};
 
     const resolvedValue = propertyValues[propertyName];
     const resolvedScope = propertyScopes[propertyName];
+    const formattedValue = formattedMap.get(propertyName);
 
     const isRequired = schemaMetadata.required.includes(propertyName);
     const hasValue = resolvedValue !== undefined && resolvedValue !== null;
@@ -684,21 +759,6 @@ async function validateBlockInternal(
     }
 
     if (hasValue) {
-      const formatOptions: FormatValueOptions = {
-        propertyName,
-        blockType,
-        unitPreferences,
-        propertyMetadata,
-        networkPath: networkPath ?? undefined,
-        schemaSet,
-        blockPath,
-      };
-
-      const formattedValue = await formatValueUnified(
-        resolvedValue,
-        formatOptions,
-      );
-
       const isNumericProperty = !!propertyMetadata?.defaultUnit;
       let constraintValid = true;
       let constraintMessage: string | undefined;
@@ -838,11 +898,9 @@ async function validateBlockInternal(
         is_valid: true,
         rawValue: resolvedValue,
       };
-      // Always include value and scope for valid properties that have values
       if (formattedValue !== undefined && formattedValue !== null) {
         validResult.value = formattedValue;
       } else if (resolvedValue !== undefined && resolvedValue !== null) {
-        // Fallback to original value if formatting failed (convert to string)
         validResult.value = String(resolvedValue);
       }
       if (resolvedScope !== undefined && resolvedScope !== null) {
@@ -980,35 +1038,87 @@ export async function validateNetworkBlocks(
     }
   }
 
-  // Validate all blocks from all branches
-  for (const branch of branches) {
-    const branchId = branch.id;
+  type BatchRequest = {
+    branch_id: string;
+    block_index: number;
+    properties: string[];
+  };
+  const batchRequests: BatchRequest[] = [];
 
+  for (const branch of branches) {
     for (let i = 0; i < branch.blocks.length; i++) {
       const block = branch.blocks[i];
-      if (!block || typeof block !== "object" || !block.type) {
-        continue;
-      }
+      if (!block || typeof block !== "object" || !block.type) continue;
 
-      const blockPath = `${branchId}/blocks/${i}`;
-      const blockResults = await validateBlockInternal(
-        block,
-        block.type,
-        blockPath,
-        schemaSet,
-        networkPath,
-        configContent,
-        queryOverrides,
-        files,
-        filesJson,
-        unitPreferences,
+      const schemaMetadata = getSchemaMetadata(schemaSet, block.type);
+      if (!schemaMetadata) continue;
+
+      const allProps = [...schemaMetadata.required, ...schemaMetadata.optional];
+      const unresolvedProps = allProps.filter(
+        (p) => block[p] === undefined || block[p] === null,
       );
 
-      // Merge results
-      for (const [propPath, result] of Object.entries(blockResults)) {
-        allResults[propPath] = result;
+      if (unresolvedProps.length > 0) {
+        batchRequests.push({
+          branch_id: branch.id,
+          block_index: i,
+          properties: unresolvedProps,
+        });
       }
     }
+  }
+
+  let batchResults: Record<
+    string,
+    Record<string, { value: any; scope: string }>
+  > = {};
+
+  if (batchRequests.length > 0 && filesJson !== "{}") {
+    try {
+      const rawResult = dagger.resolve_all_blocks(
+        filesJson,
+        configContent || undefined,
+        JSON.stringify(batchRequests),
+      );
+      batchResults = JSON.parse(rawResult);
+    } catch (e) {
+      console.warn(
+        "Batch resolution failed, falling back to per-property resolution:",
+        e,
+      );
+    }
+  }
+
+  const blockTasks = branches.flatMap((branch) =>
+    branch.blocks
+      .map((block, i) => {
+        if (!block || typeof block !== "object" || !block.type) {
+          return null;
+        }
+        const blockPath = `${branch.id}/blocks/${i}`;
+        const preResolved = batchResults[`${branch.id}/${i}`] || undefined;
+        return validateBlockInternal(
+          block,
+          block.type,
+          blockPath,
+          schemaSet,
+          networkPath,
+          configContent,
+          queryOverrides,
+          files,
+          filesJson,
+          unitPreferences,
+          preResolved,
+        );
+      })
+      .filter(
+        (t): t is Promise<Record<string, ValidationResult>> => t !== null,
+      ),
+  );
+
+  const blockResultsList = await Promise.all(blockTasks);
+  for (const blockResults of blockResultsList) {
+    Object.assign(allResults, blockResults);
   }
 
   return allResults;

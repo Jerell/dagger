@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { Either } from "effect";
 import * as S from "effect/Schema";
-import { NetworkSource } from "../services/costing";
 import {
   transformNetworkToSnapshotConditions,
   ScenarioRequest,
@@ -9,6 +8,7 @@ import {
   ScenarioFailResponse,
   transformScenarioResponse,
 } from "../services/snapshot";
+import { NetworkSource, validateNetworkBlocks } from "../services/effectValidation";
 import {
   SnapshotValidateRequestSchema,
   SnapshotRunRequestSchema,
@@ -58,14 +58,13 @@ snapshotRoutes.post("/validate", async (c) => {
     }
     const body = parseResult.right;
 
-    // Transform network to get validation info
-    const result = await transformNetworkToSnapshotConditions(
+    const validation = await validateNetworkBlocks(
       body.source as NetworkSource,
       "v1.0-snapshot",
       body.baseNetworkId,
     );
 
-    return c.json(result.validation);
+    return c.json(validation);
   } catch (error) {
     console.error("Snapshot validation error:", error);
     return c.json(

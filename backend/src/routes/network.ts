@@ -111,13 +111,16 @@ networkRoutes.get("/list", async (c) => {
   const networks = await Promise.all(
     AVAILABLE_NETWORKS.map(async (networkId) => {
       try {
-        const networkData = await loadNetwork(`networks/${networkId}`);
-        return {
-          id: networkId,
-          label: networkData.label || networkId,
-        };
-      } catch (error) {
-        // If network can't be loaded, use the ID as the label
+        const configPath = path.resolve(
+          process.cwd(),
+          "networks",
+          networkId,
+          "config.toml",
+        );
+        const configContent = await fs.readFile(configPath, "utf-8");
+        const labelMatch = configContent.match(/^label\s*=\s*"([^"]+)"/m);
+        return { id: networkId, label: labelMatch ? labelMatch[1] : networkId };
+      } catch {
         return { id: networkId, label: networkId };
       }
     }),
