@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "backend",
+    "backend-elysia",
     "frontend"
   ],
   "scripts": {
     "dev": "just dev",
     "dev:backend": "cd backend && bun run dev",
+    "dev:backend-elysia": "cd backend-elysia && bun run dev",
     "dev:frontend": "cd frontend && bun run dev",
     "test": "bun run test:backend",
-    "test:backend": "cd backend && bun test"
+    "test:backend": "cd backend && bun test",
+    "check:backend-elysia": "cd backend-elysia && bun run check"
   }
 }
