@@ -1,6 +1,6 @@
 # Dagger
 
-Dagger is a file-based network modeling workspace.
+Dagger is a file-based network modeling workspace. It dags.
 
 The current stack is:
 
