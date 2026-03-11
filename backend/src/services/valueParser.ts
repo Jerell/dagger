@@ -27,7 +27,7 @@ export type ValueParseResult = {
  * @returns Parse result with numeric value and unit info, or undefined if parsing failed
  */
 export function parseValue(
-  value: string | number | null | undefined
+  value: unknown
 ): ValueParseResult | undefined {
   if (value === null || value === undefined) {
     return undefined;
@@ -80,7 +80,7 @@ export function parseValue(
  * @returns The numeric value in the target unit, or undefined if conversion failed
  */
 export function convertToNumber(
-  value: string | number | null | undefined,
+  value: unknown,
   targetUnit: string
 ): number | undefined {
   const parsed = parseValue(value);

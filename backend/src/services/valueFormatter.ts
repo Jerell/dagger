@@ -51,7 +51,7 @@ export type FormatValueOptions = {
  * @returns Formatted value string according to unit preferences
  */
 export async function formatValueUnified(
-  value: string | number | null | undefined,
+  value: unknown,
   options: FormatValueOptions
 ): Promise<string | undefined> {
   if (value === null || value === undefined) {
@@ -154,7 +154,7 @@ export async function formatValueUnified(
       }
     } else {
       // Plain numeric string (e.g., "0.7") - return as-is
-      return value;
+      return typeof value === "string" ? value : String(value);
     }
   }
 

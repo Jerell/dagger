@@ -1,5 +1,27 @@
 import { Schema } from "effect";
 
+const fractionSchema = Schema.Number.pipe(
+  Schema.greaterThanOrEqualTo(0),
+  Schema.lessThanOrEqualTo(1),
+);
+
+const FluidCompositionSchema = Schema.Struct({
+  carbonDioxideFraction: Schema.optional(fractionSchema),
+  nitrogenFraction: Schema.optional(fractionSchema),
+  waterFraction: Schema.optional(fractionSchema),
+  hydrogenSulfideFraction: Schema.optional(fractionSchema),
+  carbonMonoxideFraction: Schema.optional(fractionSchema),
+  argonFraction: Schema.optional(fractionSchema),
+  methaneFraction: Schema.optional(fractionSchema),
+  hydrogenFraction: Schema.optional(fractionSchema),
+  oxygenFraction: Schema.optional(fractionSchema),
+}).pipe(
+  Schema.annotations({
+    title: "Fluid composition",
+    description: "Component mole fractions for the source fluid.",
+  }),
+);
+
 export const SourceSchema = Schema.Struct({
   type: Schema.Literal("Source"),
   quantity: Schema.optional(Schema.Number),
@@ -13,14 +35,7 @@ export const SourceSchema = Schema.Struct({
     }),
   ),
 
-  carbonDioxideFraction: Schema.Number.pipe(
-    Schema.greaterThan(0),
-    Schema.annotations({
-      dimension: "molFraction",
-      defaultUnit: "molFraction",
-      title: "Carbon dioxide fraction",
-    }),
-  ),
+  fluidComposition: Schema.optional(FluidCompositionSchema),
 
   pressure: Schema.Number.pipe(
     Schema.greaterThan(0),

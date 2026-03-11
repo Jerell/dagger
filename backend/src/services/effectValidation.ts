@@ -56,10 +56,10 @@ export type ValidationResult = {
 
 export type Block = {
   type: string;
-  [key: string]: string | number | null | undefined;
+  [key: string]: JsonValue | undefined;
 };
 
-export type PropertyValue = string | number | null | undefined;
+export type PropertyValue = JsonValue | undefined;
 
 export type ResolvedProperty = {
   value: PropertyValue;
@@ -641,10 +641,7 @@ async function validateBlockInternal(
   }
 
   const pathParts = blockPath.split("/blocks/");
-  const completeValidationObject: Record<
-    string,
-    string | number | null | undefined
-  > = {
+  const completeValidationObject: Record<string, JsonValue | undefined> = {
     ...blockForValidation,
     type: block.type,
   };

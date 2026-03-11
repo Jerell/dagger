@@ -420,6 +420,51 @@ const PROPERTY_MAPPINGS: Record<string, string> = {
   o2_fraction: "oxygenFraction",
 };
 
+const FLUID_COMPOSITION_PROPERTIES = [
+  "carbonDioxideFraction",
+  "nitrogenFraction",
+  "waterFraction",
+  "hydrogenSulfideFraction",
+  "carbonMonoxideFraction",
+  "argonFraction",
+  "methaneFraction",
+  "hydrogenFraction",
+  "oxygenFraction",
+] as const;
+
+type FluidCompositionKey = (typeof FLUID_COMPOSITION_PROPERTIES)[number];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getFluidCompositionValue(
+  block: NetworkBlock,
+  property: FluidCompositionKey,
+): unknown {
+  const fluidComposition = block.fluidComposition;
+  if (isRecord(fluidComposition) && fluidComposition[property] !== undefined) {
+    return fluidComposition[property];
+  }
+
+  return block[property];
+}
+
+function getFluidCompositionEntries(
+  block: NetworkBlock,
+): Array<[FluidCompositionKey, unknown]> {
+  const entries: Array<[FluidCompositionKey, unknown]> = [];
+
+  for (const property of FLUID_COMPOSITION_PROPERTIES) {
+    const value = getFluidCompositionValue(block, property);
+    if (value !== undefined && value !== null) {
+      entries.push([property, value]);
+    }
+  }
+
+  return entries;
+}
+
 /**
  * Get the snapshot property name for a block property.
  */
@@ -590,7 +635,16 @@ function extractBlockConditions(
     let status: ConditionStatus = "missing";
 
     for (const propName of blockPropertyNames) {
-      const blockValue = block[propName];
+      const blockValue =
+        propName === propDef.property &&
+        FLUID_COMPOSITION_PROPERTIES.includes(
+          propDef.property as FluidCompositionKey,
+        )
+          ? getFluidCompositionValue(
+              block,
+              propDef.property as FluidCompositionKey,
+            )
+          : block[propName];
       if (blockValue !== undefined && blockValue !== null) {
         value = convertToUnitValue(blockValue, propDef.unit);
         if (value !== null) {
@@ -619,8 +673,31 @@ function extractBlockConditions(
     }
   }
 
+  for (const [propName, propValue] of getFluidCompositionEntries(block)) {
+    const key = `${componentType}|${componentId}|${propName}`;
+
+    if (conditions.some((c) => c.property === propName)) {
+      continue;
+    }
+
+    const value = convertToUnitValue(propValue, "molFraction");
+    if (value !== null) {
+      conditions.push({
+        key,
+        value,
+        status: "extracted",
+        property: propName,
+        unit: "molFraction",
+        sourceBlockId,
+      });
+    }
+  }
+
   // Also extract any additional properties from the block that look like fractions
   for (const [propName, propValue] of Object.entries(block)) {
+    if (propName === "fluidComposition") {
+      continue;
+    }
     if (propName.endsWith("Fraction") || propName.endsWith("_fraction")) {
       const snapshotProp = mapPropertyName(propName);
       const key = `${componentType}|${componentId}|${snapshotProp}`;
@@ -804,8 +881,13 @@ function blockToSeriesComponent(
   ];
 
   for (const prop of propertiesToCopy) {
-    if (block[prop] !== undefined && block[prop] !== null) {
-      const convertedValue = convertToTargetUnit(block[prop], prop);
+    const blockValue = FLUID_COMPOSITION_PROPERTIES.includes(
+      prop as FluidCompositionKey,
+    )
+      ? getFluidCompositionValue(block, prop as FluidCompositionKey)
+      : block[prop];
+    if (blockValue !== undefined && blockValue !== null) {
+      const convertedValue = convertToTargetUnit(blockValue, prop);
       if (convertedValue !== null) {
         component[prop] = convertedValue;
       }

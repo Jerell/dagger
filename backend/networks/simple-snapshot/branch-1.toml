@@ -16,7 +16,7 @@ type = "Source"
 flowrate = "1 mtpa"
 pressure = "100 bar"
 temperature = "55 °C"
-carbonDioxideFraction = "1.0"
+fluidComposition = { carbonDioxideFraction = "1.0" }
 
 [[block]]
 quantity = 1
