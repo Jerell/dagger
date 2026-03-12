@@ -248,7 +248,7 @@ export function getEnrichedBlockFromSchema(
     ctx,
   );
 
-  const enriched: Block = { ...block };
+  const enriched: Block = { type: block.type };
   for (const [propName, { value }] of Object.entries(resolved)) {
     if (enriched[propName] === undefined || enriched[propName] === null) {
       enriched[propName] = value;
@@ -304,7 +304,7 @@ export function getEnrichedBlockFromValidation(
     blockIndex,
   );
 
-  const enriched: Block = { ...block };
+  const enriched: Block = { type: block.type };
   for (const [propName, value] of Object.entries(resolved)) {
     if (value !== undefined && value !== null) {
       enriched[propName] = value;
